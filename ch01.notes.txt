@@ -1,0 +1,975 @@
+*************************************************
+*************************************************
+Preface:
+*************************************************
+*************************************************
+
+  main concerns of a programmer:
+    testing
+    debugging
+    protability
+    performance
+    design alternatives
+    style
+  Basic Programming Principles:
+    simplicity, clarity, generality, automation
+
+
+*************************************************
+*************************************************
+Chapter 1: Style:
+*************************************************
+*************************************************
+
+  The Elements of Style, William Strunk and E.B. White: "It is an old observation that the best writers sometimes disregard the rules of rhetoric. When they do so, however, the reader will usually find in the sentence some compensating merit, attained at the cost of the violation. Unless he is certain of doing as well, he will probably do best to follow the rules."
+
+Example Code:
+--------------------------------------------------
+if ( (country == SING) || (country == BRNI) || 
+      (country == POL) || (country == ITALY) )
+{
+  /*
+   * If the country is Singapore, Brunei or Poland
+   * then the current time is the answer time
+   * rather than the off hook time.
+   * Reset answer time and set day of week
+   */
+}
+--------------------------------------------------
+
+What relationship links these countries mentioned?
+Why italy is not mentioned in the comment?
+Since the comment and the code differ, one of them must be wrong... Maybe both are.
+
+Code is run and tested, so most likely the comment did not get updated when the code did. It is hard to maintain based on a comment like this that instead of clarifying, further puzzles the reader.
+
+The few lines above are typical of much real code: mostly wekk done, but with some things that could be improved.
+
+The purpose of style is to make code easy to read for yourself and others, and good style is crucial to good programming.
+
+----------------------------------------
+#define ONE 1
+#define TEN 10
+#define TWENTY 20
+
+vs
+
+#define INPUT_MODE 1
+#define INPUT_BUFSIZE 10
+#define OUTPUT_BUFSIZE 20
+----------------------------------------
+
+The first set of defines are questionable because the whole name of the definition needs to be altered whenever the value of the definition might need to be changed (imagine an arr of size 20 that later on needs to be converted to a size of 30...)
+
+*************************************************
+1.1 Names
+*************************************************
+  A name should be informative concise memorable and pronouncable if possible.
+  Much info comes from context and scope; the broader the scope of a var the more info should be conveyed by its name.
+
+  Descriptive names for globals, short names for locals.
+    Globals by def can pop up anywhere in the program, so they need names long and descriptive enough to remind the reader of their meaning. Comments with the declaration of globals is useful.
+  
+--------------------------------------------------
+    int npending = 0; // Current length of the input queue
+--------------------------------------------------
+
+    Local vars used in conventional ways can have very short names: i j for loop indices, p q for ptrs, s t for strings etc
+
+--------------------------------------------------
+for (theElementIndex = 0; theElementIndex < numberOfElements; theElementIndex++)
+    elementArray[theElementindex] = theElementIndex;
+
+vs
+
+for (i = 0; i < nElems; i++)
+    elem[i] = i;
+--------------------------------------------------
+    
+    Programmers are often encouraged to use long var names REGARDLESS OF CONTEXT. That is a mistake: clarity is often achieved through brevity.
+
+    There are many conventions: names beginning or ending with p (nodep) for ptrs, initial capital eltters for Globals, all capitals for CONSTANTS etc.
+
+    Some shops use more sweeping rules such as notation to encode type and usage info to the var name, perhaps pch to mean ptr to char and strTo and strFrom to mean strings that will be written to and read from.
+    
+    As per spelling, npending, numPending, num_pending is a matter of taste, specific rules are less impirtant than consistency.
+
+    Naming conventions make it easier to understand your own code as well as that of others.
+
+
+*********************************************************************************************************
+    BE CONSISTENT:
+      Besides being much too long, the member names in this java class are wildly inconsistent:
+  
+-------------------------------------------------
+class UserQueue {
+    int noOfItemsInQ, frontOfTheQueue, queueCapacity;
+    public int noOfUsersInQueue() {...}
+}
+-------------------------------------------------
+
+      The word "queue" appears as Q, Queue, and queue. but since queues can only be accessed froma var of type UserQueue, member names do not need to mention "queue" at all; context suffices, so
+            queue.queueCapacity
+is redundant. This version is better:
+
+-------------------------------------------------
+class UserQueue {
+  int nitems, front, capacity;
+  public int nusers() {...}
+}
+-------------------------------------------------
+since it leads to statements like
+            queue.capacity++;
+            n = queue.nusers();
+
+       No clarity is lost. This example still needs wotk, however: "items" and "users" are the same thing, so only one term should be used for a single concept.
+
+
+*********************************************************************************************************
+    USE ACTIVE NAMES FOR FUNCTIONS:   
+      Fn names should be based on active vers, perhaps followed by nouns:
+          now = date.getTime();
+          putchar('\n');
+      Fns that return a bool shold be named so that retval is not ambiguous:
+          if (checkOctal(c))
+            vs
+          if (isOctal(c))
+
+*********************************************************************************************************
+    BE ACCURATE:
+      A name not only labels, it conveys info to the reader. A misleading name can result in mystifying bugs.      
+
+-----------------------------------------------
+#define isoctal(c) ((c) >= '0' && (c) <= '8')
+vs
+#define isoctal(c) ((c) >= '0' && (c) <= '7')
+-----------------------------------------------
+      In this case the name conveyed the correct intent but the implementation was wrong; it's east for a sensible name to disguise a broken implementation.
+
+      Ex where name and code are completely contradictory:
+
+-----------------------------------------------
+public boolean inTable(Object obj) {
+    int j = this.getIndex(obj);
+    return (j == nTable);
+}
+-----------------------------------------------
+      getIndex returns 0...nTable-1 if it finds the obj, returns nTable if not. Thus the return value of this boolean fn is the exact opposite of what the name implies.
+
+      Ex 1-1 Comment on the choice of names and values in the following code:
+-----------------------------------------------
+#define TRUE 0
+#define FALSE 1
+
+  if ((ch = getchar()) == EOF)
+      not_eof = FALSE;
+-----------------------------------------------
+      Traditionally, true is represented by a 1 an false by a 0 in boolean logic, thus the values given to the define statements can cause confusion down the line. Also, the fact that a var literally named not_eof is set to be false UPON RECEIVAL of an EOF seems intentionally obtuse. 
+
+      Ex 1-2 Improve this fn:
+-----------------------------------------------
+  int smaller(char *s, char *t) {
+    if (strcmp(s, t) < 1)
+      return 1
+    else
+      return 0
+  }
+-----------------------------------------------
+      The name implies we get a 1 if and only if s is smaller than t, however, in this implementation we would get a 1 returned even if s and t were equivalent. Thus we either need to change the name of the fn to notGreater, smallerOrEqual, or perhaps we could change the if condition to read
+        if (strcmp(s, t) < 0)
+to reflect the strict smallness boundary implied by the name of the function. 
+
+      Ex 1-3 Read this code aloud:
+----------------------------------------------
+    if ((falloc(SMRHSHSCRTHC, S_IFEXT|0644, MAXRODDHSH)) < 0)
+-----------------------------------------------
+      Yup, point taken :D
+
+*************************************************
+1.2 Expressions and Statements 
+*************************************************
+  Generally, format to help readability. spaces around operators to suggest grouping, indentation, expressions written in a way similar to the way they'd be spoken aloud, etc
+
+  INDENT TO SHOW STRUCTURE
+----------------------------------------- 
+for(n++;n<100;field[n++]='\0');
+*i = '\0'; return('\0');
+
+//reformatting improves this a little bit
+
+for (n++; n < 100; field[n++] = '\n')
+  ;
+*i = '\0';
+return('\n');
+
+//even better to put the assignement inthe body and separate the inc
+
+for (n++; n < 100; n++)
+    field[n] = '\0';
+*i = '\0';
+return('\n');
+----------------------------------------- 
+  
+  USE THE NATURAL FORM FOR EXPRESSIONS:
+
+----------------------------------------- 
+if (!(block_id < actblks) || !(block_id >= unblocks))
+vs
+if ((block_id >= actblks) || (block_id < unblocks))
+----------------------------------------- 
+    Now the code reads naturally, since the expression was written closer to the way it would be spoken.
+
+  PARENTHESIZE TO RESOLVE AMBIGUITY:
+    Can be used to make intent clear even when not needed.
+    
+      while ((c = getchar()) != EOF) // logical ops bind tighter than asg, ()'s are mandatory
+
+      if (x&MASK == BITS) // bitwise & and | have lower precedence than relational ops like ==
+      if (x & (MASK == BITS)) //so above code actually means this
+      if ((x&MASK) == BITS) // most probably this was the intention
+    
+    Even when not necessary, ()'s can help if grouping is hard to grasp:
+      leap_year = y % 4 == 0 && y % 100 != 0 || y % 400 == 0;
+        vs
+      leap_year = ((y%4 == 0) && (y%100 != 0)) || (y%400 == 0);
+
+    Some blanks were also removed in the above example, grouping operands of higher-precedence operators helps the reader see the structure.
+
+  BREAK UP COMPLEX EXPRESSIONS:
+    It is easy to cram everything into one construction in c c++ java etc.
+----------------------------------------------------
+      *x += (*xp=(2*k < (n-m) ? c[k+1] : d[k--]));
+
+        vs
+
+      if (2*k < n-m)
+        *xp = c[k+1];
+      else
+        *xp = d[k--];
+
+      *x += *xp;
+----------------------------------------------------
+
+  BE CLEAR:
+    creative energy is sometimes used to write the most concise code, or to find a clever way to achieve smth. Sometimes these skills are isapplied. The goal is to write clear code, not clever code.
+
+----------------------------------------------------
+      subkey = subkey >> (bitoff - ((bitoff >> 3) << 3));
+        vs
+      subkey = subkey >> (bitoff & 0x7);
+        vs
+      subkey >>= bitoff & 0x7;
+----------------------------------------------------
+    First option is cryptic, shift right first and then left to zero LO 3 bits, then subtract from original to get only the LO 3 bits, only to use that result as a right shift amount for subkey... Whereas 0x7 or 0b0111 can also access LO 3 bits.
+
+    Often the ternary operator is abused (?:)
+----------------------------------------------------
+      child=(!LC&&!RC)?0:(!LC?RC:LC);
+
+        vs
+
+      if (LC == 0 && RC == 0)
+        child = 0;
+      else if (LC == 0)
+        child = RC;
+      else
+        child = LC;
+----------------------------------------------------
+    Impossible to figure out the first option, second option is longer but much clearer.
+
+    Ternary op (?:) is fine for short expressions where it can replace 4 lines of if-else with one line as in:
+      max = (a > b) ? a : b;
+    or perhaps
+      printf("The list has %d item%s\n", n, n==1 ? "" : "s"); //plural sensitive message
+
+    Clarity is not the same as brevity. Sometimes clearer code can be shorter, or longer, as in bit-shifting and ternary op examples respectively.
+
+
+  BE CAREFUL WITH SIDE EFFECTS:
+    Operators like ++ -- have side effects, besides returning a value the also modify the underlying var. Actions of retrieving the val and updating the var might not happen at the same time. Order of execution of side effects is undefined:
+      str[i++] = str[i++] = ' ';
+    Intent is to store blanks in the next two positions of str. However, one cannot be certain about the order in which i will be incremented. Instead:
+      str[i++] = ' ';
+      str[i++] = ' ';
+
+    Even though the next ex contains a single increment, this asg can also give varying results:
+      arr[i++] = i;
+    Say i was 3 to begin with, arr[3] may be set to 3 or 4 in this case.
+
+    Not just inc and dec, but I/O can also have side efffects. Next ex attempts to read two related numbers from the stdin:
+      scanf("%d %d", &yr, &profit[yr]);
+    This is broken because part of the expression modifies yr and another part uses it. This is not even an issue of arg ordering, because all args to scanf are processed before the routine is called, so &profit[yr] will always use the old value of yr. Instead:
+      scanf("%d", &yr);
+      scanf("%d", &profit[yr]);
+    Exercise caution in any expression with side effects.
+
+  Ex 1-4 Improve each of these fragements:
+    -------------------------------------
+    if ( !(c == 'y' || c == 'Y') )
+        return;
+      vs
+    if ( c != 'y' && c != 'Y')
+        return;
+    -------------------------------------
+      In the first version, the expression is written in a way that is hard to say aloud:
+        "if NOT c is lower case y or c is upper case Y"
+      The second version reads naturally: " if c is not lower y and c is not upper Y"
+
+    
+    -------------------------------------
+    length = (length < BUFSIZE) ? length : BUFSIZE;
+      vs
+    if (length > BUFSIZE)
+      length = BUFSIZE;
+    -------------------------------------
+     The intent of the first version is to make sure length never goes above the BUFSIZE, however, when we think about it, the real meaning a human would try to convey in such a situation is a one sided boundary check, the fact that the ternary operator is used can imply to a reader that there are two cases which are distinct and important, whereas a single if block more precisely conveys the "one sided boundary condition check" logic of the code.
+    
+    -------------------------------------
+    flag = flag ? 0 : 1;
+      vs
+    flag = !flag;
+    -------------------------------------
+      If it is given that flag is a boolean, then the first version can be opted out for the second. The second version clearly conveys that we are logically inverting flag.
+
+
+    -------------------------------------
+    quote = (*line == '"') ? 1 : 0;
+      vs
+    isDblQuote = (*line == '"') ? 1 : 0;
+    -------------------------------------
+    "quote" what? the var name is now much more descriptive, the ternary operator doesn't look out of place here for me... but I can be wrong of course
+
+    
+    -------------------------------------
+    if (val & 1)
+        bit = 1;
+    else
+        bit = 0;
+      vs
+    
+    bit = (val & 1);
+    -------------------------------------
+    Obviously, we set the bit to whatever the Low Order bit of val happens to be. So, why not do exactly that? haha, the way the first version is written makes the reader think as if something much more complicated is going on.
+
+  Ex 1-5 What is wrong with this excerpt?
+      int read(int *ip) {
+          scanf("%d", ip);
+          return *ip;
+      }
+          ...
+      insert(&graph[vert], read(&val), read(&ch));
+  
+    The problem seems to be that the programmer probably made an assumption about the order in which the "read" calls will be made when the program reaches the line with the insert call. One cannot be sure as to whether the first or second read call will be made, thus how will your user know whether the stdin is currently expecting an ineger for the val or ch...
+
+  Ex 1-6 List all different outputs this could produce with various orders of evaluation:
+      n = 1;
+      printf("%d %d\n", n++, n++);
+
+    We can have "1 1\n", 1 2, 2 1
+    clang produces 1 2.
+
+*************************************************
+1.3 Consistency and Idioms
+*************************************************
+  Same computations should be made the same way, so that any variation suggest a GENUINE DIFFERENCE, a difference worth noting.
+
+  USE CONSISTENT INDENTATION AND BRACE STYLE:
+
+---------------------------------------
+      if (month == FEB) {
+          if (year%4 == 0)
+              if (day > 29)
+                  legal = FALSE;
+          else
+              if (dat > 28)
+                  legal = FALSE;
+      }
+
+          vs
+      
+      if (month == FEB) {
+          if (year%4 == 0) {
+              if (day > 29)
+                  legal = FALSE;
+          } else {
+              if (day > 28)
+                  legal = FALSE;
+          }
+      }
+  
+          vs
+      
+      if (month == FEB) {
+          int nDay;
+
+          nDay = 28;
+          if (year%4 == 0)
+              nDay = 29;
+          if (day > nDay)
+              legal = FALSE;
+          
+      }
+---------------------------------------
+      The program is still wrong by the 3rd iteration (2000 is a leap year, but 1900 and 2100 are not). The first version had a bug because the else was dangling and it was attached to the third if clause, even though it was obvious that the programmer intended the else to be attached to the year%4 if clause.
+      The second version solves that problem but is hard to follow still.
+      The third version makes the code easier to follow, and easier to fix.
+
+      If you work on a piece of code written by someone else, preserve the style you find there. A program's consistency is more important.
+
+
+  USE IDIOMS FOR CONSISTENCY:
+    Like natural languages, prog langs have idioms. A central part of learning any language is developing a familiarity with its idioms.
+    One of the most common idioms, the form of a loop. Consider the C C++ or Java code for stepping through the n elements of an arr for example to initialize them:
+    
+      C    
+---------------------------------------
+      i = 0;
+      while (i <= n-1)
+          array[i++] = 1.0;
+        //or 
+      for (i = 0; i < n; )
+          array[i++] = 1.0;
+
+        //or
+      for (i = n; --i >= 0; )
+          array[i] = 1.0;
+
+        //Idiomatic version
+      for (i = 0; i < n; i++)
+          array[i] = 1.0;
+        //idiomatic c loop for a list traversal
+      for (p = list; p != NULL; p = p->next)
+          ...
+        //idiomatic infinite loop
+      for (;;)
+          ...
+        //or
+      while (1)
+          ...
+---------------------------------------
+      C++ or Java
+---------------------------------------
+      for (int i = 0; i < n; i++)
+          array[i] = 1.0;
+---------------------------------------
+
+    If one uses the same idioms for the same purposes all throughout, this removes the mental strain of decyphering what every single loop control does. It allows the reader to pay attention when there actually is something different going on.
+
+    Indentation should also be idiomatic. 
+      for (
+          ap = arr;
+          ap < arr + 128;
+          *ap++ = 0
+          )
+      {
+        ;
+      }
+        vs
+      for (ap = arr; ap < arr + 128; ap++)
+          *ap = 0;
+
+    Another idiomatic expression, nest an assignment in a loop condition:
+      while ((c = getchar()) != EOF)
+          putchar(c);
+
+    Do while is used much less often, because it always executes at least once, and tests at the bottom.
+
+    Advantage of consistent use of idioms: draws attention to non-standard loops:
+      
+      int i, *iArray, nmemb;
+
+      iArray = malloc(nmemb * sizeof(int));
+      for (i = 0; i <= nmemb; i++)
+          iArray[i] = i;
+
+
+    In this case, even though mem is allocation for nmemb many items, the loop condition is checked with <=, which would go one further than the size of the array. Often errors like these are not detected until long after damage has been done. Thus, always using idiomatic expressions would direct the eye of the reader (in a code review perhaps) to the unusual utilization of >= and decrease the likelyhood that the bug makes it to production.
+
+    There are also idioms for allocating space for strings and then manipulating it, and code that doesn't use these idioms often harbors a bug:
+    ? char *p, buf[256];
+
+    ? gets(buf);
+    ? p = malloc(strlen(buf));
+    ? strcpy(p, buf);
+
+    One should never use gets, there is no way to limit the amount of input it will read. fgets os always a better choice.
+    Another problem is that strlen does not count the \0 that terminates a string, while strcpy copies it; so not enough mem was allocated and strcyp will write past the allocated space. The idiom is:
+        p = malloc(strlen(buf)+1);
+        strcpy(p, buf);
+      or
+        p = new char[strlen(buf)+1];
+        strcpy(p, buf);
+
+      If you don't see a +1 in situations like these, beware. In java, this is not a problem since strings are not represented as null terminated arrays.
+
+      There is a strdup library fn in most c/c++ environments, but it is not part of the ansi.
+      BTW, neither the original nor the correctled versions of the above fragment check the value returned by malloc, but in a real program the retval of malloc, realloc, strdup, or any other allocation routine should always be checked.
+
+  USE ELSE-IFS FOR MULTI-WAY DECISIONS
+
+    if (condition1)
+        statement1
+    else if (condition2)
+        statement2
+    else if (condition3)
+        statement3
+    else
+        default-statement
+
+    Conditions are read from top to bottom; at the first condition that is satisfied, the statement that follows is executed,a dn the rest of the construct is skipped. That statment part may be a single statement or a group of statements enclosed in braces. The last else handles the "default" situation, where none of the other alternatives was choosen. This trailing else part may be omitted if ther eis no action for the default, although leaving it in with an err msg may help to catch conditions that "can't happen".
+
+    Highly nested if-else structures require the reader to construct a mental "pushdown stack" where each condition is pushed and popped to remember what conditions have been checked.
+    
+    if (argc == 3)
+        if ((fin = fopen(argv[1], "r")) != NULL)
+            if ((fout = fopen(argv[2], "w")) != NULL) {
+                while ((c = getc(fin)) != EOF)
+                    putc(c, fout);
+                fclose(fin); fclose(fout);
+            } else 
+                printf("Can't open output file %s\n", argv[2]);
+        else
+            printf("Can't oepn input file %s\n", argv[1])
+    else
+        printf("Usage: cp inputfile outputfile\n");
+
+    Changing the order in which the decisions are made leads to a clearer version, in which the resource leak in the original has also been corrected:
+    if (argc != 3)
+        printf("Usage: cp inputfile outputfile\n");
+    else if ((fin = fopen(argv[1], "r")) == NULL)
+        printf("Can't oepn input file %s\n", argv[1])
+    else if ((fout = fopen(argv[2], "w")) == NULL) {
+        printf("Can't oepn output file %s\n", argv[2])
+        fclose(fin);
+    } else {
+        while ((c = getc(fin)) != EOF)
+            putc(c, fout);
+        fclose(fin);
+        fclose(fout);
+    }
+
+    We read downt he tests until one that is true, do the corresponding action, and continue after the last else. The rule is to follow each decision as closely as possible by its associated action. Or, to put it another way, each time you make a test, do something.
+
+    Attempts to re-use pieces of code often lead to thightly knotted programs:
+      switch (c) {
+          case '-': sign = -1;
+          case '+': c = getchar();
+          case '.': break;
+          default:  if (!isdigit(c))
+                        return 0;
+      }
+    Using tricky fall throughs to avoid duplicating one line of code is not enough justification to let go of clarity:
+
+      if (c == '-') {
+          sign = -1;
+      } else if (c == '+') {
+          c = getchar();
+      } else if (c != '.' && !isdigit(c)) {
+          return 0;
+      }
+
+    Braces around one line blocks highlight the parallel structure.
+
+    Acceptable use of fall-through is:
+      case 1:
+      case 2:
+      case 3:
+        ...
+          break;
+
+
+  Ex 1-7 rewrite these c/c++ excerpts more clearly:
+---------------------------------------------
+      if (istty(stdin)) ;
+      else if (istty(stdout)) ;
+            else if (istty(stderr)) ;
+                else return(0);
+
+      if (istty(stdin))
+          ;
+      else if (istty(stdout))
+          ;
+      else if (istty(stderr))
+          ;
+      else
+          return 0;
+---------------------------------------------
+      if (retval != SUCCESS)
+      {
+          return (retval);
+      }      
+      return SUCCESS;
+
+      if (retval == SUCCESS)
+      {
+          return SUCCESS
+      }
+      return (retval);
+---------------------------------------------
+      for (k = 0; k++ < 5; x += dx)
+          scanf("%lf", %dx);
+
+      for (k = 0; k < 5; k++) {
+          scanf("%lf", &dx)
+          x += dx;
+      }
+
+  Ex 1-8 Identify errs in this java fragment and repair it by rewriting with an idiomatic loop:
+    
+---------------------------------------------
+      int count = 0;
+      while (count < total) {
+          count++;
+          if (this.getName(count) == nametable.userName()) {
+              return (true);
+          }
+      }
+
+      for (int count = 0; count < total; count++) {
+          if (this.getName(count) == nametable.userName())
+              return (true);
+      }
+---------------------------------------------
+
+*************************************************
+1.4 Function Macros
+*************************************************
+    
+  AVOID FN MACROS:
+    In c++ there are inline fns, in java there are no macros at all. In C they cause more problems than they solve. 
+    In fn macros, if a param appears more than once in the def, it might be evaluated more than once:
+      #define isupper(c) ((c) >= 'A' && (c) <= 'Z')
+        ...
+      while (isupper(c = getchar()))
+        ... 
+      Each time c is >= 'A', getchar will be invoked again.
+    The C standard is carfeully written to permit isupper and analogous fns to be macros, ubt only if they guarantee to evaluate the argument only once, so this try at re-implementing the isupper from ctype.h is broken.
+    It is always better to use the ctype fns rather than to implement them yourself. It is safer not to nest routines like getchar that have side effects.
+      while ((c = getchar()) != EOF && isupper(c)) // this is better
+          ...
+
+    Sometimes the macro parameter multiple evaluation causes a performance problem instead of an out-right error:
+      #define ROUND_TO_INT(x) ((int) ((x)+(((x)>0)?0.5:-0.5)))
+          ...
+      size = ROUND_TO_INT(sqrt(dx*dx + dy*dy)); 
+      // this will perform sqrt twice as often as necessary
+
+  PARANTHESIZE MACRO BODY AND ARGS:
+      If you insist on macros, be careful. Macros work by textual substitution:
+        1 / square(x) //works fine if square is a regular fn
+        #define square(x) (x) * (x) //if square was a macro like this
+        1 / (x) * (x) //this will be the result
+
+        #define square(x) ((x) * (x)) //this is the way to go
+
+  Ex 1-9 Identify the problems with this macro definition:
+        #define ISDIGIT(c) ((c >= '0') && (c <= '9')) ? 1 : 0
+
+    The argument is not wrapped in parantheses, so we cannot say whether the result of the epxression given for c will have precedence over the comparison.
+    The overall definition is not wrapped in parantheses. We don't know the context in which this macro might be used, so we cannot know whether or not we will break the code.
+    Whatever expression is given for c will be evaluated multiple times.
+
+*************************************************
+1.5 Magic Numbers
+*************************************************
+
+  Magic numbers are constants, arr sizes, char positions, conversion factos, and other literal numeric values that appear in programs.
+
+  GIVE NAMES TO MAGIC NUMBERS:
+      As a guideline, any number other than 0 or 1 is likely a magic number and should have a name of its own.
+      This excerpt from a program to print a histogram of letter frequencies on a 25/80 cursor-addressed terminal is needlessly opaque because of a host of magic numbers:
+        fac = lim / 20;     //set scale factor
+        if (fac < 1)
+            fac = 1;
+
+        for (i = 0, col = 0; i < 27; i++, j++) {
+            col += 3;
+            k = 21 - (let[i] / fac);
+            star  = (let[i] == 0) ? ' ' : '*';
+            for (j = k; j < 22; j++)
+                draw(j, col, star);
+        } 
+        draw(23, 2, ' '); // label x axis
+        for (i = 'A'; i <= 'Z'; i++)
+            printf("%c ", i);
+      The code includes, among others, the numbers 20 21 22 23 27. They are clearly related... or are they?. In fact, there are only three numbers critical to this program: 24 (number of rows in the screen), 80 (number of columns), and 26 (the number of letters in the alph). But none of these appear in th ecode, which makes the numbers that do even more magical.
+
+      By giving names to the principal numbers in the calculation, we can make the code easier to follow. 
+
+      We discover, for example, that the number 3 comes from (80-1)/26 and that let should have 26 entries not 27 (off by one err perhaps caused by 1-indexed screen coordinates). With some other simplifications, here is the result:
+
+        enum {
+            MINROW    = 1,                // top edge
+            MINCOL    = 1,                // left edge
+            MAXROW    = 24,               // bottom edge
+            MAXCOL    = 80,               // right edge
+            LABELROW  = 1,                // position of labels    
+            NLET      = 26,               // size of alphabet    
+            HEIGHT    = MAXROW - 4,       // height of bars
+            WIDTH     = (MAXCOL - 1)/NLET // width of bars
+        };
+        ...
+        fac = (lim + HEIGHT-1) / HEIGHT;    // set scale factor
+        if (fac < 1)
+            fac = 1;
+        for (i = 0; i < NLET; i++) { // generate histogram
+            if (let[i] == 0)  
+                continue;
+            for (j = HEIGHT - let[i]/fac; j < HEIGHT; j++)
+                draw(j+1 + LABELROW, (i+1)*WIDTH, '*');
+        }
+        draw(MAXROW-1, MINCOL+1, ' '); // label x axis
+        for (i = 'A'; i <= 'Z'; i++)
+            printf("%c ", i);
+      Now it is clearer: idiomatic loop over 0 to NLET (indicatinf loop over all elements of data), calls to draw are easier to udnerstand (the words MAXROW MINCOL remind the reader of the order of args), now it is feasible to adapt the code to a different screen size or data size.
+    
+  DEFINE NUMBERS AS CONSTANTS NOT MACROS
+      C programmers traditionally used #define to manage magic numbers. Th ec preprocessor is a powerful but blunt tool. Macros are dangerous because they change the lexical structure of the program:
+        const int MAXROW = 24, MAXCOL = 80; //c++ has const
+        static final int MAXROW = 24, MAXCOL = 80; // java has final
+      C also has const, but cannot be used as arr bounds, so enum remains the method in c
+
+  USE CHARACTER CONSTANTS NOT INTEGERS:
+
+      if (c >= 65 && c <= 90)
+          vs
+      if (c >= 'A' && c <= 'Z')
+          vs
+      if (isupper(c))
+
+    Char representations can change from machine to machine, perhaps ordering of chars may change from amchine to machine, Better just to use the library fns.
+
+    A related issue: number 0 appears often in programs, in many contexts. The compiler will  conver the number inton the appropriate type, but it helps the reader to understand the role of each 0 if the type is explicit. For example, use (void*)0 or NULL to represent a zero pointer in C, and '\0' instead of 0 to represent the null byte at the end of a string. In other words, don't write:
+        str = 0;
+        name[i] = 0;
+        x = 0;
+    but rather:
+        str = NULL;
+        name[i] = '\0';
+        x = 0.0;
+
+    kernighan's comment: we prefer to use different explicit constants, reserving 0 for a literal integer 0, because they indicate the use of the value and thus provide a bit of documentation. In C++ however, 0 rather than NULL is the accepted notation for a null ptr. 
+
+  USE THE LANGUAGE TO CALCULATE THE SIZE OF AN OBJECT:
+      Don't use explicit size for any data type: use sizeof(int) instead of 2 or 4 for instance. For similar reasons, sizeof(array[0]) may be better than sizeof(int) because it's one less thing to change if the type of the array changes. 
+      The sizeof operator os sometimes a convenient way yo avoid inventing names for the numbers that determine array sizes. 
+      char buf[1024];
+      fgets(buf, sizeof(buf), stdin);
+    the buffer size is still a magic number but it only occurs once, in the declaration, it may not be worth inventing a name for the size of a local array, but it is definitely worth writing code that does not ahve to change if the size or type changes.
+
+    In java there is .length, in c/c++ there is not an equivalent, but there is a macro that works for arrays (not ptrs) whose declaration is visible:
+      #define NELEMS(array) (sizeof(array) / sizeof(array[0]))
+    This is a good use of a macro beacuse multiple evaluation is not an issue since there are no side effects and in fact the computation is done as the program is being compiled. A fn cannot compute the size of an array from its declaration, thus this is an appropriate use of a macro.
+
+  Ex 1-10 Rewrite these definitions to minimize potential errors:
+    #define FT2METER    0.3048
+    #define METER2FT    3.28084
+    #define MI2FT       5280.0
+    #define MI2KM       1.609344
+    #define SQMI2SQKM   2.589988
+
+    Since none of these are integers, and will never be used for array indexing, instead of going with an enum, I would go with static consts, I would change their naming as well:
+    static const double FT_TO_METER   = 0.3048;
+    static const double METER_TO_FT   = ....;
+    static const double MI_TO_FT      = ....;
+    static const double MI_TO_KM      = ....;
+    static const double SQMI_TO_SQKM  = ....;
+
+
+*************************************************
+1.6 Comments
+*************************************************
+    Comments are to help the reader. They do not help by saying the things that the code already plainly says, or by contradicting the code, or by distracting the reader with elaborate typographical displays. 
+    The best comments aid the understanding of a program by briefly pointing out salient details or by providing a larger-scale view of the proceedings.
+
+  DON'T BELACOR THE OBVIOUS:
+    Comments should not report self evident information, such as the fact that 1++ has incremented i:
+        /*
+         * default
+         */
+        default:
+          break;
+
+        // return success
+        return SUCCESS;
+
+        zerocount++; // increment the zero entry counter
+
+        // initialize "total" to "numer_received"
+        node->total = node->number_received;
+
+    All of these comments should be deleted because they do not add anything and they are just clutter.
+    
+    Comments should add something that is not immediately evident from the code, or collect into one place information that is spread through the source. When something subtle is happening, a comment may clarify, but if the actions are obvious already, restating them in words is pointless:
+
+        while ((c = getchar()) != EOF && isspace(c))
+            ;                             // skip white space
+        if (c == EOF)                     // end of file
+            type = endoffile;
+        else if (c == '(')                // left paren
+            type = leftparen;
+        else if (c == ')')                // right paren
+            type = rightparen;
+        else if (c == ';')                // semicolon
+            type = semicolon;
+        else if (is_op(c))                // operator 
+            type = operator;
+        else if (isdigit(c))                // number
+            type = number;
+          ...
+
+    These comments should also be deleted since the well chosen names alreadt convey the information.
+
+  COMMENT FUNCTIONS AND GLOBAL DATA:
+    Comments can be useful for functions, global vars, const definitions, fields in structs/classes...
+  
+    Global vars hav e atendency to crop up intermittently throughout a program; a comment servers as a reminder to be referred to as needed:
+        struct State {
+            char    *pref[NPREF];   // prefix words
+            Suffix  *suf;           // list of suffixes
+            State   *next;          // next in hash table
+        }
+
+    A comment that introduces each function sets the stage for readign the code itself. if the code is not too long or technical, a single line is enough (of course in house rules supercede this)
+        // random: return an integer in the range [0..r-1]
+        int random(int r)
+        {
+            return (int)(Math.floor(Math.random()*r));
+        }
+
+    When the code is genuinely difficult, perhaps due to a difficult algo ro data structure, a comment can point out a source for reference, or it may be valuable to suggest why a certain decision was made. the following excerpt shows the usage of a comment introducing an extremely efficient implementation of an inverse discrete cosine transform (DCT) used in a JPEG image decoder:
+        /*
+         * idct: Scaled integer implementation of
+         * Inverse two dimensional 8x8 Discrete Cosine Transform,
+         * Chen-Wnag algorithm (IEEE ASSP-32, pp 803-816, Aug 1984)
+         * 
+         * 32-bit integer arithmetic (8-bit coefficients)
+         * 11 multiplies, 29 ads per DCT
+         * 
+         * Coefficients extended to 12 bits for
+         * IEEE 1180-1990 compliance
+         */
+        static void idct(int b[8*8])
+        {
+            ...  
+        }
+
+    This comment cites the reference, briefly describes the data used, indicates the performance of the algorithm, and tells how and why the original algorith has been modified.
+
+  DON'T COMMENT BAD CODE, REWRITE IT:
+
+    Comment anything unusual or potentially confusing, but if the comment outweighs the code, the code probably needs fixing:
+
+    /* If "result" is 0 a match was found so return true (non-zero). 
+        Otherwise, "result" is non-zero so return false (zero). */
+
+    #ifdef DEBUG
+    printf("*** isword returns Iresult =%d\n", Iresult);
+    fflush(stdout); 
+    #endif
+
+    return(!result);
+
+  Negations are hard to understand and should be avoided. Part of the problem is the uninformative variable name, result. A more descriptive name, matchfound, makes the comment unnecessary, cleans up the print statement as well:
+  
+    #ifdef DEBUG
+    printf("*** isword returns matchfound = %d\n", matchfound); 
+    fflush(stdout);
+    #endif
+
+    return matchfound;
+
+  DON'T CONTRADICT THE CODE:
+    Most comments agree with the code when theya re written. But as bugs are fixed and the program evolves, the comments are often left in their original form, resulting in disagreement with the code. 
+
+    Whatever the source of the disagreement, a comment that contradicts the code is confusing, and many a debugging session has been needlessly protracted because of a mistaken comment was taken as truth. When you change code, make sur ehte comments are still accurate.
+
+    Comments should not only agree with the code, but also support it. the comment in this example is correct -- it explains the purpose of the next two lines -- but it appears to contradict the code; the comment talks about newline and the code talks about blanks:
+  
+        time(&now);
+        strcpy(dat, ctime(&now));
+        // get rid fo trailing newline character copied from ctime
+        i = 0;
+        while(date[i] >= ' ') i++;
+        date[i] = 0;
+
+    One improvement is to rewrite the code more idiomatically:
+      
+        time(&now);
+        strcpy(date, ctime(&now));
+        // ctime() puts newline at the end fo string; delete it
+        date[strlen(date)-1] = '\0';
+
+    This last expressions is the C idiom for removing the last char from a string. the code is now short, idiomatic, and clear, and the comment supports it by explaining why it is needed to be there. 
+
+  CLARIFY, DON'T CONFUSE:
+   
+      int stcmp(char *s1, char *s2)
+      /* string comparison routine returns -1 if s1 is
+       * above s2 in an ascending order list, 0 if equal
+       * 1 if s1 is below s2
+       */
+      {
+          while(*sq==*s2) {
+              if(*s1=='\0') return(0);
+              s1++;
+              s2++;
+          }
+          if(*s1>*s2) return(1);
+          return(-1);
+      } 
+
+    When it takes more than a few words to explain what is happening, it is often an indication tha tthe code should be rewritten. Here the code could perhaps be improved but the real problem is the comment, which is nearly as long as the implementation and confusing (which way is above?).
+  
+      // strcmp: return <0 if s1<s2, >0 if s1>s2, 0 if equal
+      // ANSI C, section 4.11.4.2
+      int strcmp(const char *s1, const char *s2)
+      {
+          ...
+      }
+
+    Good code needs fewer comments than bad code.
+
+  Ex 1-11 Comment on these comments:
+
+      void dict::insert(string& w)
+      // returns 1 if w in dictionary, otherwise returns 0
+
+    ^^^the fn is declared to be void but the comment suggest the function returns a bool...
+
+      if (n > MAX || n % 2 > 0) // test for even number
+
+    ^^^in reality, test for number strictly greater than max OR not even, but comment not needed unless this if clause is part of a crazy optimization scheme...
+
+      // Write a message
+      // Add to line counter for each line written
+
+      void write_message()
+      {
+          // increment line counter
+          line_number = line_number + 1;
+          fprintf(fout, "%d %s\n%d %s\n%d %s\n",
+              line_number, HEADER,
+              line_number + 1, BODY,
+              line_number + 2, TRAILER);
+          //increment line counter
+          line_number = line_number + 2;
+      }
+
+      ^^^ inline comments are not needed, because the function comments are necessary, however, they are not descriptive enough, do we need to know why we increment by one first, and then increment again by 2 instead of just incrementing at the end? There is some unusual stuff going on and it is not explain why.
+
+
+*************************************************
+1.7 Why Bother 
+*************************************************
+
+  Main concerns of progamming style:
+    1) Descriptive Names
+    2) Clarity in Expressions
+    3) Straightforward Control Flow
+    4) Readability of Code and Comments
+    5) Importance of Consistent Use of Conventions and Idioms
+
+  Well written code is easier to read and to understand, almost surely has fewer errors, and is likely to be smaller than code that has been carelessly tossed together and never polished. In the rush to get programs out the door to meet some deadline, it's easy to push style aside, to worry about it later. This can be a costly decision. Some of the examples in this chapter show what can go wrong if there isn't enough attention to good style. Sloppy code is bad code -- not just awkward and hard to read, but often broken.
+  Good style should be a matter of habit.
+
