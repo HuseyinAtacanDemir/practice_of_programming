@@ -4,4 +4,113 @@ Chapter 2: Algorithms and Data Structures
 *************************************************
 *************************************************
 
+    In the end, only familiarity with the tools and techniques of the field will provide the right solution for a particular problem, and only a certain amount of experience will provide consistently professional results.
+          Raymond Fielding, The Technique of Special Effects Cinematography
 
+-------------------------------------------------------------------------------------------
+
+  The study of alg/dst is one of the foundations of CS, a rich field of elegant techniques and sophisticated mathematical analyses. It's more than fun/games: a good alg/dst might solve a prob in seconds instead of years.
+
+  In specialized fields (graphics, dbs, parsing, numerical analysis, simulation) ability to solve problems quickly depends on state-of-the-art alg/dst. One must find out what is already known and implemented in their field (alg/dst wise), lest he waste time doing poorly what others have already done well.
+
+  All programs depend on alg/dst, only a few depend on the invention of new ones. Even complex programs (compiler, web browser, etc) utilize existing alg/dst (arr, list, tree, hash tbl, etc). When a prog needs something more elaborate, it will likely be based on simpler ones. Thus, for the programmer, the task is to know what alg/dst are available/appropriate/good for the job at hand.
+
+  There are only a handful of alggos that show up in almost every program: search, sort. Similarly almost all dst are derived from few basic ones.
+
+    
+*************************************************
+2.1 Searching
+*************************************************
+
+    Nothing beats an array for storing static tabular data. Compile time initialization makes it cheap and easy to construct such arrays.
+
+    Ex: program to detect over utilized words in bad prose :D :
+
+    char *flab[] = {
+        "actually",
+        "just",
+        "quite",
+        "really",
+        NULL
+    };
+
+    The search routine needs to know the elem count of the arr: one way is to pass arrLen as an arg; another is to place a NULL marker at the end:
+
+    // lookup: sequential search for word in array
+    int lookup(char *word, char *array[])
+    {
+        int i;
+        for (i = 0; array[i] != NULL; i++)
+            if (strcmp(word, array[i]) == 0)
+                return i;
+        return -1;
+    } 
+
+    In c/c++ a param that is an arr of strs can be declared as char *arr[] or char **arr. First one makes it clearer how the param will be used.
+
+    This alg is called sequential search, it looks at each elem to find a match. When data is small, sequential search is fast enough. Linear search: run-time -- data size -> linear relationship.
+
+    Excerpt from a program that parses HTML, arr with textual names for well over 100 characters:
+      typedef struct Nameval Nameval;
+      struct Nameval {
+          char    *name;
+          int     value;
+      };
+
+      Nameval htmlchars[] = {
+          "AElig",    0x00c6,
+          "Aacute",   0x00c1,
+          "Acirc",    0x00c2,
+          /..../
+          "zeta",     oxo3b6,
+      };
+
+    For a larger arr, better to use binary search. For bin search, table must be sorted, and we must know the length. NELEMS macro from Ch01 can help
+
+    BinSearch with this table might look like this:
+
+    // lookup: binary search for name in table; 
+    // returns: index if found,  -1 if not found
+    int lookup(char *name, Nameval table[], int nTable)
+    {
+        int low, high, mid, cmp;
+          
+        low = 0;
+        high = nTable - 1;
+
+        while (low <= high) {
+            mid = (low + high) / 2;
+            cmp = strcmp(name, table[mid].name);
+            
+            if (cmp < 0)
+                high = mid - 1;
+            else if (cmp > 0)
+                low = mid + 1;
+            else                // found match
+                return mid;
+        }
+        return -1;              // no match
+    }
+
+  Putting all this together, to search htmlchars we write:
+      half = lookup("frac12", htmlchars, NELEMS(htmlchars));
+  to find the arr index of the symbol/char "1/2".
+
+  
+*************************************************
+2.2 Sorting
+*************************************************
+
+    Binary search only works if the elements are sorted. If repeated searches are going to be made, it will be profitable to sort once and then use binSearch. If the data set is known in advance, it can be sorted when the program is written and built using compile-time initialization. If not, it must be sorted when the program is run.
+    One of the best all-round sorting algs is quicksort, which was invented in 1960 by C.A.R. Hoare. Quicksort is a fine example of how to avoid extra computation. It works by partitioning an arr into little and big elements:
+
+      pick one elem of the array (the "pivot")
+      partition the other elems in to 2 groups:
+          "little ones" that are < than the pivot
+          "big ones" that are >= to the pivot
+      recursively sort each group.
+
+    When this process is finished, the arr is in order. QS is fast because once an elem is know to be less than the pivot value, we don't have to compare it to any of the big ones; similarly, big ones are not compared to the little ones. This makes it much faster than the simple sorting methods such as insertion/bubble etc that compare each element directly to all others.
+    The version of QS presented here is the simplest but not the quickest:
+
+      
