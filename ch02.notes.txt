@@ -270,7 +270,7 @@ but if v2 is large and positive and v1 is large and negative or vice versa, the 
               if (n <= 1)
                   return;
 
-              start = 0
+              start = 0;
               end   = n-1;
 
               top = -1;
@@ -278,12 +278,12 @@ but if v2 is large and positive and v1 is large and negative or vice versa, the 
               stack[++top] = end;
 
               while (top > 0) {
-                  end   = stack[--top];
-                  start = stack[--top];
+                  end   = stack[top--];
+                  start = stack[top--];
                   last  = start;
 
                   // pick a pivot and place it at the start idx
-                  swap(v, start, (rand() % (end - start + 1)));        
+                  swap(v, start, start + (rand() % (end - start + 1)));        
 
                   for (i = start+1; i < end+1; i++)
                       if (v[i] < v[start])
@@ -292,12 +292,12 @@ but if v2 is large and positive and v1 is large and negative or vice versa, the 
                   // restore pivot to partition idx
                   swap(v, start, last);
 
-                  if ((last-1) - start => 1) {
+                  if ((last-1) - start >= 1) {
                       stack[++top] = start;
                       stack[++top] = last - 1;
                   }
 
-                  if (end - (last+1) => 1) {
+                  if (end - (last+1) >= 1) {
                       stack[++top] = last + 1;
                       stack[++top] = end;
                   }
