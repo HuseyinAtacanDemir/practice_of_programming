@@ -303,3 +303,432 @@ but if v2 is large and positive and v1 is large and negative or vice versa, the 
                   }
               }
           }
+
+
+
+*************************************************
+2.4 A Java Quicksort
+*************************************************
+
+    The situation in Java is different. Early releases had no standard sort fn, so we needed to write our own. More recent versions do provide a sort fn, however, which operates on classes that implement the Comparable interface, so we can now ask the library to sort for us. But since the techniques are useful in other situations, in this section we will work through the details of implementing quicksort in Java.
+
+    One big difference form C and C++ is that in Java it is not possible to pass a comparison fn to another fn (is it still true?); there are no fn ptrs. Instead we create an interface whose sole content is a fn that compares two Objects. For each data type to be sorted, we then create a class with a member fn that implements the interface for that data type. We pass an instance of that class to the sort fn, which in turn uses the comparison fn within the class to compare elements.
+
+    We begin by defining an interface named Cmp that declares a single member, a comparison fn cmp that compares two Objects:
+        interface Cmp {
+            int cmp(Object x, Object y);
+        }
+
+    Then we can write comparison fns that implement this interface; for example, this class defines a fn that compares Integers:
+        // Icmp: Integer comparison
+        class Icmp implements Cmp {
+            public int cmp(Object o1, Object o2)
+            {
+                int i1 = ((Integer) o1).intValue();
+                int i2 = ((Integer) o2).intValue();
+                if (i1 < i2)
+                    return -1;
+                else if (i1 == i2)
+                    return 0;
+                else
+                    return 1;
+            }
+        }
+  and this compares strings:
+        // Scmp: String comparison
+        class Scmp implements Cmp {
+            public int cmp(Object o1, Object o2)  
+            {
+                String s1 = (String) o1;
+                String s2 = (String) o2;
+                return s1.compareTo(s2);
+            }
+        }
+
+    We can only sort types that are derived from Object with this mechanism; it cannot be applied to the basic types like int or double. this is why we sort Integers rather than ints.
+
+    With these components, we can now translate the C quicksort fn into Java and have it call the comparison fn form a Cmp object passed in as an argument. The most significant change is the use of indices left and right, since Java does not have pointers into arrays.
+
+        // Quicksort.sort: quicksort v[left]..v[right]
+        static void sort(Object[] v, int left, int right, Cmp cmp)
+        {
+            int i, last;
+          
+            if (left >= right)
+                return;
+
+            swap(v, left, rand(left, right));
+            last = left;
+            for (i = left + 1; i <= right; i++)
+                if (cmp.cmp(v[i], v[left]) < 0)
+                    swap(v, ++last, i);
+            swap(v, left, last);
+            sort(v, left, last-1, cmp);
+            sort(v, last+1, right, cmp);
+        }
+
+   Quicksort.sort uses cmp to compare a pair of objects, and calls swap as before to interchange them.
+
+        // Quicksort.swap: swap v[i] and v[j]
+        static void swap(Object[] v, int i, int j)
+        {
+            Object temp;
+            temp = v[i];
+            v[i] = v[j];
+            v[j] = temp;
+        }
+
+    Random number generation is done by a function that produces a random integer in the range left to right inclusive:
+
+        static Random rgen = new Random();
+
+        // Quicksort.rand: return random integer in [left, right]
+        static int rand(int left, int right)
+        {
+            return left + Math.abs(rgen.nextInt())%(right-left+1);
+        }
+
+    We compute the absolute value, using Math.abs, because Java's random number generator returns negative integers as well as positive.
+
+    The functions sort, swap, and rand, and the generator object rgen are the members of a class Quicksort.
+
+    Finally, to call Quicksort.sort to sort a String array, we would say
+
+          String[] sarr = new String[n];
+          // fill n elements of sarr
+          Quicksort.sort(sarr, 0, sarr.length-1, new Scmp());
+
+    Ex 2-2 Our Java quicksort does a fair amount of type conversion as items are cast from their original type (like Integer) to Object and back again. Experiemtn with a version of Quicksort.sort that uses the specific type being sorted, to estimate what performance penalty is incurred by type coversions:
+
+
+*************************************************
+2.5 O-Notation
+*************************************************
+
+   We have described the amount of worke to be done by a particular algo in terms of n, the number of elems in the input. Searching unsorted data can take time proportional to n; if we use binary search in sorted data, the time will be proportional to logn. Sorting times might be proportional to n^2 or nlogn.
+
+    We need a way to make such statements more precise, while at the same time abstracting away the details like the CPU speed and the qualty of the compiler (and the programmer). We want to compare running times and space requirements of algos independently of progr lang, compiler, machine arch, processor speed, system load, and other complicating factors.
+
+    There is a standard notation for this idea called "O-notation". Its basic parameter is n, the size of a problem instance, and the complexity or running time is expressed as a function of n. The "O" is for order, as in "Binary search is O(logn); it takes on the order of logn steps to search an array of n items." The notation O(f(n)) means that, once n gets large, the running time is proportional to at most f(n), for example O(n^2) or O(nlogn). Asymptotic extimates like this are valuable for theoretical analyses and very helpful for gross comparisons of algos, but details my make a difference in practice. For example, a low-overhead O(n^2) algo may run faster than a high-overhead O(nlogn) algo for small values of n, but inevitably, if n gets large enough, the algo with the slower-growing functional behavior will be faster.
+
+    We must also distinguish between worst-case and expected behavior. It is hard to define "expected," since it depends on assumptions about what kinds of input will be given. Quicksort's worst-case run-time is O(n^2) but the expected time is O(nlogn). By choosing the pivot element carefully each time, we can reduce the probability of quadratic or O(n^2) behavior to essentially zero; in practice, a well implemented quickosort usually runs in O(nlogn) time.
+
+    These are the most important cases:
+
+        Notation    Name          Example
+        O(1)        Constant      Array Indexing
+        O(logn)     Logarithmic   Binary search    
+        O(n)        Linear        String comparison
+        O(nlogn)    nlogn         quicksort
+        O(n^2)      Quadratic     Simple sorting methods
+        O(n^3)      Cubic         Matrix Multiplication
+        O(2^n)      Exponential   Set Partitioning
+
+    Accessing an item in an array is constant-time or O(1) operation. An algo that eliminates half the input at each stage, like bSearch, will generally take O(logn). Comparing two n-char strings with strcmp is O(n). The traditional matrix mult alg takes O(n^3), since each element of the output is the result of multiplying n pairs and adding them up, there are n^2 elements in each matrix.
+
+    Exponential-time algs are often the result of evaluating all possibilities: there are 2^n subsets of a set of n items, so an alg that requires looking at all subsets will be exponential or O(2^n). Exponential algs are generally too expensive unless n is very small, since adding one time ot the problem doubles the running time. Unfortunately there are many problems, such as the famous "Traveling Salesman Problem," for which only exponential algs are known. When that is the case, algs that find approximations to the best answer are often substituted.
+
+  Ex 2-3 What are some input sequences that might cause a quicksort implementation to display worst-case behavior? Try to find some that provoke your library version into running slowly. Automate the process so that you can specify and perform a large number of experiments easily
+    If all the items were the same, we would always end up with bad partitions.
+
+  Ex 2-4 Design and implement an alg that will sort an arr of n integers as slowly as possible. You have to play fair: the alg must make progress and eventually terminate, and the implementation must not cheat with tricks like time wasting loops. What is the complexity of your alg as an fn of n?
+    By using O(n) space, we can iteratively produce all possible permutations of the input array, and check the sortedness of the resulting array which would be O(n!).
+ 
+*************************************************
+2.6 Growing Arrays
+*************************************************
+
+    The arrays used in the past few sections have been static, with their size and contents fixed at compile time. If the flabby word or HTML character tables were to be modified at runtime, a hash table would be a more appropriate data structure. Growing a sorted array by inserting n elements one at a time is an O(n^2) operation that should be avoided if n is large.
+    
+    Often, though, we need to keep track of a variable but small number of things, and arrays can still be the method of choice. To minimize the cost of allocation, the array should be resized in chunks, and for cleanliness the array should be gathered together with the information necessary to maintain it. In C++ or Java, this would be done with classes from the standard libraries; in C, we can achieve a similar result with a struct.
+
+    The following code defines a growable array of Nameval items; new items are added at the end of the array, which is grown as necessary to make room. Any element can be accessed through its subscript in constant time. This is analogous to the vector classes in the Java and C++ libraries.
+
+        typedef struct Nameval Nameval;
+        struct Nameval {
+            char    *name;
+            int     value;
+        };
+
+        struct NVtab {
+            int     nval;       // current number of values
+            int     max;        // allocated number of values
+            Nameval *nameval;   // array of name-value pairs
+        } nvtab;
+
+        enum { NVINIT = 1, NVGROW = 1 };
+
+        // addname: add new name and value to nvtab
+        int addname(Nameval newname)
+        {
+            Nameval *nvp;
+            
+            if (nvtab.nameval == NULL) { // first time
+                nvtab.nameval = (Nameval *) malloc(NVINIT * sizeof(Nameval));
+                if (nvtab.nameval == null)
+                    return -1;    // malloc failed
+
+                nvtab.max = NVINIT;
+                nvtab.nval = 0;
+            } else if (nvtab.nval >= nvtab.max) { // grow
+                nvp = (Nameval *) realloc(nvtab.nameval, 
+                                          (NVGROW*nvtab.max) * sizeof(Nameval));
+                if (nvp == NULL)
+                    return -1;    // realloc failed
+                nvtab.max *= NVGROW;
+                nvtab.nameval = nvp;
+            }
+
+            nvtab.nameval[nvtab.nval] = newname;
+            return nvtab.nval++;
+        }
+    The function addname returns the index of the item just added, or -1 if some error occurred.
+
+    The call to realloc grows the array to the new size, preserving the existing elements, and returns a pointer to it or NULL if there isn't enough memory. Doubling the size in each realloc keeps the expected cost of copying each element constant; if the array grew by just one element on each call, the performance would be O(n^2). Since the address of the array may change when it is reallocated, the rest of the program must refer to elements of the array by subscripts, not pointers. Note that the code doesn't say:
+        nvtab.nameval = (Nameval *) realloc(nvtab.nameval,
+                                    (NVFROW*nvtab.max) * sizeof(Nameval));
+
+    In this form, if the reallocation were to fail, the original array would be lost, since the member of the NVtab struct that holds on to the ptr to the array of Namevals (nvtab.nameval) would be lost.
+
+    We start with a very small initial value (NVINIT=1) for the array size. This forces the program to grow its arrays right away and thus ensures that this part of the program is exercised. The initial size can be increased once the code goes into production use, though the cost of starting small is negligible.
+
+    The return value of realloc does not need to be cast to its final type (Nameval *, that is) because C promotes the void* automatically. But C++ does not; there the cast is required. One can argue about whether it is safer to casr (cleanliness, honesty) or not to cast (the cast can hide genuine errors). We chose to cast because it makes the program legal in both c and C++; the price is less error-checking from the C compiler, but that is offset by the extra checking available from using two compilers. 
+
+    Deleting a name can be tricky, because we must decide what to do with the resulting gap in the array. If the order of elements does not matter, it is easiest to swap the last element into the hole. If order is to be preserver, however, we must move th elements beyond the hole down by one position:
+
+        // delname: remove first matching nameval from nvtab
+        int delname(char *name)
+        {
+            int i;
+            for (i = 0; i < nvtab.nval; i++)
+                if (strcmp(nvtab.nameval[i].name, name) == 0) {
+                    memmove(nvtab.nameval+i, nvtab.nameval+i+1,
+                        (nvtab.nval-(i+1)) * sizeof(Nameval));
+                    nvtab.nval--;
+                    return 1;
+                }
+            return 0;
+        } 
+
+    The call to memmove squeezes the array by moving the elements down one position; memmove is a std lib routine for copying arbitrary sized blocks of mem.
+    
+    The ANSI C standard defines two fns: memcpy, which is fast but might overwrite mem if source and dest overlap; and memmove, which might be slower but will always be correct. THe burden og choosing correctness over speed should not be placed upon the programmer; there should be only one fn. Pretend there is, and always use memmove.
+    
+    We could replace the memmove call with the following loop:
+        int j;
+        for (j = i; j < nvtab.nval-1; j++)
+            nvtab.nameval[j] = nvtab.nameval[j+1];
+
+    We prefer to use memmove because it avoids easy-to-make mistake of copying th eelements in the wrong order. If we were inserting instead of deleting, the loop would need to count down, not up, to avoid overwriting elemens. By calling memmove we don't need to think it through each tmie.
+
+    An alternative to moving the elements of the array so to mark deleted elemens as unused. Then to add a new item, first search for unused slot and grow the vector only of none is found. In this example, an element can be marked as unused by setting its name field to NULL;
+
+    Arrays are the simples way to group data; it's no accident that most languages provide efficient and convenient indexed arrs and represent strings as arrays of chars. arrays are easy to use, provide O(1) access to any item, work well with bSearch and quicksort, and have little space overhead. For fixed-size data sets, which can even be constructed at compile time, or for guaranteed small collections of data, arrays are unbeatable. But mainataining a changing set of values in an array can be expensive, so if the number of elems is unpredictable and potentially large, it may be better to use another data structure.
+
+  Ex 2-5 In the code above, delname doesn't call realloc to return the memory freed by the deletion. Is it worthwhile? How would you decide whether to do so?
+
+    I am inclined to say that we can free upper half of the array once the element count is below the half of allocated memory, however, if memory is not a problem for us, why do this? How do we know that the program is not going to grow into needing that memory again int he future? I think the best course of action would be to do A/B testing with the shrinking logic and without to gather real world use case data to be able to accurately judge whether or not to go with the shrinking logic.
+
+  Ex 2-6 Implement the necessary changes to addname and delname to delete items by marking deleted items as unused. How isolated is the rest of the program from this change?
+
+    If we implement this, it means that we will be handling the "move the elements into the holes" logic into the addname method. API wise the users of these methods won't be affected, however, there will be performance differences in the addname fn.
+
+    
+
+*************************************************
+2.7 Lists 
+*************************************************
+
+   Next to arrays, lists are the most common data structure in typical programs. Many languages have built-in list types -- some, such as Lisp, are based on them -- but in C we must build them ourselves. In C++ and Java, lists are implemented by a library, but we still need to lknow how and when to use it. In this section we are going to discuss lists in C but the lessons apply more broadly.
+
+    A singly-linked list is a set of items, each with data and a pointer to the next item. The head of the list is a pointer to the first item and the end of the list is marked by a null ptr. 
+
+    There are several important differences between arrays and lists. First, arrays have a foxed size but a list is always exactly the isze if needs to be to holdits contents, plus some per-item storage overhead to hold the pointers. Second, lists can be rearranged by exchanging a few pointers, which is cheaper than the block move necessary in an array. Finally, when items are inserted or deleted the ther itmes aren't moved; if we store pointers to the elements in some other data structure, they won't be invalidated by changes to the list.
+
+    These differences suggest that if the set of items will change frequently, particularly if the number of items is unpredictable, a list is th eway to store them; by comparison, an array is better for relatively static data.
+
+    There are a handful of fundamental list operations: add a new itom to the front or back, find a specific item, add a new item before or after a specific item, and perhaps delete an item. The simplicity of lists makes it easy to add other operations as appropriate.
+
+    Rather than defining an explicit List type, the usual way lists are used in C is to start with a type for the elements, such as our HTML Nameval, and add a pointer that links to the next element:
+
+        typedef struct Nameval Nameval;
+        struct Nameval {
+            char      *name;
+            int       value;
+            Nameval   *next;    // in list
+        };
+
+    It is difficult to initialize a non-empty lsit at compile time, so, unlike arrays, lists are constructed dynamically. First, we need a way to construct an item. The most direct approac is to allocate one with a suitable function, which we call newitem:
+
+        // newitem: create new item from name and value
+        Nameval *newitem(char *name, int value)
+        { 
+            Nameval *newp;
+            
+            newp = (Nameval *) emalloc(sizeof(Nameval));
+            newp->name  = name;
+            newp->value = value;
+            newp->next  = NULL;
+            return newp;
+        }          
+
+    The routine emalloc is one we'll use throughout the book; it calls malloc, and if the allocation fails, it reports the error and exists the program. We'll show the code in chapter 4; for now, it is sufficient to regard emalloc as a mem allocator that never returns a failure.
+
+    The simples and fastest way to assemble a list is to add each new element to the front:
+
+        // addfront: add newp to the front of listp
+        Nameval *addfront(Nameval *listp, Nameval *newp)
+        {
+            newp->next = listp;
+            return newp;
+        }
+
+    Whena  lsit is modified, it may acquire a different first element, as it does when addfront is called. Functions that update a list must return a ptr to the new first elemnt, which is stored in the var that holds the list. the fn addfront and other fns in this group all return the ptr to the first ele as their fn value; a typical use is:
+        nvlist = addfront(nvlist, newitme("smiley", 0x2345));
+
+    This design works even if the existing list is empty (null) and makes it easy to combine the functions in expressions. It seems more natural than the alternative of passing a ptr to the ptr holding the head of the list.
+
+    Adding an item to the end of a list is an O(n) procedure, since we must walk the list to the end first:
+
+        // addend: add newp to the end of listp
+        Nameval *addend(Nameval *listp, Nameval *newp)
+        {
+            Nameval *p;
+            if (listp == NULL)
+                return newp;
+            for (p = listp; p->next != NULL; p = p->next)
+                ;
+            p->next = newp;
+            return listp;
+        }
+
+    If we want to make addend O(1), we can keep a separate ptr to the end of the list. The drawback is that besides the bother of maintaining the end ptr, the list is no longer represented by a single ptr var. We'll stick with the simple style.
+
+    To search for an item with a specific name, follow the next ptrs:
+
+        // lookup: sequential search for name in listp
+        Nameval *lookup(Nameval *listp, char *name)
+        {
+            for ( ; listp != NULL; listp = listp->next)
+                if (strcmp(word, listp->name) == 0)
+                    return listp;
+            return NULL;
+        }
+
+    This takes O(n) time and there's no way to improce that bound in general. Even if the list is sorted, we need to walk the list to a particular element. Binary search does not apply to lists.
+
+    To print the elements of a list, we can write a fn to walk the list and print each element; to compute the len of a list we can write a fn to walkt the list and inc a counter; and so on. An alternative is to write one fn, apple, that walks the list and calls another fn for each list elem. We can make apply more flexible by providing it with an arg to be passed each time it calls the fn. So apply has three argsL the list, the fn to be applied to each elem, and an arg for that fn:
+
+        // apply: execute fn for each elem of listp
+        void apply(Nameval *listp
+                void (*fn)(Nameval*, void*), void *arg)
+        {
+            for ( ; listp != NULL; listp = listp->next)
+                (*fn)(listp, arg);    // call the fn
+        }
+
+    The second arg of apply is a ptr to a fn that takes two args and returns void. The standard but awkward syntax:
+
+        void (*fn)(Nameval*, void*)
+  declares fn to be a ptr to a void-valued fn, that is, a var that holds the address of a fn that returns void. The fn takes two args, a Nameval*, which is the list element, and a void*, which is a generic ptr to an arg for the fn.
+
+    To use apple, for example to print the elems of a list, we could write a trivial fn whose arg is a format str:
+
+        // printnv: print name and value using format in arg
+        void printnv(Nameval *p, void *arg)
+        {
+            char *fmt;
+
+            fmt = (char *) arg;
+            printf(fmt, p->name, p->value);
+        }
+  which we can call like this:
+        apply(nvlist, printv, "%s: %x\n");
+
+    To count the elems, we define a fn whoose arg is a ptr to an integer to be incremented:
+
+        // inccounter: increment the counter *arg
+        void inccounter(Nameval *p, void *arg)
+        {
+            int *ip;
+            // Nameval *p is unused
+
+            ip = (int *) arg;
+            (*ip)++;
+        }
+  and call it like this:
+
+        int n;
+        n = 0;
+        apply(nvlist, inccounter, &n);
+        printf("%d elements in nvlist\n", n);
+
+    Not every list op is done this way. For instance to destroy a list we must use more car:
+
+        // freeall: free all elems of listp
+        void freeall(Nameval *listp)
+        {
+            Nameval *next;
+            for ( ; listp != NULL; listp = next)
+                next = listp->next;
+                // assumes name is freed elsewhere
+                free(listp);
+        }
+
+    Mem cannot be used after it has been freed, so we must save listp->next in a local var called next, before freeing the element pointed to by listp. If the loop read like the others:
+
+        for ( ; listp != NULL; listp = listp->next)
+            free(listp);
+  
+  the value of listp->next could be overwritten by free and the code would fail.
+
+    Notice that freeall does not free listp->name. It assumes that the name field of each Nameval will be freed somewhere else, or was never allocated. Making sure items are allocated and freed consistently requires agreement between newitem and freeall; there is a tradeoff between guaranteeing that memory gets freed and making sure things aren't freed that shouldn't be. Bugs are frequent when this is done wrong.
+
+    In other langs, including Java, garbage collection solves this problem for you. We will return to the topic of resource management in Ch04.
+    
+    Deleting a single elem from a list is more work than adding one:
+
+        // delitem: delete first "name" from listp
+        Nameval *delitem(Nameval *listp, char *name)
+        {
+            Nameval *p, *prev;
+
+            prev = null;
+            for (p = listp; p != NULL; p = p->next) {
+                if (strcmp(p->name, name) == 0) {
+                    if (prev == NULL)
+                        listp = p->next;
+                    else
+                        prev->next = p->next;
+                    free(p);
+                    return listp;
+                }   
+                prev = p;
+            }
+            eprintf("delitem: %s not in list", name);
+            return NULL;    // can't get here
+        } 
+
+    As in freeall, delitem does not free the name field.
+
+    The fn eprintf displays an error message and exist the program, which is clumsy at best. Recoverind gracefully from errors can be difficult and requires a longer discussion that we defer to Ch04, where we will also show the implementation of eprintf.
+
+    These basic list structres and ops account for the vast majority of applications that you are liekly to write in ordinary programs. But there are many alternatives. Some libraries including the C++ std template lib supprot doubly linked lists, in which each elem has 2 ptrs, one to next one to prev. Doubly-linked lists require more overhead but finding the last elem and deleting the current elem are O(1) ops. Some allocate the list ptrs separately fromt he data they link together, these are a little harder to use but permut items to appear on more than one list at the same time. 
+
+    Besides being suitable for situations where there are insertions and deletions int he middle, lists are good for managing unordered data of fluctiating size, especially when access tends to be last in first out as in stack. They make more efficient use of mem than arrays do when there are multiple stacks that grow and shrink independently. They also behave well wehn the information is ordered intrinsically as a chain of unknown a priori size, such as the successive words of a document. If you must combine frequent update with random access, however, it would be wiser to use a less insistently linear data structure, such as a tree or hash table.
+
+  Ex 2-7 Implement some of th eother list operators: copy, merge, split, insert before or after. How do the two insertion operations differ in diffculty? How much can you use the routines we have written, and how much must you create yourself?
+
+  Ex 2-8 Write recursive and iterative versions of reverse, which reverses a list. Do not create new list items; re-use the exiting ones.
+
+  Ex 2-9 Write a generic list type for c. The easiest way is to have each list item hold a void* that points to the data. DO the same for C++ by defining a template and for java by defining a class that holds lists of type Object. What are the strengths and weaknesses of the various languages for this job?
+
+  Ex 2-10 Devise and implement a set of tests for verifying that the list routines you write are correct. Chapter 6 discusses strategies for testing.
+
+
+*************************************************
+2.8 Trees 
+*************************************************
+
+
+
