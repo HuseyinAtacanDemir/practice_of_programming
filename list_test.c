@@ -11,7 +11,7 @@
 
 #define rand_letter()               ( rand() % (('Z'-'A') + 1) + 'A' )
 #define rand_name_len()             ( (rand() % (MAX_NAME_LEN-1)) + 1)
-#define cur_letter_offset(i, j, k)  ( (i * MAX_NAME_LEN) + (j * MAX_NAME_LEN) + k )
+#define cur_letter_offset(i, j, k)  ( (i * MAX_NAME_LEN * 2) + (j * MAX_NAME_LEN) + k )
 
 typedef struct Person Person;
 struct Person {
@@ -138,9 +138,8 @@ int person_comparator(void *person1, void *person2)
     f_name_cmp = strcmp(p1->f_name, p2->f_name);
     
     if (f_name_cmp != 0)
-      return f_name_cmp;
+      return (f_name_cmp > 0 ? 1 : -1);
     
     l_name_cmp = strcmp(p1->l_name, p2->l_name);
-
-    return l_name_cmp;
+    return (l_name_cmp > 0 ? 1 : -1);
 }
