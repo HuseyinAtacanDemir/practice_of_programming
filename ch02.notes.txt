@@ -933,6 +933,11 @@ ListItem *delitem(ListItem *listp, ListItem *item)
 
   Ex 2-10 Devise and implement a set of tests for verifying that the list routines you write are correct. Chapter 6 discusses strategies for testing.
 
+    1) testing with random int list generator
+    2) testing with random example struct list generator
+    3) testing out of bounds
+    4) stress testing with extra large data
+    5) testing with unexpected data types, improperly initialized list types etc
 
 *************************************************
 2.8 Trees 
