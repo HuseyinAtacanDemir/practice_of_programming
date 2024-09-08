@@ -717,11 +717,219 @@ but if v2 is large and positive and v1 is large and negative or vice versa, the 
 
     Besides being suitable for situations where there are insertions and deletions int he middle, lists are good for managing unordered data of fluctiating size, especially when access tends to be last in first out as in stack. They make more efficient use of mem than arrays do when there are multiple stacks that grow and shrink independently. They also behave well wehn the information is ordered intrinsically as a chain of unknown a priori size, such as the successive words of a document. If you must combine frequent update with random access, however, it would be wiser to use a less insistently linear data structure, such as a tree or hash table.
 
-  Ex 2-7 Implement some of th eother list operators: copy, merge, split, insert before or after. How do the two insertion operations differ in diffculty? How much can you use the routines we have written, and how much must you create yourself?
+  Ex 2-7 Implement some of the other list operators: copy, merge, split, insert before or after. How do the two insertion operations differ in diffculty? How much can you use the routines we have written, and how much must you create yourself?
 
+// copy: copy the list pointed to by listp1
+// return the ptr to the head of the copy
+Nameval *copy(Nameval *listp1)
+{
+    Nameval *head, *cur, *prev;
+
+    head = cur = prev = NULL;    
+    for ( ; listp1 != NULL ; listp1 = listp1->next) {
+        cur = (Nameval *) emalloc(sizeof(Nameval));
+
+        cur->name = listp1->name;
+        cur->value = listp1->value;
+        cur->next = NULL;
+     
+        if (head == NULL && prev == NULL) { 
+            head = cur;
+            prev = cur;
+        } else {
+            prev->next = cur;
+            prev = cur;
+        }
+    }
+    return head;
+}
+
+// merge: merge two sorted lists into one
+Nameval *merge(Nameval *listp1, Nameval *listp2)
+{
+    Nameval *l1, *l2, head;
+    int cmp;
+
+    if (listp1 == NULL && listp2 == NULL)
+        return NULL;
+    else if (listp1 != NULL && listp2 == NULL)
+        return listp1;
+    else if (listp1 == NULL && listp2 != NULL)
+        return listp2;
+        
+    cmp = strcmp(listp1->name, listp2->name);
+    head = cmp <= 0 ? listp1 : listp2;
+    l1 = listp1;
+    l2 = listp2;
+    while (listp1->next != NULL && listp2->next != NULL) {
+        cmp = strcmp(listp1->name, listp2->name); 
+
+        if (cmp < 0) {
+            l1->next = l2;
+        } else if (cmp > 0){
+
+        } else {
+            
+        }
+    }
+
+    while (listp1 != NULL)
+
+    while (listp2 != NULL)
+}
   Ex 2-8 Write recursive and iterative versions of reverse, which reverses a list. Do not create new list items; re-use the exiting ones.
 
+Nameval *reverse(Nameval *listp)
+{
+    Nameval *next, *prev;
+
+    next = prev = NULL;
+    for ( ; listp != NULL; listp = listp->next) {
+        next = listp->next;
+        listp->next = prev;
+        if (next == NULL)
+            return listp;        
+        prev = listp;
+        listp = next;
+    }
+
+    return NULL;
+}
+
+Nameval *reverse(Nameval *listp)
+{
+    Nameval *head;
+    if (listp->next == NULL)
+        return listp;
+    
+    head = reverse(listp->next);
+  
+    if (listp->next->next == NULL) {
+        listp->next->next = listp;
+        listp->next = NULL;
+        return head;
+    }
+}
+
   Ex 2-9 Write a generic list type for c. The easiest way is to have each list item hold a void* that points to the data. DO the same for C++ by defining a template and for java by defining a class that holds lists of type Object. What are the strengths and weaknesses of the various languages for this job?
+
+typedef struct ListItem ListItem;
+struct ListItem {
+    void      *data;
+    ListItem  *next;
+};
+
+ListItem *newitem(void *data)
+{
+    ListItem *newLi;
+
+    newLi = (ListItem *) emalloc(sizeof(ListItem));
+    newLi->data = data;
+    return newLi;
+}
+
+ListItem *addfront(ListItem *listp, ListItem *newLi)
+{
+    newLi->next = listp;
+    return newLi;
+}
+
+ListItem *addend(ListItem *listp, ListItem *newLi)
+{
+    ListItem *p;
+
+    if (listp == NULL)
+        return newLi;
+
+    for (p = listp; p->next != NULL; p = p->next)
+        ;
+    p->next = newLi;
+    return listp;
+}
+
+ListItem *addafter(ListItem *listp, ListItem *newLi, 
+            ListItem *afterLi, int (*cmp)(ListItem*, ListItem*))
+{
+    ListItem *p;
+    if (listp == NULL)
+        return newLi;
+
+    for (p = listp ; p->next != NULL; p = p->next)
+        if ((*cmp)(p, afterLi) == 0)
+            break;
+    
+    newLi->next = p->next;
+    p->next = newLi;
+
+    return listp;
+}
+
+ListItem *addbefore(ListItem *listp, ListItem *newLi,
+            ListItem *beforeLi, int (*cmp)(ListItem*, ListItem*))
+{
+    ListItem *p, prev;
+    if (listp == NULL)
+        return newLi;
+
+    prev = NULL;
+    for (p = listp; p->next != NULL; p = p->next) {
+      if ((*cmp)(p, beforeLi) == 0)
+          break;
+      prev = p;
+    }
+    
+    if (prev != NULL)
+}
+
+ListItem *lookup(ListItem *listp, ListItem *item, int (*cmp)(ListItem*, ListItem*))
+{
+    for ( ; listp != NULL; listp = listp->next)
+        if ((*cmp)(listp, item) == 0)
+            return listp;
+    return NULL;
+}
+
+int indexOf(ListItem *listp, ListItem *item, int (*cmp)(ListItem*, ListItem*))
+{
+    int i;
+    for (i = 0; listp != NULL; listp = listp->next, i++)
+        if ((*cmp)(listp, item) == 0)
+            return i;
+    return -1;
+        
+}
+
+void freeall(ListItem *listp)
+{
+    ListItem *next;
+    
+    for ( ; listp != NULL; listp = next) {
+        next = listp->next;
+        // assumes data field freed elsewhere
+        free(listp);
+    }
+}
+
+ListItem *delitem(ListItem *listp, ListItem *item)
+{
+    ListItem *p, *prev;
+
+    prev = NULL;
+    for (p = listp; p != NULL; p = p->next) {
+        if (p == item) {
+            if (prev == NULL)
+                listp = p->next;
+            else
+                prev->next = p->next;
+            free(p);
+            return listp;
+        }
+        prev = p;
+    }
+    return NULL;
+}
+
+
 
   Ex 2-10 Devise and implement a set of tests for verifying that the list routines you write are correct. Chapter 6 discusses strategies for testing.
 
@@ -729,6 +937,5 @@ but if v2 is large and positive and v1 is large and negative or vice versa, the 
 *************************************************
 2.8 Trees 
 *************************************************
-
 
 
