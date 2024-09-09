@@ -1088,3 +1088,113 @@ ListItem *delitem(ListItem *listp, ListItem *item)
 2.9 Hash Tables 
 *************************************************
 
+    Hash tables are one of the great inventions of computer science. They combine arrays, listsl and some mathematics to create an efficient structure for storing and retrieving dynamic data. The typical application is a symbol table, which associates some value (the data) with each member of a fynamic set of strings (the keys). Your favorite compileer almost certainly uses a hash table to amange information about each variable in your program. Your web browser may well use a hash tablee to keep track of recently used pages, and your connection to the internet probably uses one to cache recently used domain names and their IP addresses.
+
+    The idea is to pass the key through a has function to geneerate a hash value that will be evenly distributed through a modest-sized integer range. The hash value is used to index a table where the information is stored. Java providees a standard interface to hash tables. In c and c++ the usual style is to associate with each hash value (or 'bucket'') a list of items that share that hash, has this figure illustrates:
+
+      symtab[NHASH]:                hash chains:
+      ----------         -----------          ----------
+      |     ---|-------->|      ---|--------->|  NULL   | 
+      ----------         -----------          -----------
+      |  NULL  |         |  name 1 |          | name 2  | 
+      ----------         -----------          -----------
+      |  NULL  |         | value 1 |          | value 2 |
+      ----------         ----------           -----------
+      |  NULL  |
+      ----------                            -----------
+      |    --- |--------------------------> |   NULL  |
+      ----------                            -----------
+      |  NULL  |                            |  name 3 | 
+      ----------                            -----------
+                                            | value 3 | 
+                                            -----------                  
+
+
+    In practice, the hash function is pre-defined and an appropriate size of array is allocated, often at compile time. Each element of the array is a list that chains together the items that share a hash value. In other words, a hash table of n items is an array of lists whose average len is n/(array size). Retrieving an item is O(1) op provided we pick a good hash fn and the lists don't grow too long.
+
+    Because a hash table is an array of lists, the element type is the same as for a list:
+
+        typedef struct Nameval Nameval;
+        struct Nameval {
+            char      *name;
+            int       value;
+            Nameval   *next;
+        };
+        Nameval *symtab[NHASH];
+
+    The list techniques we discussed in section 2.7 can be used to maintain the individual hash chains. Once you've got a good hash fn, it is smooth sailing: just pick the hash bucked and walk along th elist looking for a perfect match. Here is the code for a hash table lookup/insert routine. If the item is found, it is returned. If the item is not found and a create flag is set, lookup adds the item to the table. again, this does not create a copy of the name, assuming that the caller has made a safe copy instead.
+
+        // lookup: find name in symtab, with optional create
+        Nameval *lookup(char *name, int create, int value)
+        {
+            int h;
+            Nameval *sym;
+
+            h = hash(name);
+            for (sym = symtab[h]; sym != NULL; sym = sym->next)
+                if (strcmp(name, sym->name) == 0)
+                    return sym;
+
+            if (create) {
+                sym         = (nameval *) emalloc(sizeof(Nameval));
+                sym->name   = name; //assumed allocated elsewhere
+                sym->value  = value;
+                sym->next   = symtab[h]; //add to front
+                symtab[h]   = sym;
+            }
+            return sym;
+        }
+
+    This combination of lookup and optional insertion is common. Without it, there is duplication of effort; one musth write:
+        if (lookup("name") == NULL)
+            additem(newitem("name", value));
+  and the hash is computed twice.
+
+    How big should the array be? The general idea is to make it big enough that each hash chain will have at most a few elements, so that lookup will be O(1). For instance, a compiler imght have an array size of a few thousand, since a large source file has a few thousand lines, and ew don't expect more than about one new indentifier per line of code.
+
+    We must now decide what the hash fn, hash, should calculate. The fn must be deterministic and should be fast and distribute the data uniformly throughout the array. One of the most common hashing alg for strs builds a hash val by adding each byte of strng to a multiple of the hash so far. The multiplication spreads bits from the new byte through the value so far; at the end of the loop, the result should be a thorough mixing of the input bytes. Empirically, the values 31 and 37 have provedn to be good choices for the multiplier ina  ahsh fn for ascii strings.
+
+        enum { MULTIPLIER = 31 };
+
+        // hash: compute hash value of string
+        unsigned int hash(char *str)
+        {
+            unsigned int h;
+            unsigned char *p;
+
+            h = 0;
+            for (p = (unsigned char *) str; *p != '\0'; p++)
+                h = MULTIPLIER * h + *p;
+
+            return h % NHASH;
+        }
+    
+The calculation uses insigned chars because whether a char i signed or not is not specified by c/c++, and we want our hash fn value to be stable.
+
+    The hash fn returns the result modulo the size of the array. If the hash fn distributes key values uniformly, the precise size doesn't matter. It's hard to be certain that a hash fn is dependable, tough and even the best fn may have troubles with some input stes; it is wise to make the arr size  a prime number, to give it a bit of extra insurance by guaranteeing that the array size, the hash multiplier, and likely data values have no common factor.
+
+    Expreiments show that for a wide variety of strings, it i shard to construct a hash fn that does appreciably well than the one above, but it is easy to make one that is worse.
+
+    An early release of Java had a hash fn for strings that was more efficient if the string was long. The hash fn saved time by examining only 8 or 9 chars at regular intervals throughout strings longer than 16 cahrs, starting at th ebeginning. Unfortunately, although the hash fn was faster, it had bad statistical properties that canceled any performance gain.
+
+    A hash fn that is good for one input (say short haired people), might be poor for another (ig handles), so a potential hash fn should be tested ona  variety of typical inputs. Does it hash short strings well? Long strings, Equal len strings with minor variation?
+    
+    Strings aren'y the only thing we can hash. We could hash the three coordinates of a particle in a physical simulation, reducing the storage to a linear table (O(num of part)) instead of a three dimentionsl array (xsize, ysize, zstyle).
+    
+    One remarkable use of hashing is gerald holzmann;s supertrace prograrm for analyzing protocols and concurrent systems. Supertrace takes the full information for each possible state of the system under analysis and hashes the info to generate the addr of a single bit in mem. if that bit is on, the state has been seen before; if not, it hasn't;
+
+    Super trace uses a hash table many emgabytes long, but stores only a single bit in each bucket. There is no chaining; if two states collide by hashing to the same value, the program won't notice. Wupertrace depends on th eprobability of collision being low (it does not need to be zero because Supertrace is a probabilstic fn, not exact). The fash fn is therefore particularly careful:  is uses a cycler redundany check, a fn that produces a thorough,
+
+    Hash tables are excellent for symbol tables, since they provide expected O(1) access to any element. They do have limitations. If the hash fn is poor or the table size if too small, the list can grow long. Since the lists are sorted, this leads to O(n) behavior. The elements are not directly accessible in sorted order, but it is easy to count them, allocate an arrays. Still, when used properly the constant time lookup insertion and deletion ops of  a hash are unmatched by other techs.
+
+  Ex 2-14 Our hash fn is an excellent gen purp hash for str. Nonetheless peculiar data might cause poor behavoir. Construct a data set that causes our hash fn to perform badle
+
+  Ex 2-15 Write a fn to access the successive elements of the has table in unsorted table.
+  Ex 2-16 Change lookup so that if the avg list len becomes more than x, the arr is grown automatically by a factor y 
+  Ex 2-17 Design a hash fn for sorting the coordinates of point in 2d. How easily does your fn adapt to changes in the type of the coordinates, for example from int to floating  
+
+
+
+
+
+    
