@@ -943,4 +943,148 @@ ListItem *delitem(ListItem *listp, ListItem *item)
 2.8 Trees 
 *************************************************
 
+    A tree is ahierarchical data structure that stores a set of tiems in which each item has a value, may point to zero or more others, and is pointed to by exactly one other. The root of the tree is the sole exception; no item points to it.
+
+    There are many types of threes that reflect complex structures, such as parse trees taht capture the syntax of a sentence or a program, or family trees that describe relationships among people. we will illustrate the principles with binary search trees, which hace two links at each node. They're the easiest to implement, and demonstrate the essential properties of trees. A node in a BST has a value and two pointers, lwft and right, that point to its children. The child pointers may be null if the node has fewer than two children. In a BST, the values at the nodes define the tree: all children to the left of a particular node have lower values, and all children to the right have higher values. Because of this property, we can use a variant of binary search to search the tree quickly for a specific value or determine that it is not present.
+
+    The tree version of Nameval is straightforward:
+
+        typedef struct Nameval Nameval;
+        struct Nameval {
+            char    *name;
+            int     value;
+            Nameval *left;    //lesser
+            Nameval *right;   //greater
+        };
+
+    The lesser and greater comments refer to the properties of the links: the left children store lesser values, right children store greater values compared to the value of the currently held node.
+
+    With multiple pointers to other elements in each node of a tree, amny operations that take time O(n) in lists or arrays require only O(logn) time in trees. The multiple ptrs at each node reducs the time complexity of ops by reducing the number of nodes one must visit to find an item.
+  
+    A BST is constructed by descending into the tree recursively, branching left or right as appropriate, until we find the right place to link in hte new node, which must be a properly initialized object of type Nameval; a name, a value, and two null ptrs. the new node is added as a leaf, that is, it has no children yet.
+
+        // insert: insert newp in treep, return treep
+        Nameval *insert(Nameval *treep, Nameval *newp)
+        {
+            int cmp;
+            if (treep == NULL)
+                return newp;
+
+            cmp = strcmp(newp->name, treep->name);
+            if (cmp == 0)
+                weprintf("insert: duplicate entry %s is ignored", newp->name);
+            else if (cmp < 0)
+                treep->left = insert(treep->left, newp);
+            else
+                treep->right = insert(treep->right, newp);
+            return treep;
+        }
+
+    We have not said anything before about duplicate entries. This version of insert complains abut attemptes to insert duplicate entries in the tree. The list insert routine did not complain because that would require searching ht elist, maling insertion O(n) rather than O(1). With trees, however, the test is essentially free and the properties of the data str are not as clearly defined if there are cuplicates. In other applications, though, it mihgt be necessary to accept duplicates, or it might be reasoanble to ignore them completely.
+
+    The weprointf routne is a variant of eprintf; it prints an error msg, prefixed with the word warning, but unlike eptrintf, does not terminate the program.
+    A tree in which eaxh path from root to a leaf has approx same len is called a balanced tree. The adv of balanced trees is that searching it for an item takes O(logn) time, since as in binary search, the num of possibilities is halved at each step.
+
+    If itmes are inserted into a tree as they arrive, the tree might not be balanced, in fact, it might be badly unbalanced. If the lements arrive already sorted, for instance, the code will always descend down on branch of hte tree, producing in effect a list down the right links, with all th eperformance problems of a list, If the elements areriv in random order, however, this is unlikely to happen and the tree will be more or less balanced.
+
+    It is complicated to implement trees that are guaranteed to be balanced, this is one reason there are many kind of trees. For our purposes, we'll just sidestep the issue and assume that the incomung data is sufficiently random to keep th etree balanced enough.
+
+    The code for lookup is similar to insert:
+        // lookup: look up a name in tree treep
+        Nameval *lookup(Nameval *treep, char *name)
+        {
+            int cmp;
+            if (treep == NULL)
+                return NULL;
+            cmp = strcmp(name, treep->name);
+            if (cmp == 0)
+                return treep;
+            else if (cmp < 0)
+                return lookup(treep->left, name);
+            else
+                return lookup(treep->right, name);
+        }
+
+    There are a couple of things to notice about lookup and insert: first, they look remarkably like the bin search algo. This is no accident, since they share an idea with b_search: divide and conquer, the origin of log-time performance.
+
+    Second, these routines are recursive. If they are rewritten as iterative algos, they will be even more similar to bin search. In fact the iterative version of lookup can be constructed by applying an elegant transformation to the recutsive version of. Unless we have found the item, lookups last action os to return the result of a call to itself, a situation called tail recursion, This can be converted to iteration by pathing up the args and restarting the routine. The most direct method is to use a goto statment, but a while loop is cleaner:
+
+        / nrlookup: non recursive lookup
+        Nameval *nrlookup(Nameval *treep, char *name)
+        {
+            int cmp;
+            while (treep != nULL) {
+                cmp = strcmp(name, treep->name);
+                if (cmp == 0)
+                    return treep;
+                else if (cmp < 0)
+                    treep = treep->left;
+                else
+                    treep = treep->right;
+            }
+            return NULL;
+        }
+
+    Once we can walk the tree, the other common ops follow naturally. We can use some of the techniques from list management, such as writing a general tree traverser that calss a fn at each node. Ths time, however, there is a choice to make: when fo we perform the op on this item and when do we process the rest of the tree? The ans depends on what the tree represents.
+
+    An in-rder traversal executes the operation after visiting the left subtree and before visiting the right subtree:
+
+        // applyinorder: in order application of fn to treep
+        void applyinorder(Nameval *treep, void (*fn)(Nameval*, void*), void *arg)
+        {
+            if (treep == NULL)
+                return;
+            applyinorder(treep->left, fn, arg);
+            (*fn)(treep, arg);
+            applyinorder(treep->right, fn, arg);
+        }
+
+    This sequence is used when nodes are to be processed in osrted order, for example to print them all in order, which would be done as:
+        applyinorder(treep, printnv, "%s: %x\n");
+
+    It also suggests a reasonable way to sort: insert items into a tree, allocate an array of the right size, then use in order traversal to store them in th earray in sequence.
+
+    A post-rder traversal invokes the operation on the current node after visinting the children:
+    
+          // applypostorder: postorder application of fn to treep
+          void applypostorder(nameval *treep, void (*fn)(Nameval*, void*), void *arg)
+          {
+              if (treep == NULL)
+                  return;
+              applypostorder(treep->left, fn, arg);
+              applypostorder(treep->right, fn, arg);
+              (*fn)(treep, arg);
+          }
+
+    Post order traversal is used when the op on the node depends on the subtrees below it. Examples include computing the height of a tree (take the max of the height of each of the two subtrees and add one), laying our a tree ina  graphics drawing package (allocate space on the page for eadxh subtree and combine them for this node's space), and measuring total storage.
+
+    A third choice, pre order traversal, is rarely used so we'll omit it.
+
+    Realistically BST are infrequently used, though B-trees, which have very high branching, are used to maintain info on secondary storage. IN day to day programming, one common use of a tree is to represend the structure of a statement or expression, for ex the statement:
+
+    mid = (low + high) / 2;
+
+  can be represented by the parse tree shown in the figure below. To evaluate the tree, do a post order traversal and perform the appropriate operation at each node:
+
+                  *
+                 / \
+                /   \
+            (mid)   (/)
+                   /   \ 
+                  /     \
+                (+)      (2)
+               /   \
+              /     \
+           (low)   (high)
+
+    we'll take a longer look at parse trees in ch09.
+
+  Ex 2-11 Compare the perf of lookup and nrlookup. How expensive is recursion compared to iteration?
+  Ex 2-12 Use in order traversal to create a sort routine. What time complexity does it have? Under what conditions might it behave poorly? How does its performance comapre to our quicksort and a lib version?
+  Ex 2-13 Devise and implement a set of tests for verifying the tree routines are correct.
+
+
+*************************************************
+2.9 Hash Tables 
+*************************************************
 
