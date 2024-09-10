@@ -1187,11 +1187,59 @@ The calculation uses insigned chars because whether a char i signed or not is no
 
     Hash tables are excellent for symbol tables, since they provide expected O(1) access to any element. They do have limitations. If the hash fn is poor or the table size if too small, the list can grow long. Since the lists are sorted, this leads to O(n) behavior. The elements are not directly accessible in sorted order, but it is easy to count them, allocate an arrays. Still, when used properly the constant time lookup insertion and deletion ops of  a hash are unmatched by other techs.
 
-  Ex 2-14 Our hash fn is an excellent gen purp hash for str. Nonetheless peculiar data might cause poor behavoir. Construct a data set that causes our hash fn to perform badle
+  Ex 2-14 Our hash fn is an excellent gen purp hash for str. Nonetheless peculiar data might cause poor behavior. Construct a data set that causes our hash fn to perform badly
+        I have no clue as to where to even start with this question...
 
-  Ex 2-15 Write a fn to access the successive elements of the has table in unsorted table.
-  Ex 2-16 Change lookup so that if the avg list len becomes more than x, the arr is grown automatically by a factor y 
-  Ex 2-17 Design a hash fn for sorting the coordinates of point in 2d. How easily does your fn adapt to changes in the type of the coordinates, for example from int to floating  
+  Ex 2-15 Write a fn to access the successive elements of the hash table in unsorted order.
+        Nameval *inorder() {
+            int i;
+            Nameval *p;
+            for (i = 0; i < NHASH; i++)
+                if (symtab[i] != NULL) 
+                    for (p = symtab[i] ; p != NULL; p = p->next)
+                        printf("%s: %d\n", p->name, p->value);
+        }
+
+  Ex 2-16 Change lookup so that if the avg list len becomes more than x, the arr is grown automatically by a factor y and the hash table is rebuilt
+        // original lookup fn
+        Nameval *lookup(char *name, int value, int create)
+        {
+            int h;
+            Nameval *sym;
+        
+            h = hash(name);
+
+            for (sym = symtab[h]; sym != NULL; sym = sym->next)
+                if (strcmp(name, sym->name) == 0)
+                    return sym;
+            if (create) {
+                sym         = (Nameval *) emalloc(sizeof(Nameval));
+                sym->name   = name;
+                sym->value  = value;
+                sym->next   = symtab[h];
+                symtab[h]   = sym;
+            }
+            return sym;
+        }
+
+    In order to auto grow the hash table, we need to store more data in the hash table:
+
+    #define FACTOR    2
+    #define DEF_NHASH 50
+    #define MAP_THRES 10
+
+    typedef struct HashMap HashMap;
+    struct HashMap {
+        int       capacity;
+        int       grow_factor;
+        Nameval   **symtab;
+    }; 
+
+    // updated lookup that auto frow hash table:
+        
+
+  Ex 2-17 Design a hash fn for sorting the coordinates of point in 2d. How easily does your fn adapt to changes in the type of the coordinates, for example from int to floating, or from cartesian to polar, or changes from 2 to higher dimensions.
+      I have no clue :( 
 
 
 
