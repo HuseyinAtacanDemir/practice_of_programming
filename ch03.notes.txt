@@ -3,3 +3,95 @@
 Chapter 3: Design and Implementation 
 *************************************************
 *************************************************
+
+    "Show me your flowcharts and conceal your tables,a nd I shall continue to be mystified. Show me your tables, and I won't usually need your flowcharts; they'll be obvious."
+                    Frederick P. Brooks, Jr., The Mythical Man Month
+
+    As the quotation from Brook's famous book suggests, the design of the data structures is the central decision in the creation of a program. Once the data structures are laid out, the algorithms tend to fall into place, and the coding is comparatively easy. 
+
+    This point of view is oversimplified but not misleading. In the previous chapter we examined the basic data structures that are the building blocks of most programs. In this chapter we will combine such structures as we work through the design and implementation of a modest-sized program. We will show how the problem influences the data structures, and how the code that follows is straightforward once we have the data structures mapped out.
+
+    One aspect of this point of view is that the choice of programming lang is relatively unimportant to the overall design. We will design the program in the abstract and then write it in C, Java, C++, Awk, and Perl. Comparing the implementations demonstrates how languages can help or hinder, and ways in which they are unimportant. Program design can certainly be colored by a language but is not usually dominated by it.
+
+    The problem we have chosen is unusual, but in basic form it is typical of many programs: some data comes in, some data goes out, and the processing depends on a little ingenuity.
+
+    Specifically, we are going to generate random English tezt that reads well. If we emit random letters or random words, the result will be nonsense. For example, a program that randomly selects letters (and blanks, to seperate words) might produce this:
+          dkhbna ikuvnwor sfkvn skfhvbwouc jsdf
+  which is not very convincing. If we weight the letters by their frequency of appearance in English tezt, we might get this:
+          edtfoae tcs trder jcii ofdslnqetacp t ola
+  which is not a great deal better. Words chosen from the dictionary at random don't make much more sense:
+          polydactyl equatorial splashily jowl verandah circumscribe
+
+    For better results, we need a statistical model with more structure, such as the frequency of appearance of whole phrases. But where can we find such statistics?
+
+    We could grab a large body of English and study it in detail, but there is an easier and more entertaining approach. The key observation is that we can use any existing text to construct a statistical model of the language as used in that text, and from that generate random text that has similar statistics to the original.
+
+    
+*************************************************
+3.1 The Markov Chain Algorithm 
+*************************************************
+    
+   An elegant way to do this sort of processing is a technique called a Markov chain algorithm. If we imagine the input as a sequence of overlapping phrases, the algorithm divides each phrase into two parts, a multi-word prefix and a single suffix word that follows the prefix. A Markov chain algorithm emits output phrases by randomly choosing the suffix that follows the prefix, according to the statistics of (in our case) the original text. Three-word phrases work well -a two-word prefix is used to select the suffix word:
+    set w1 and w2 to the first two words in the text
+    print w1 and w2
+    loop:
+        randomly choose w3, one of the successors of prefix w1 w2 in the text
+        print w3
+        replace w1 and w2 with w2 and w3
+        repeat loop
+
+    To illustrate suppose we want to generate random text based on a few sentences paraphrased from the epigraph above, using two word prefixes:
+
+          Show your flowcharts and conceal your tables and I will be mystified. Show your tables and your flowcharts will be obvious. (end)
+
+    These are some of the pairs of input words and the words that follow them:
+
+        Input Prefixes        Suffix words that follow:
+          Show your               flowcharts tables
+          your flowcharts         and will
+          flowcharts and          conceal
+          flowcharts will         be
+          your tables             and and
+          will be                 mystified. obvious.
+          be obvious              (end)
+
+    A Markov alg processing this text will begin by printing Show your and will when randomly pick either flowcharts or tables. If it chooses the former, the current prefix becomes your flowcharts and the next word will be and or will. If it chooses tables, the next word will be and . Thus continues until enough output has been generated or until the end-marker is encountered as a suffix.
+
+    Our program will read a piece of English text and use a Markov chain alg to generate new text based on the frquency of appearance of phrases of a fixed len. The number of words in the prefix, which is two in our ex, is a parameter. Making the prefix shorted tends to produce less coherent prose; making it longer tends to reproduce the input text verbatim. For English text, using two words to select a third is a good compromise; it seems to recreate the flavor of the input while adding its own whimsical touch.
+
+    What is a word? The obvious answer is a sequence of alphabetic characters, but it is desirable to elave punctuation attached to the words so "words" and "words." are different. Thus helps to improve the quality of the generated prose by letting punctuation, and therefore (indirectly) grammar, influence the word choice, although it also permits unbalanced quotes and parantheses to sneak in. We will therefore define a word as anything between white space, a decision htat places no restriction on inout language and leaves punctuatuion attached to the words. Since most programming languages have facilities to split text into white-space-seperated words, this is also east to implement.
+
+    Because of ht emethods, all words, all two-word phrases, and all three-word phrases in the output must have appeared in the input, but there should be many four-word and longer ohrases that are synthesized. here are a few sentences produced by the program we will develop in this chapter, when given the text of Chapter VII of The Sun Also Rises by Ernest Hemingway:
+
+     As I started up the undershirt onto his chest black, and big stomach muscles bulging under the light. "You see them?" Below the line where his ribs stopped were two raised white welts. "See on the forehead." "Oh, Brett, I love you." "Let's not talk. Talking's all bilge. I'm going away tomorrow." "Tomorrow?" "Yes. Didn't I say so? I am." "Let's have a drink, then." 
+
+    We were lucky here that punctuation came out correctly; that need not happen.
+
+
+*************************************************
+3.2 Data Structure Alternatives 
+*************************************************
+
+    How much input do we intend to deal with? How fast must the program run? It seems reasonable to ask our program to read ina whole book, so we should be prepared for inout sizes of n = 100,000 worsd or more. The output will be hundreds or perhaps thousands of words, and the program should run in a few seconds instead of miutes. With 100,000 words of input text, n is fairly large so the algorithms cannot be too simplistic if we want the program to be fast. 
+    The Markov alg must see all th einput before it can begin to generate output, so it must store the entire input in some form. One possibility is to read the whole input and store it ina  long string, but we clearly want the input broken down into words. If we store it as an array of ptrs to words, output generation is simple: to produce each words, scan the input text to see what possible suffix words follow the prefix that was just emitted, and then choose one at random. However, that measnscanning all 100,000 words for each inout we generate; 1000 words of input meands hundreds of millions of string comparisons, which will not be fast.
+
+    Another possibility is to store only unique input words, together with a list of where they appear in the input sot hat we can locate successor words more quickly. We could use a hash table lik the one in Ch02, but that version does not directly address the needs of the Markov alg, which must quickly locate all the suffixes of a given prefix.
+
+    We need a data structure that better represents a prefix and its assocated suffixes. The program will have tow passes, an input pass tht builds the data structure representing the phrases, and an output pass that uses the data structure to generate the random outpt. In both passes, we need to look up a prefix (quicky): in the input pass to update its suffixes, and inthe output pass to to select at random from the possible suffixes. This suggests a hash table whise keys are prefixes and whose values are th esets of suffixes for the corresponding prefixes.
+
+    For purposes of description, we will assume a two words prefix, so edach output words is based on th epari of words that precede it. The numbe rof words inthe prefix does not affect the design  and the programs should handle any prefix len, but selecting a number makes the discussion concrete. The prefix and teh set of all its possible suffixes well call a state, which is standard terminology for markog algs.
+
+    Given a prefix, we need to store all the suffixs that follow it so we can access them later. The suffixes are unordered and added one at a time, WE don't know how many there will be , so we need a data structure that grows easily and efficiently, such as a list or a dynamic array. When we are generating output, weneed to be able to choose one suffix at random from th eset of suffixes associated with a particulare prefix. Items are never deleted.
+
+    What happends if a phrase appears more than once? This can be represented by putting "twice" twice in the usffix list for might appear or by puttinf it in once, with an associated counter set to 2. We have tried and without counters; without is easier since adding a suffix does no require checking whther it is there already, and expresiments shows that the difference in run time was negligible.
+
+  In summary each state comprises a prefix and a luffix. The information is stored a hash table, with preafix as key. Each prefix is a fixed size set of words. If a suffix occurs more than once for a griven prefix, each occurrence will be included sparately in the list.
+
+    The next decision is how to represent th ewords themselves. The easy way is to store them as indv strings. since most text has many words appearin
+
+
+*************************************************
+3.3 Building the data structures in C 
+*************************************************
+
+
