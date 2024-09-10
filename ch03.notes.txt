@@ -94,4 +94,137 @@ Chapter 3: Design and Implementation
 3.3 Building the data structures in C 
 *************************************************
 
+    Define some constants:
+        enum {
+            NPREF   = 2,    // number of prefix words
+            NHASH   = 4093, // size of state hash table array
+            MAXGEN  = 10000 // maximum words generated
+        };
 
+    If NPREF is a compile time constant rather than a run time variable, storage management is simpler. The array size is set failry largebecause we expect to give the program large input documents, perhaps a whole book. WE chose NHASH = 4093 so that if the input has 10,000 distinct prefixes (word pairs), the average chain will be very short, two or three prefixes. The larger the size the shorter the expected len of the chains and thus faster the lookup. This program is really a toy so the performance isnt critical but if we make the array too small the program will not handle out expected input in reasonable time; on the other hand, if we make it too big it might not fit in the available mem
+
+    The prefix can be stored as an array of words. The elements of the hash table will be represented as a State data type, associating the Suffix list with the prefix:
+
+        typedef struct State State;
+        typedef struct Suffix Suffix;
+        struct state { // prefix + suffix list
+            char    *pref[NPREF]; // prefix words
+            Suffix  *suf;         // list of suffixes
+            State   *next;        // next in hash table   
+        };
+
+        struct Suffix { // list of suffixes
+            char    *word;    // suffix
+            Suffix  *next;    // next in list of suffixes
+        };
+
+        State   *statetab[NHASH];   // hash table of states
+
+    Pictorally, the data structures look like this:
+
+  statetab:
+  
+  --------
+  |      |   a State:          ----------
+  --------   ---------     /-->| "Show" |
+  |    --|-->|pref[0]|----/    ----------
+  --------   ---------           ----------
+  |      |   |pref[1]|---------->| "your" |
+  --------   ---------           ----------
+  |      |   |  suf  |-----\        a suffix:
+  --------   ---------      \       ---------    ----------------
+  |      |   | next  |       \----->| word  |--->| "flowcharts" |  
+  --------   ---------              ---------    ----------------
+  |      |        \                 | next  |--\   another suffix:
+  --------         \                ---------   \     ---------    ----------
+  |      |          \                            \--->| word  |--->|"tables"|   
+  --------   another state:                           ---------    ----------
+  |      |            \                               | next  |
+  -------         ---------                           ---------
+                  |pref[0]|
+                  ---------
+                  |pref[1]|
+                  ---------
+                  |  suf  |
+                  ---------
+                  | next  |
+                  ---------
+
+    We need a hash fn for prefixes, whcih are arrays of strs. It is simple to modify the string hash fn form chapter 2 to loop over the strings in the array, thus in effect hashing the concatentation of hte strings
+
+        // hash: compute hash val for array og NPREF strs
+        unsigned int hash(char *s[NPREF])
+        {
+            unsigned int h;
+            unsigned char *p;
+            int i;
+
+            h = 0;
+            for (i = 0; i < NPREF; i++)
+                for (p = (unsigned char *) s[i]; *p != '\0'; p++)
+                    h = MULTIPLIER * h + *p;
+
+            return h % NHASH;
+        }
+
+    A similar modification to the lokup routine completes the implementation of the hash table;
+
+        // lookup: search for prefix; create if requested.
+        //    returns ptr if present or created; NULL if not
+        //    creation doesnt strdup so strings mustn change later
+        State* lookup(char *prefix[NPREF], int create)
+        {
+            int i, h;
+            State *sp;
+
+            h = hash(prefix); 
+            for (sp = statetab[h]; sp != NULL; sp = sp->next) {
+                for (i = 0; i < NPREF; i++)
+                    if (strcmp(prefix[i], sp->pref[i]) != 0)
+                        break;
+                if (i == NPREF)     // found it
+                    return sp;
+            }
+            if (create) {
+                sp = (State *) emalloc(sizeof(State));
+                for (i = 0; i < NPREF; i++)
+                    sp->pref[i] = prefix[i];
+                sp->suf = NULL;
+                sp->next = statetab[h];
+                statetab[h] = sp;
+            }
+            return sp;
+        }
+
+    Notice that lookup does not make a copy of ht eincoming strings when it creates a new state; it just stores pointers in sp->pref[]. Callers of lookup must guarantee that the data wont be overwritten later. For example if the strings are in an IO buffer a copy must be made before lookup is called, otherwise subsequent input could overwrite the data that the hash table points to. Decision about who owns a resource shared accross and interface arise often. We will expore this topic at lenths in the next chapter.
+
+    Next we need to build a hash table as the file is read:
+      
+        // build: read input, build prefix table
+        void build(char *prefix[NPREF], FILE *f)
+        {
+            char buf[100], fmt[10];
+            
+            // create a format string; %s could overflow buf
+            sprintf(fmt, "%%%ds", sizeof(buf)-1);
+            while (fscanf(f, fmt, buf) != EOF)
+                add(prefix, estrdup(buf));
+        }
+
+    The peculiar call to sprintf gets aronud and irritating problem with fscanf, which is otherwise perfect for the jb. A call to fscanf with format %s will read the next which space delimited word from the file into the buffer, but there is no limit on isze: a long word might overflow the input buffer, wreaking havoc. If the buffer is 100 bytes long (which is far beyonf what we expect ever to appear in normal text), we can use format %99s (leaving on byte for the terminal '\0'), which tells fscanf to stop after 99 bytes. A long word will be brokn into pieces, which is unfortunate but safe. We could declare:
+
+      enum  { BUFSIZE = 100};
+      char  fmt[] = "%99s"; // bufsize - 1;
+  but that requires two contants for one arbitrary decision -the size of the buffer- and introduces the need to maintain their relationship. The problem can be solved once and for all by creating the format srting dynamicaly with sprintf, so that is the approach we take.
+
+    The two args to add are the prefix array holding the previous NPREF words of input and a FILE pointer. It passes the prefix and a copy of the inout word to add, which adds the new entry to the hash table and advances the prefix:
+      // add: add words to suffix list, update prefix
+      void add(char *prefix[NPREF], char *suffix)
+      {
+          State *sp;
+          sp = lookup(prefix, 1); // create of not found
+          addsuffix(sp, suffix);
+          // move the words down the prefix
+          memmove(prefix, prefix+1, (NPREF-1)*sizeof(prefix[0]));
+          prefix[NPREF-1] = suffix;
+      } 
