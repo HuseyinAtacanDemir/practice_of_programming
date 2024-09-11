@@ -59,7 +59,7 @@ Chapter 3: Design and Implementation
 
     Our program will read a piece of English text and use a Markov chain alg to generate new text based on the frquency of appearance of phrases of a fixed len. The number of words in the prefix, which is two in our ex, is a parameter. Making the prefix shorted tends to produce less coherent prose; making it longer tends to reproduce the input text verbatim. For English text, using two words to select a third is a good compromise; it seems to recreate the flavor of the input while adding its own whimsical touch.
 
-    What is a word? The obvious answer is a sequence of alphabetic characters, but it is desirable to elave punctuation attached to the words so "words" and "words." are different. Thus helps to improve the quality of the generated prose by letting punctuation, and therefore (indirectly) grammar, influence the word choice, although it also permits unbalanced quotes and parantheses to sneak in. We will therefore define a word as anything between white space, a decision htat places no restriction on inout language and leaves punctuatuion attached to the words. Since most programming languages have facilities to split text into white-space-seperated words, this is also east to implement.
+    What is a word? The obvious answer is a sequence of alphabetic characters, but it is desirable to elave punctuation attached to the words so "words" and "words." are different. Thus helps to improve the quality of the generated prose by letting punctuation, and therefore (indirectly) grammar, influence the word choice, although it also permits unbalanced quotes and parantheses to sneak in. We will therefore define a word as anything between white space, a decision htat places no restriction on input language and leaves punctuatuion attached to the words. Since most programming languages have facilities to split text into white-space-seperated words, this is also east to implement.
 
     Because of ht emethods, all words, all two-word phrases, and all three-word phrases in the output must have appeared in the input, but there should be many four-word and longer ohrases that are synthesized. here are a few sentences produced by the program we will develop in this chapter, when given the text of Chapter VII of The Sun Also Rises by Ernest Hemingway:
 
@@ -72,8 +72,8 @@ Chapter 3: Design and Implementation
 3.2 Data Structure Alternatives 
 *************************************************
 
-    How much input do we intend to deal with? How fast must the program run? It seems reasonable to ask our program to read ina whole book, so we should be prepared for inout sizes of n = 100,000 worsd or more. The output will be hundreds or perhaps thousands of words, and the program should run in a few seconds instead of miutes. With 100,000 words of input text, n is fairly large so the algorithms cannot be too simplistic if we want the program to be fast. 
-    The Markov alg must see all th einput before it can begin to generate output, so it must store the entire input in some form. One possibility is to read the whole input and store it ina  long string, but we clearly want the input broken down into words. If we store it as an array of ptrs to words, output generation is simple: to produce each words, scan the input text to see what possible suffix words follow the prefix that was just emitted, and then choose one at random. However, that measnscanning all 100,000 words for each inout we generate; 1000 words of input meands hundreds of millions of string comparisons, which will not be fast.
+    How much input do we intend to deal with? How fast must the program run? It seems reasonable to ask our program to read ina whole book, so we should be prepared for input sizes of n = 100,000 worsd or more. The output will be hundreds or perhaps thousands of words, and the program should run in a few seconds instead of miutes. With 100,000 words of input text, n is fairly large so the algorithms cannot be too simplistic if we want the program to be fast. 
+    The Markov alg must see all th einput before it can begin to generate output, so it must store the entire input in some form. One possibility is to read the whole input and store it ina  long string, but we clearly want the input broken down into words. If we store it as an array of ptrs to words, output generation is simple: to produce each words, scan the input text to see what possible suffix words follow the prefix that was just emitted, and then choose one at random. However, that measnscanning all 100,000 words for each input we generate; 1000 words of input meands hundreds of millions of string comparisons, which will not be fast.
 
     Another possibility is to store only unique input words, together with a list of where they appear in the input sot hat we can locate successor words more quickly. We could use a hash table lik the one in Ch02, but that version does not directly address the needs of the Markov alg, which must quickly locate all the suffixes of a given prefix.
 
@@ -205,19 +205,20 @@ Chapter 3: Design and Implementation
         {
             char buf[100], fmt[10];
             
-            // create a format string; %s could overflow buf
-            sprintf(fmt, "%%%ds", sizeof(buf)-1);
+            // create a format string since just %s could overflow buf
+            // evaluates to "%{number}s" dynamically based on the bufsize-1 
+            sprintf(fmt, "%%%ds", sizeof(buf)-1); 
             while (fscanf(f, fmt, buf) != EOF)
                 add(prefix, estrdup(buf));
         }
 
-    The peculiar call to sprintf gets aronud and irritating problem with fscanf, which is otherwise perfect for the jb. A call to fscanf with format %s will read the next which space delimited word from the file into the buffer, but there is no limit on isze: a long word might overflow the input buffer, wreaking havoc. If the buffer is 100 bytes long (which is far beyonf what we expect ever to appear in normal text), we can use format %99s (leaving on byte for the terminal '\0'), which tells fscanf to stop after 99 bytes. A long word will be brokn into pieces, which is unfortunate but safe. We could declare:
+    The peculiar call to sprintf gets aronud and irritating problem with fscanf, which is otherwise perfect for the job. A call to fscanf with format %s will read the next which space delimited word from the file into the buffer, but there is no limit on size: a long word might overflow the input buffer, wreaking havoc. If the buffer is 100 bytes long (which is far beyond what we expect ever to appear in normal text), we can use format %99s (leaving on byte for the terminal '\0'), which tells fscanf to stop after 99 bytes. A long word will be broken into pieces, which is unfortunate but safe. We could declare:
 
       enum  { BUFSIZE = 100};
       char  fmt[] = "%99s"; // bufsize - 1;
   but that requires two contants for one arbitrary decision -the size of the buffer- and introduces the need to maintain their relationship. The problem can be solved once and for all by creating the format srting dynamicaly with sprintf, so that is the approach we take.
 
-    The two args to add are the prefix array holding the previous NPREF words of input and a FILE pointer. It passes the prefix and a copy of the inout word to add, which adds the new entry to the hash table and advances the prefix:
+    The two args to add are the prefix array holding the previous NPREF words of input and a FILE pointer. It passes the prefix and a copy of the input word to add, which adds the new entry to the hash table and advances the prefix:
       // add: add words to suffix list, update prefix
       void add(char *prefix[NPREF], char *suffix)
       {
@@ -229,4 +230,204 @@ Chapter 3: Design and Implementation
           prefix[NPREF-1] = suffix;
       } 
 
+    The call to memmove is the idiom for deleting from an array. It shifts elements q through NPREF-1 in the prefix down to positions 0 through NPREF-2, deleting the first prefix word and opening a space for a new one at the end.
+    The addsuffix routine adds the new suffix:
+      // addsuffix: add to state, suffix must not change later
+      void addsuffix(State *sp, char *suffix)
+      {
+          Suffix *suf;
+          
+          suf = (Suffix *) emalloc(sizeof(Suffix));
+          suf->word = suffix;
+          suf->next = sp->suf;
+          sp->suf = suf;
+      }
 
+    We split the action of updating the state into two fns: add performs the general service of adding a suffix to a prefix, while addsuffix preforms the implementation specific action of adding a word to a suffix list. The add routine is used by build, but addsuffix is used internally only by add; it is an implementation detail that might change and it seems better to have it in a separate function even though it is called in only one place.
+
+
+*************************************************
+3.4 Generating Output
+*************************************************
+
+    With the data structure built, the next step is to generate the output. The basc idea is as before: given a prefix, select one of its suffixes at random, print it, then advance the prefix. This is the steady state of processing; we must still figure out how to start and stop the algorithm. Starting is easy if we remember the words of the first prefix and begin with them. Stopping is easy too. We need a marker word to terminate the alg. After all the regular input, we can add a terminator, a "word" that is guaranteed not to appear in any input.
+      build(prefix, stdin);
+      add(prefix, NONWORD);
+
+    NONWORD should be some value that will never be encountered in regular input.Since the input words are delimited by white space, a "word" of white space will serve, such as a newline char:
+
+      Char NONWORD[] = '\n';  // cannot appear as real word
+
+    One more worry: what happens if there is insufficient input to start the alg? There are two approaches to this sort of problem, either exit prematurely if there is insufficient input. or arrange that there is always enough and don't bother to check. IN this program, the latter approach workds well.
+
+    We can initialize building and generating with a fabricated prefix, which guarantees that there is alwas enough input for hte program. To prime the loops, initialize the prefix array to be all NONWOR words. Thus has the nice benefit that the first word of the input file will be the first suffix of the fake prefix, so the generation loop needs to pring only the suffixes it produces.
+
+    In case the output is unmanageably long, we can terminate the alg affter some num of words are produced or when we hit NONWWORD as  asuffix, whichecer comes first.
+
+    Addinf a few NONWORDS to the ends of the data simplifies the main processing loops of the program significantly; it is an example of the technique cof adding sentinel values to mark boundaries.
+
+    As a rule, try to handle irregularities and exceptions and special cases in data. Code is harder to get right so the control flow should be as simple and regular as possible.
+
+    The generate fn uses the alg we sketched orginally. It produces one word per line of output, which can be grouped in to longer lines iwht a word processor; Ch09 shows a simple formatter called fmt for this task
+
+    With the use of the initial and final NONWORD strings, generate starts and stops properly:
+
+        // generate: produce output. on word per lin
+        void generate(int nwords)
+        {
+            State *sp;
+            Suffix *suf;
+            char *prefix[NPREF], *w;
+            int i, nmatch;
+
+            for (i = 0; i < NPREF; i++) // reset initial prefix
+                prefix[i] = NONWORD;
+
+            for (i = 0; i < nwords; i++) {
+                sp = lookup(prefix, 0);
+                nmatch = 0;
+                for (suf = sp->suf; suf != NULL; suf = suf->next)
+                    if (rand() % ++nmatch == 0)  // prob = 1/nmatch
+                        w = suf->word;
+                if (strcmp(w, NONWORD) == 0)
+                    break;
+                printf("%s\n", w);
+                // memmove is the idiomatic way in C for
+                // of shifting all values in an array
+                memmove(prefix, prefix+1, (NPREF-1)*sizeof(prefix[0]));
+                prefix[NPREF-1] = w;
+            }
+        }
+
+    Notice the alg for selecting one item at random when we dont know how many items there are. The var nmatch counts the number of matches as the list is canned. The expression
+          rand() % ++nmatch == 0
+    increments nmatch and is then true with prob 1/nmatch;
+    Thus the first matching item will set w with a 100% chance
+    the second matching item 50%
+    the third 33%
+    etc
+  At any time, each one of hte k matching items in the suffix list has been selected with probability 1/k
+
+    At the beginning we set the prefix to the starting value, which is guaranteed to be installed in the hash table. The first Suffix values we find will be the first words of the document, since they are the unique follow-on to the starting prefix. After that, random suffixes will be chosen. The loop calls lookup to find the hash table entry for the current prefix, then chooses a random suffix, prints it, and advances the prefix.
+
+    If the suffix we choose is NONWORD, we're one, because we have chosen the state that corresponds to the end of th e input. If the suffix is not NONWORD, we print it, then drop the first word of the prefix with a call to memmove, promote the suffix to be the last word of the prefix, and loop. (memmove is used to shift all values of an array).
+
+    Now we can put all this together into a main routine that reads the stdin and generates at most a specified number of words:
+        // markov main: markov-chain random text generation
+        int main(void)
+        {
+            int i, nwords = MAXGEN;
+            char *prefix[NPREF];          // current input prefix
+
+            for (i = 0; i < NPREF; i++)   // set up initial prefix
+                prefix[i] = NONWORD;
+            build(prefix, stdin);
+            add(prefix, NONWORD);
+            generate(nwords);
+            return 0;
+        }
+
+    This completes out C implementation. We will return at the end of the chaoter to a comparison of programs in different languages. The great strengths of C are that it gives the programmer compelte control over the implementation, and programs written in it tend to be fast. The cost, however, is that the C programmer must do more of th ework, allocating and reclaiming memory, creating hash tables and linked lists, and the like. C is a razor sharp tool, with which one can create an elegant and efficient program or a bloody mess.
+
+  Ex 3-1 The alg for selecting a random item from a list of unknown length depends on having a good random number generator. Design and carry out experiments to determine how well the method works in practice.
+
+  Ex 3-2 If each input word is stored in a second hash table, the text is only stored once, which should save space. Measure some documents to estimate how much. This organization would allow us to compare pointers rather than strings in the hash chains for prefixes, which should run fsater. Implement this version and measure the change in speed and memory consumption.
+
+  Ex 3-3 Remove the statements that place sentinel NONWORDs at the beginning and end of the data, and modify generate so it starts and stops properly without them. Make sure it produces correct output for input with 0, 1, 2, 3, and 4 words. Compare this implementation to the version using setinels.
+
+
+*************************************************
+3.5 Java
+*************************************************
+
+    Our second implementation of the Markov chain algorithm is in Java. Object-oriented languages like Java encourage one to pay particular attention to the interfaces between the components of the program, which are then encapsulated as independent data items called objects or classes, with associated functions called methods.
+  
+    Java has a richer library than C, including a set of container classes to group existing objects in various ways. One example is the Vector class, which provides a dynamically growable array that can store any Object type. Another example is the Hashtable class, with which one can store and retrieve values of one type using objects of another type as keys.
+
+    In out application, Vectors of strings are the natural choice to hold prefixes and suffixes. We can use a Hashtable whose keys are prefix vectors and whose values are suffix vectors. The terminology for this type of construction is a map from prefixes to suffixes; in Java, we need no explicit State type becuase Hashtable implicitly connects (maps) prefixes to suffixes. This design is different from the C version, in which we installed State structures that held both prefix and suffix lists, and hashed on the prefix to revocer the full state.
+
+    A  Hashtable provides a put method to store a key-value pair, and a get emthod to retrieve the value for a key:
+          Hashtable h = new Hashtable();
+          h.put(key, value);
+          Sometype v = (Sometype) h.get(key);
+
+    Our implementation has three classes. The first class, Prefix, holds the words of the prefix:
+          class Prefix {
+              public Vector pref;   // Npref adjacent words from input
+          }
+
+    The second class, Chain, reads the input, builds the hash table, and generates the output; here are its class variables:
+          class Chain {
+              static final int NPREF = 2;   // size of prefix
+              static final String NONWORD = "\n"; // word that cannot appear
+
+              Hashtable statetab = new Hashtable(); // key = Prefix, value = Suffix
+              Prefix prefix = new Prefix(NPREF, NNOWORD);
+              Random rand =  new Random();
+              ...
+          }
+    The third class is the public interface; it holds main and instantiates a Chain:
+          class Markov {
+              static final int MAXGEN = 10000;
+              public static void main(String[] args) throws IOException
+              {
+                  Chain chain = new Chain();
+                  int nwords = this.MAXGEN;
+                  
+                  chain.build(System.in); 
+                  chain.generate(nwords);
+              }
+          }
+    
+    When an instance of class Chain is created, it in turn creates a hash table and sets up the initial prefix of NPREF NONWORDs. The build fn uses the library fn StreamTokenizer to parse the input into words seperated by white space characters. The three calls before the loop set the tokenizer intot he proper state for our definition of "word."
+
+          // Chain build: build State table from input stream:
+          void build(InputStream in) throws IOException
+          {
+              StreamTokenizer st = new StreamTokenizer(in);
+            
+              st.resetSyntax();                     // remove default rules
+              st.wordChars(0, Character.MAX_VALUE); // turn on all chars
+              st.whitespaceChars(0, ' ');           // except up to blank
+              while (st.nextToken() != st.TT_EOF)
+                  add(st.sval);
+              add(this.NONWORD);
+          }
+
+    The add fn retrieves the vector of suffixes for the current prefix form the hash table; if there are none (the vector is null), add creates a new vector and a new prefix to store in the hash table. In either case, it adds the new word to the suffix vector and advances the prefix by dropping the first word and adding the new word at the end.
+
+          // Chain add: add word to suffix list, update prefix
+          void add(String word)
+          {
+              Vector suf = (Vector) statetab.get(this.prefix);
+
+              if (suf == null) {
+                  suf = new Vector();
+                  statetab.put(new Prefix(this.prefix))
+              }
+              suf.addElement(word);
+              prefix.pref.removeElementAt(0);
+              prefix.pref.addElement(word);
+          }
+
+    Notice that if suf is null, add installs a new Prefix in the hash table, rather than prefix itself. This is because the Hashtable class stores items by reference, and if we don't make a copy, we would inadvertantly overwrite data in the table. This is the same issue we had to deal with in the C program.
+
+    The generation fn is similar to the C version, but slightly more compact becuase it can index a random vector element directly isntead of looping through a list.
+
+          // Chain generate: generate output words
+          void generate(int nwords)
+          {
+              this.prefix = new Prefix(this.NPREF, this.NONWORD);
+              for (int i = 0; i < nwords; i++) {
+                  Vector s = (Vector) statetab.get(this.prefix);
+                  int r = Math.abs(rand.nextInt()) % s.size;
+                  String suf = (String) s.elementAt(r);
+                  if (suf.equals(NONWORD))
+                      break;
+                  System.out.println(suf);
+                  prefix.pref.removeElementAt(0);
+                  prefix.pref.addElement(suf);
+              }
+          }
+
+    
