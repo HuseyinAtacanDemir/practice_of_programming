@@ -430,4 +430,173 @@ Chapter 3: Design and Implementation
               }
           }
 
+    The two constructors of Prefix create new instances from supplied data. The first copies and eixsting Prefix, and the second created a prefix from n copies of a string; we use it to make NPREF copies of NONWORD when initializing:
+          
+          // Prefix constructor: duplicate existing prefix
+          Prefix(Prefix p)
+          {
+              this.pref = (Vector) p.pref.clone();
+          }
+
+          // Prefix constructor: n copies of str
+          Prefix(int n, String str)
+          {
+              this.pref = new Vector();
+              for (int i = 0; i < n; i++)
+                  this.pref.addElements(str);
+          }
+
+    Prefix also has two methods, hashCode and equals, that are called implicitly by the implementation of Hashtable to index and search the table. It is the need to have an explicit class for these two methods for Hashtable that forced us to make Prefix a full-fledged class, rather than just a Vector like the suffix.
+  
+    The hashCode method builds a single hash value by combining the set of hashCodes for the elements of the vector:
+          
+          static final int MULTIPLIER = 31;     // for hashCode()
+
+          // Prefix hashCode: generate hash from all prefix words
+          public int hashCode()
+          {
+              int h = 0;
+              
+              for (int i = 0; i < pref.size(); i++)
+                  h = this.MULTIPLIER * h + this.pref.elementAt(i).hashCode();
+              return h;
+          }
+    and equals does an elementwise comparison of the words in two prefixes:
+          
+          // Prefix equals: compare two prefixes for equal words
+          public boolean equals(Object o)
+          {
+              Prefix p = (Prefix) o;
+              
+              for (int i = 0; i < pref.size(); i++)
+                  if (!this.pref.elementAt(i).equals(p.pref.elementAt(i)))
+                      return false;
+              return true;
+          }  
+
+    The Java program is significantly smaller than the C program and takes car of more details; Vectors and Hashtable are obvioud examples. In general, storage amangement is easy since vectors grow as needed and grabage colelction takes care of reclaiming memory that is no longer referenced. But to use the Hashtable class, we still need to write functions hashCode and equals, so Java isn't taking care of all the details.
+
+    Comparing the way the C and Java programs represent and operate on the same basic data structure, we see that the Java version has better separation of functionality. For example, to switch from Vectors to arrays would be easy. In the C version, everything knows what everything else is doing: the hash table operates on arrays that are maintained in various places, lookup knows the layout of the State and Suffix structures, and everyone knows the size of the prefix array.
+    %  java Markov < jr_chemistry.txt | fmt
+    Wash the blackboard. Watch it dry. The water goes into the air. When water goes into the air it evaporates.
+    % 
+
+  Ex 3-4 Revise the Java version of markov to use an array instead of a vector for the prefix in the State class
+
+
+
+*************************************************
+3.6 C++
+*************************************************
+
+    Our third implementation is in C++. Since C++ is almost a superset of C, it can be used as if it were C with a few notational conveniencies, and out original C version of markov is also a legal C++ program. A more appropriate use of C++, however, would be to define classes for the objects in the program, more or less as we did in Java; this would let us hide implementation details. We decided to go even further by using the Standard Template Librarr, or STL, since STL has built-in mechanisms that will do much of what we need. The ISO standard for C++ includes the STL as part of the language definition.
+
+    The STL provides containers such as vectors, lsits, and sets, and a family of fundamental algos for searching, sorting, inserting, and deleting, Using the template features of C++, every STL alg works on a variety of containers, including both user-defined types and built-in types like integers. Containers are expressed as C++ templates that are instantiated for specific data types; for example, there is a vector container that can beused to make articular types like vector<int> or vector<string>. All vector operations, including the standard algs for sorting, can be used on such data types.
+
+    IN addition to a vector container that is similar to Java's Vector, the STL provudes a deque container. A deque (pronounced "deck") is a double-ended queue that matches what we do with prefixes: it holds NPREF elements, and lets us pop the first element and add a new one ot the end, in O(1) time for both. The STL deque is more general than we need, since it permits push and pop at either end, but performance guarantees make it an obvious choice.
+
+    The STL also provides an explicit map container, based on balanced trees, taht stores key-value pairs and provides O(logn) retrieval of values associated with any key. Maps might not be as efficient as O(1) hash tables, but it is noce not to have to write any code whatsoever to used them. (Some non-standard C++ libraries include a hash or hash_map container whose performance may be better.)
+
+    We also use the build in comparison functions, which in this case will do string comparisons using the individual strings in the prefix.
     
+    With these components in hadn, the code goes together smoothly. HEre are the declarations:
+
+        typedef deque<string> Prefix;
+        map< Prefix, vector<string> > statetab;   // prefix -> suffixes
+
+    The STL provides a tempalte for dequeus; the notation deque<string> specializes it to a deque whose elements are of type string. Since this type appears several times in the program, we usde a typedef to give it the name Prefix. The map type that stores the prefixes and suffixes occurs only once, however, so we did not give it a separate name; the map declaration declares a variable statetab that is a map from prefixes to vectors of strings. This is more convenient than either C or JAva, because we don't need to provide a hash fn or equals method.
+
+    The main routine initializes the prefix, reads the input (form std input, called cin in the C++ iostream library, adds a tail, and generates the output, exactly as in the earlier versions:
+
+        // markov main: markov-chain random text generation
+        int main(void)
+        {
+            int nwords = MAXGEN;
+            Prefix prefix;            // current input prefix
+
+            for (int i = 0; i < NPREF; i++)
+                add(prefix, NONWORD);
+            build(prefix, cin);
+            add(prefix, NONWORD);
+            generate(nwords);
+            return 0;
+        }
+
+    The fn build uses the iostream lib to read th einput one word at a time:
+
+        // build: read input words, build state table
+        void build(Prefix& prefix, istream& in)
+        {
+            string buf;
+
+            while (in >> buf)
+                add(prefix, buf);
+        }
+
+    The string buf will grow as necessary to handle input words of arbitrary len
+    
+    The add fn shows more of the advantage of using the STL:
+
+        // add: add word to Suffix list, update prefix
+        void add(Prefix& prefix, const string& s)
+        {
+            if (prefix.size() == NPREF) {
+                statetab[prefix].push_back(s);
+                prefix.pop_front();
+            }
+            prefix.push_back(s);
+        }
+
+    Quite a bit is going on under these apparently simple statements. The map container overloads subscripting (the [] operator) to behave as a lookup operation. The expression statetab[prefix] does a lookup in statetab with prefix as key and returns a reference to the desired entry; the vector is create if it does not exists alread. The push_back member fns of vector and deque push a new string onto the back end of the vector or deque; pop_front pops the first elem of the deque.
+
+    Generation is similar to the previous version:
+
+        // generate: produce output. one word per line
+        void generate(int nwords)
+        {
+            Prefix prefix;  
+            int i;
+      
+            for (i = 0; i < NPREF); i++) // reset initial prefix
+                add(prefix, NONWORD);
+      
+            for (i = 0; i < nwords; i++) {
+                vector<string>& suf = statetab[prefix];
+                const string& w = suf[rand() % suf.size()];
+                if (w == NONWORD) 
+                    break;
+                cout << w << "\n";
+                prefix.pop_front();   //advance
+                prefix.psuh_back(w);
+            }
+        }
+
+    Overall, this version seems especially clear and elegant --the code is compact, the data structure is visible and the alg is completely transparent. Sadly, there is a price to apy: this version runs much slower than the original C version, though it is not the slowest. We'll come back to performance measurements shortly.
+
+  Ex 3-5 The great strength of the STL is the eae with which one can experiment with different data structure. Modify the C++ version of Markov to use various structures to represent prefix, suffix, list, and state table. How does performance change for the different structures?
+  Ex 3-6 Write a C++ version that uses only classes and the string data type but no other advanced library facilities. Compare it in style and speed to the STL versions.
+
+
+
+*************************************************
+3.7 Awk and Perl
+*************************************************
+    
+    (I only read this section and did not write along as usual)
+
+  Ex 3-7 Modify the Awk and Perl versions to handle prefixes of any length. Experiment to determine what effects this change has on performance.
+
+
+
+*************************************************
+3.8 Performance
+*************************************************
+
+
+*************************************************
+3.9 Lessons 
+*************************************************
+
+  Ex 3-8 We have seen versions of ht eMarkov program in a wide variety of languages, including Scheme, Tcl, Prolog, Python, Generic Java, ML, and Haskell; each presents its own challenges and advantages. Implement the program in your favorite language and comapre its general flavor and performance.
+    Not that it is my fav lang, heaven forbid, I will provide a JS implementation of the algorithm.
+
