@@ -1,3 +1,8 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
+
 enum {
     NPREF       = 2,      // number of prefix words
     NHASH       = 4093,   // size of state hash table arr
@@ -42,7 +47,7 @@ State *lookup(char *prefix[NPREF], int create)
     h = hash(prefix);
     for (sp = statetab[h]; sp != NULL; sp = sp->next) {
         for (i = 0; i < NPREF; i++)
-            if (strcmo(prefix[i], sp->pref[i]) != 0)
+            if (strcmp(prefix[i], sp->pref[i]) != 0)
                 break;
         if (i == NPREF)
             return sp;
@@ -82,7 +87,7 @@ void build(char *prefix[NPREF], FILE *f)
 {
     char buf[100], fmt[10];
 
-    sprintf(dmt, "%%%ds", sizeof(buf)-1);
+    sprintf(fmt, "%%%ds", (int) sizeof(buf)-1);
     while (fscanf(f, fmt, buf) != EOF)
         add(prefix, strdup(buf));
 }
@@ -91,7 +96,7 @@ void generate(int nwords)
 {
     State *sp;
     Suffix *suf;
-    char *prefix[NPREF]. *w;
+    char *prefix[NPREF], *w;
     int i, nmatch;
 
     for (i = 0; i < nwords; i++)
