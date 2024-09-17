@@ -597,6 +597,6 @@ Chapter 3: Design and Implementation
 3.9 Lessons 
 *************************************************
 
-  Ex 3-8 We have seen versions of ht eMarkov program in a wide variety of languages, including Scheme, Tcl, Prolog, Python, Generic Java, ML, and Haskell; each presents its own challenges and advantages. Implement the program in your favorite language and comapre its general flavor and performance.
+  Ex 3-8 We have seen versions of the Markov program in a wide variety of languages, including Scheme, Tcl, Prolog, Python, Generic Java, ML, and Haskell; each presents its own challenges and advantages. Implement the program in your favorite language and comapre its general flavor and performance.
     Not that it is my fav lang, heaven forbid, I will provide a JS implementation of the algorithm.
 
