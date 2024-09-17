@@ -99,7 +99,7 @@ void generate(int nwords)
     char *prefix[NPREF], *w;
     int i, nmatch;
 
-    for (i = 0; i < nwords; i++)
+    for (i = 0; i < NPREF; i++)
         prefix[i] = NONWORD;
 
     for (i = 0; i < nwords; i++) {
