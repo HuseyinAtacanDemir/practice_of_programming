@@ -430,6 +430,7 @@ but if v2 is large and positive and v1 is large and negative or vice versa, the 
 
   Ex 2-3 What are some input sequences that might cause a quicksort implementation to display worst-case behavior? Try to find some that provoke your library version into running slowly. Automate the process so that you can specify and perform a large number of experiments easily
     If all the items were the same, we would always end up with bad partitions.
+    If all the partition points end up being local mins or maxes we'll end up with unbalanced partitions also
 
   Ex 2-4 Design and implement an alg that will sort an arr of n integers as slowly as possible. You have to play fair: the alg must make progress and eventually terminate, and the implementation must not cheat with tricks like time wasting loops. What is the complexity of your alg as an fn of n?
     By using O(n) space, we can iteratively produce all possible permutations of the input array, and check the sortedness of the resulting array which would be O(n!).
@@ -1080,7 +1081,11 @@ ListItem *delitem(ListItem *listp, ListItem *item)
     we'll take a longer look at parse trees in ch09.
 
   Ex 2-11 Compare the perf of lookup and nrlookup. How expensive is recursion compared to iteration?
+
   Ex 2-12 Use in order traversal to create a sort routine. What time complexity does it have? Under what conditions might it behave poorly? How does its performance comapre to our quicksort and a lib version?
+
+    For a quasi balanced tree, where the depth is logn, the sort would take nlogn, n many lookups that each take logn time (assuming depth is logn on average). Populating the BST from the input would also take nlogn, so 2(nlogn). quicksort and the lib version will be faster. 
+
   Ex 2-13 Devise and implement a set of tests for verifying the tree routines are correct.
 
 
