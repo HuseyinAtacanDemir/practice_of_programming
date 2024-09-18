@@ -112,7 +112,7 @@ void generate(int nwords)
             break;
         printf("%s\n", w);
         memmove(prefix, prefix+1, (NPREF-1)*sizeof(prefix[0]));
-        prefix[NPREF-1] = 0;
+        prefix[NPREF-1] = w;
     }
 }
 
