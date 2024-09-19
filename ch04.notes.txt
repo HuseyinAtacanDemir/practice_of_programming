@@ -1,0 +1,161 @@
+*********************************************
+*********************************************
+Chapter 04: Interfaces
+*********************************************
+*********************************************
+
+  "Before I built a wall I'd ask to know        \
+  What I was walling in or walling out,         \
+  And to whom I was like to give offence.       \
+  Something there is that doesn't love a wall,  \
+  That wants it down."
+                    Robert Frost, Mending Wall
+
+  The essence of design sis to balance competing goals and constraints. Although there may be many tradeoffs, when one is writing a small self-contained system, the ramifications of particular choices remain within the system and affect only the individual programmer. But when code is to be used by others, decisions have far wider repercussins.
+
+  Among the issues to be worked out in a design are:
+
+  • Interfaces: what services and access are provided? The interface is in effect a contract between supplier and customer. The desire to provide services that are uniform and convenient, with enough functionality to be easy to use but not so much as to become unwieldy
+
+  • Information hiding: what information is visible and what is private? An interface must provide straightforward access to the components while hiding details of the implementation so they can be changed without affecting users.
+
+  • Resource Management: who is responsible for managing memory and other limited resources? Here, the main problems are allocating and freeing storage, and managing shared copies of information.
+
+  • Error handling: who detects errors, who reports them, and how? When an error is detected, what recovery is attempted?
+
+  In Chapter 2 we looked at the individual pieces --the data structures-- from which a system is built. In Chapter 3, we looked at how to combine those into a small program. The topic now turns to the interfaces between components that might come from different sources. In this chapter we illustrate interface design by building a library of functions and data structurs for a common task. Along the way, we will present some principles of design. typically there are an enormous number of decisions to be made, but most are made almost unconsciously. Without these principles, the result is often the sort of haphazard interfaces that frustrate and impede programmers every day.
+
+
+*********************************************
+4.1 COMMA SEPARATED VALUES
+*********************************************
+
+    Comma separated values, or CSV, is the term for a natural and widely used representation for tabular data. Each row of a table is a line of text; the fields on each line are sepparated by commas. The table at the end of the previous chapter might begin this way in CSV format:
+
+        ,"250MHz","400MHz","Lines of" 
+        ,"R10000","Pentium II","source code"
+        C,0.36 sec,0.30 sec,150 
+        Java,4.9,9.2,105
+    
+    This format is read and written by programs such as spreadsheets; not coincidentally, it also appears on web pages for services such as stock price quotations. A popular web page for stock quotes presents a display like this:
+        ------------------------------------------------------------------
+        | Symbol  |      Last Trade     |      Change       |   Volume   |
+        ------------------------------------------------------------------
+        | LU      |  2:19PM  |  86-1/4  | +4-1/16 | +4.94%  |  5,804,800 |    
+        ------------------------------------------------------------------
+        | T       |  2:19PM  | 60-11/16 | -1-3/16 | -1.92%  |  2,468,000 |    
+        ------------------------------------------------------------------
+        | MSFT    |  2:24PM  | 106-9/16 |  +1-3/8 | +1.31%  | 11,474,900 |
+        ------------------------------------------------------------------
+
+                          Download Spreadsheet Format
+                          ---------------------------
+
+    Retrieving numbers by interacting with a web browser is effective but time consuming. It's a nuissance to invoke a web browser, wait, watch a barrage of ads, type a list of stocks, wait, wait, wait, then watch another barrage, all to get a few numbers. To process the numbers further requires even more interaction; selecting the "Download Spreadsheet Format" link retrieves a file that contains much the same information in lines of CSV data like these :
+
+        "LU",86.25,"11/4/1998","2:19PM",+4.0625, 83.9375,86.875,83.625,5804800
+        "T",60.6875,"11/4/1998","2:19PM",-1.1875, 62.375,62.625,60.4375,2468000
+        "MSFT",106.5625,"11/4/1998","2:24PM",+1.375, 105.8125,107.3125,105.5625,11474900
+
+    Conspicuous by its abscence in this process is the principle of letting the machine do the work. Browsers let your computer access data on a remote server, but it would be more convenient to retrieve the data without forced interaction. Underneath all the button pushing is a purely textual procedure --the browser reads some html, you type some text, the browser sends that to a server and reads some HTML back. With the right tools and language, it is easy to retrieve the info automatically. Here's a program in the language Tcl to access the stock quote web site and retrieve CSV data in the format above, preceded by a few header lines:
+
+        # getquotes.tcl: stock prices for Lucent, AT&T, Microsoft
+        set so [socket quote.yahoo.com 80]  ;#connect to server
+        set q "/d/quites.csv?s=LU+T+MSFT&f=sl1d1t1ohgv"
+
+        puts $so "GET $q HTTP/1.0\r\n\r\n"  ;# send requrest
+        flush $so 
+        puts [read $so]                     ;# read & print reply
+
+    The cryptic sequence f=... that follows the ticker symbols in an undocumented control string, analogous to the first argument of printf, that determines what values to retrieve. By experiment, we determined that s identifies the stock symbol, l1 the last price, c1 the change since yesterday, and so on. What's important is not the details, which are subject to change anyway, but the possibility of automation: retrieving the desired information and converting it into the form we need without any human intervention. We can let the machine do the work.
+
+    It typically takes a fraction of a second to run getquotes, far less interacting with a browser. ONce we have the data, we will want to process it further. Data formats like CSV work best if there are convenient libraries for converting to and from the format, perhaps allied with some auxiliary processing such as numerical conversions. But we do not know of an existing public library to handle CSV, so we will write one ourselves.
+
+    In the next few sections, we will build three versions of a library to read CSV data and converti it into an internal representation. Along the way, we'll talk about issues that arise when designing software that must work with other software. For example, there does not appear to be a standard definition of CSV, so the implementation cannot be based on a precise specification, a common situation in the design of interfaces.
+
+
+*********************************************
+4.2 A PROTOTYPE LIBRARY 
+*********************************************
+
+    We are unlikely to get the design of a library or interface right on the first attempt. As Fred Brooks once wrote, "plan to throw away; you will, anyhow." Brooks was writing about large systems but the idea is relevant for any substantial piece of software. It is not usually until you have built and used a version of the program that you understand the issues well enough to get the design right.
+
+    In this spirit, we will approach the construction of a library for CSV by building one to throw away, a prototype. Our first version will ignore many of the difficulties of a thoroughly engineered library, but will be complete anough to be useful and to let us gain some familiarity with the problem.
+
+    Our starting point is a function csvgetline that reads one line of CSV data from a file into a buffer, splits it into fields in an array, removes the quotes, and returns the number of fields, Over the years, we have written similar code in almost every language we know, so it is a familiar task. Here is a prototype version in C; we have marked it as questionable because it is just a prototype:
+
+?       char buf[200];        // input line buffer
+?       char *fled[20];       // fields
+?
+?       // csvgetline: read and parse line, return field count
+?       // sample input: "LU",82.25,"11/4/1998","2:19PM",+4.0625
+?       int csvgetline(FILE *fin)
+?       {
+?           int nfield;
+?           char *p, *q;
+?
+?           if (fgets(buf, sizeof(buf), fin) == NULL)
+?               return -1;
+?           nfield = 0;
+?           for (q = buf; (p=strtok(q, ",\n\r")) != NULL; q = NULL)
+?               field[nfield++] = unquote(p);
+?           return nfield;
+?       }
+
+    The comment at the top of the function includes an example of the input format that the program accepts; such comments are helpful for programs that parse messy input.
+
+    The CSV format is too complicated to be parsed easily by scanf so we use the C standard library function strtok. Each call of strtok(p, s) returns a pointer to the first token within p consisting of characters not in s; strtok terminates the token by overwriting the following character of the original string with a null byte. On the first call, strtok's first argument is the string to scan; subsequent calls use NULL to indicate that scanning should resume where it left off in the previous call. This is a poor interface. Because strtok stores a variable in a secret place between calls, only one sequence of calls may be active at one time; unrelated interleaved calls will interfere with each other.
+
+    Our fn unquote removes the leading and trailing quotes that appear in the sample input above. It does not handle nested quotes, however, so although sufficient for a prototype, it is not general.
+
+?       // unquote: remove leading and trailing quote
+?       char *unquote(char *p)
+?       {
+?           if (p[0] == '"') {
+?               if (p[strlen(p) - 1] == '"')
+?                   p[strlen(p)-1] = '\0';
+?               p++;
+?           }
+?           return p;
+?       }
+
+    A simple test program helps verify that csvgetline works:
+
+?       // csvtest main: test csvgetline function
+?       int main(void)
+?       {
+?           int i, nf;
+?
+?           while ((nf = csvgetline(stdin)) != -1)
+?               for (i = 0; i < nf; i++)
+?                   printf("field[%d] = '%s'\n", i, field[i]);
+?           return 0;
+?       }
+
+    The printf encloses the fields in matching single quotes, which demarcate them and help revelat bugs that handle white space incorrectly.
+  
+    We can now run this on the output produced by getquotes.tcl
+
+        sh> tclsh getquotes.tcl | csvtest
+
+    Now we have a prototype that seems to work on data of the sort we showed above. But it might be prudent to try it on something else as well, especially if we plan to let others use it. We found another website that downloads stock quotes and obtained a file of similar information but in a different form: carriage return (\r) rather than newlines to separate records, and no terminating carriage return at the end of the file.
+
+    With that kind of input, our prototype failed miserably.
+
+    We designed our prototype after examining one data source, and we tested it orogonally only on data from that same source. Thus we shouldn't be surprised when the first encounter with a different source reveals gross failings. Long input lines, many fields, and unexpected or missing separators all cause trouble. This fragile prototype might serve for personal use or to demonstraate the feasibility of an approach, but no more than that. It's time to rethink the design before we try another implementation.
+
+    We made large number of decisions, both implicit and explicit, in the prototype. Here are some of the choices that were made, not always in the best way for a general-purpose library. Each raises an issue that needs more careful attention.
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
