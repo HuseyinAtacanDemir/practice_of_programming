@@ -13,6 +13,23 @@ int main(void)
     return 0;
 }
 
+#elif defined(LIB_4_3)
+int main(void)
+{
+    int i;
+    char *line;
+    // with prior knowledge of exact field count 
+    // but only heuristic knowledge of  max field length
+    init(256, 8);
+    while ((line = csvgetline(stdin)) != NULL) {
+        printf("line: '%s'\n", line);
+        for (i = 0; i < csvnfield(); i++)
+            printf("field[%d] = '%s'\n", i, csvfield(i));
+    }
+    destroy();
+    return 0;
+}
+
 #else
 int main(void)
 {
@@ -26,4 +43,5 @@ int main(void)
     }
     return 0;
 }
+
 #endif

@@ -4,13 +4,15 @@ const fs = require('fs');
 // Default configuration
 let numRuns = 5;
 let forceFetch = false;
-const macros = ['PROTO', 'LIB', 'LIB_4_1']; // Example macros
+let debug = false;
+const macros = ['PROTO', 'LIB', 'LIB_4_1', 'LIB_4_3']; // Example macros
 const bold = "\033[1m";
 const normal = "\033[0m";
 
 // Parse command-line arguments
 process.argv.slice(2).forEach(arg => {
   if (arg === '-f') forceFetch = true;
+  if (arg === '-d') debug = true;
   else if (!isNaN(arg)) numRuns = parseInt(arg);
 });
 
@@ -27,7 +29,11 @@ if (forceFetch || !fs.existsSync('data.csv')) {
 
 // Compile C programs
 macros.forEach(macro => {
-  runCommand(`gcc -Wall -D${macro} csv.c test.c -o test_${macro}`);
+  let command = "gcc -Wall";
+  if (debug)
+    command += " -g";
+  command += ` -D${macro} csv.c test.c -o test_${macro}`;
+  runCommand(command);
 });
 
 // Store run times for each macro

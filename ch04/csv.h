@@ -22,8 +22,16 @@ extern char *csvgetline (FILE *f); // read next line
 extern char *csvfield   (int n); // return field n
 extern int  csvnfield   (void); // return # of fields
 
-#elif defined(LIB_4_2)
+#elif defined(LIB_4_1_2)
+extern char *csvgetline (FILE *f); // read next line
+extern char *csvfield   (int n); // return field n
+extern int  csvnfield   (void); // return # of fields
 #elif defined(LIB_4_3)
+extern int  init        (int n_line, int n_field); // initialize
+extern char *csvgetline (FILE *f); // read next line
+extern char *csvfield   (int n); // return field n
+extern int  csvnfield   (void); // return # of fields
+extern void destroy     (void); // free up resources
 #elif defined(LIB_4_4)
 
 #endif
