@@ -668,5 +668,118 @@ SPECIFICATION
 4.5 Interface Principles
 *********************************************
 
+    In the previous sections we were working out the details of an interface, which is the detailed boundary between code that provides a service and code that uses it. An interface defines what some body of code does for its users, how the functions anf perhaps data members can be used by the restof the program. Our CSV interface provides three functions --read a line, get a field, and return the number of fields-- which are the only operations that can be performed.
+
+    To prosper, and interface must be well suited for its task--simpl, general, regular, predictable, robust-- and it must adapt gracefully as its users and its implementation change. Good interfaces follow a set of principles. These are not independent or even consistend, but they helpd us describe what happens across the boundary between two pieces of software.
+
+HIDE IMPLEMENTATION DETAILS:
+
+    The implementation behind the interface shouldbe hidden from the rest of the program so it can be changed without affecting or breaking anything. There are several terms for this kind of organizing principle; information hiding, encapsulation, abstraction, modularization, and the like all refer to related ideas. An interface should hide details of the implementation that are irrelevant to teh client (user) of the interface. Details that are invisible can be changed without affecting the client, perhaps to extend the interface, make it more efficient, or even replace its implementation altogether.
+
+    The basic libraris of most programming languages provide familiar examples, though not always especially well-designed ones, The C standard I/O library is among the best known: a couple of dozen functions that open, close, read, write, and otherwise manipulate files. The implementation of file I/O is hidden behind a data type FILE* whose properties one might be able to see (because they are often spelled our in <stdio.h>) but should not exploit.
+
+    If the header file does not include the actual structure declaration, just the name of the structure, this is sometimes called an opaque type, since its properties are not visible and all operations take place through a pointer to whatever real object lurks behind.
+
+    Avoid global variables; wherever possible it is better to pass references to all data through function arguments.
+
+    We strongly recommend against publicly visible data in all forms; it is too hard to maintain consistency of values if users can change variables at will. Function interfaces make it easier to enforce access rules, but this principle is often violated. The predefined I/O streams like stdin and stdout are almost always defined as elements of a globall array of FILE structures:
+
+        extern FILE     __iob[_NFILE];
+        #define stdin   (&__iob[0];
+        #define stdout  (&__iob[1]);
+        #define stderr  (&__iob[2]);
+
+    This makes the implementation completely visible; it also means that one cannot assign stdin stdout or stderr even though they look like variables. The peculiar name __iob uses the ANSI C convention of two leading underscores for private names that must be visible, which makes the names less likely to conflict with names in a program.
+
+    Classes in C++ and Java are better mechanisms for hiding information; they are central to the proper use of those languages. The container clases of the C++ standard template library that we used in Chapter 3 carry this even further: aside from some performance guarantees there is no information about implementation, and library creators can use any mehcanism they like.
+
+CHOOSE A SMALL ORTHOGONAL SET OF PRIMITIVES:
+
+    An interface shuld provide as much functionality as necessary but no more, and the fucntions should not overlap excessively in their capabilities, Having lots of functions may make the library easier to use--whatever one needs is there for the taking. But a large interface is harder to write and maintain, the sheer size may make it hard to learn and use as well. "Application program interfaes" or APIs are sometimes so huge that no mortal can be expected to master them.
+
+    In the interest of convenience, some interfaces provide multiple ways of doing the same thing, a tendency that should be resisted. The C standard I/O library provides at least four differnet fucntions that will write a singe char to an outpur stream:
+        
+        char c;
+        putc(c, fp);
+        fputc(c, fp);
+        fprintf(fp, "%c", c);
+        fwrite(&c, sizeof(char), 1, fp);
+
+    If the steadm is stdout, there are several more possibilities, These are convenient, but not all are necessary.
+
+    Narrow interfaces are to be preferred to wide ones, at least until one has strong evidence that more functions are needed. Do one thing, and do it well, Do not add to an interface just because it is possible to do so, and do not fix the interface when it is the implementation that is broken. For instance, rather than having memcpy for speed and memmove for safety, it would be better to have one function that was always safe, and fast when it could be.
 
 
+DON'T REACH BEHIND THE USER'S BACK:
+
+    A library function should not write secret files and variables or change global data, and it should be circumspect about modifying data in its caller. The strtok function fails several of these criteria. It is a bit of a surprise that strtok writes null bytes into the middle of its input string. Its use of the null pointer as a signal to pick up where it left off last time implies secret data held between calls, a likely source of bugs, and it precludes concurrent uses of the function. A better design would provide a single function that tokenizes and inpur string, For similar reasons, our second C version cannot be used for 2 input streams; see ex 4-8
+  
+    The use of one interface shuld not demand another one just for the convenience of the interface designer or implementer. INstead, make the interface self contained, or failing that, be explicit about what external services are required. Otherwise, you place a maintenance burden on the clent, An obvious example is the pain of managing huge lists of header files in C and C++ source;header files can be thousands of lines long and include dozens of other headers.
+
+DO THE SAME THING THE SAME WAY EVERYWHERE:
+
+    Consistency and regularity are important. Related things should be achieved by related means, The basic str... functions in the C library are easy to use without documentation because they all behave about the same: data flows from right to left, the same direction as in an assignment statement, and they all return the resulting string. On the other hand, int he C standard I/O library it is hard to predict the order of arguments to functions, Some have FILE* argument first, some last; others have various orders for size and number of elements. The algorithms for STL containers present a very uniform interface, so it is easy to predict how to use an unfamiliar function.
+
+    External consistenct, hevaing like something else, is also a goal. For example, the mem... functions were designed after the str... functions in C, but borrowed their style. The standard I/O functions fread and fwrite would be easier to remember if they looked like the read and write functions they were based on. Unix command-line options introduced by a minus sign, but a given option letter may mean completely different things, even between related programs.
+
+    If wildcards liek the * in *.exe are all expanded by a command interpreter, behavior is uniform. If they are expanded by individual programs, non uniform behavior is likely. Web browsers take a single mouse click to follow a link, but other applications take two clicks to start a program or follow a link; the result is that many people automatically click twice regardless.
+
+    These principles are easier to follow in some environments than others, but they still stand. For instance it is hard to hide implementation details in C, but a good programmer will not exploit them, because to do so makes the details part of th einterface and violates the principle of information hiding. Comments in header files, names with special forms (such as __iob), and so on are ways of encouraging good behavior when it cannot be enforced.
+
+    No matter what, there is a limit to how well we can do in designing an interface. Even the best interfaces of today may eventually become problems of tomorrow, but good design can push tomorrow off a while longer.
+
+
+
+*********************************************
+4.6 Resource Management
+*********************************************
+
+    One of the most difficult problems in designing the interface for alibrary (or a class or a package) is to manage resources that are owned by the library or that are shared by the library and those who call it. The most obvious such resource is memory--who is responsible for allocating and freeing storage?--but other shared resources include open files and the state of variables whose values are of common interest. Roughly, the issues fall into the categories of initialization, maintaining state, sharing and copying, and cleaning up.
+
+    The prototype of our CSV package used static initialization to set th einitial values for pointers, counts, and the like, But this choice is limiting since it prevents restarting the routines in their initial state once one of the functions has been called. An alternative is to provide an initialization function that sets all internal values to the correct initial values. This permits restarting, but relies on the user to call it explicitly, The reset function in the second versions could be made public for this purpose.
+
+    In C++ and Java, constructors are used to initialize data members of classes, Properly defined constructors ensure that all data members are initialized and that there is no way to create an uninitilaized class object. A group of constructors can support various kinds of initializers; we might provide Csv with one constructor that takes a file name and another that takes an input stream,
+
+    What about copies of information managed by a library, suhc as the inout lines and fields? Our C csvgetline program provides direct access to the input strings (line and fields) by returning pointers to them. This unrestricted access has several drawbacks. It is possible for the user to overwrite memory so as to render other information invalid; for example, an expression like:
+
+        strcpy(csvfield(1), csvfield(2));
+
+could fail ina  variety of ways, most likely by overwriting the beginning of field 2 if field 2 is longer than field 1. The user of the library must make a copy of any information to be preserved beyond the next call to csvgetline; in the following sequence, the pointer mught well be invalid at the end if the second csvgetline causes a reallocation of its line buffer:
+
+        char *p;
+    
+        csvgetline(fin);
+        p = csvfield(1);
+        csvgetline(find);
+        // p could be invalid here
+
+    The C++ version is safer because the strings are copies that can be changed at will. 
+
+    Java uses references to refer to objects, that is, any entity other than one of the basic types like int. This is more efficient than making a copy, but one can be fooled into thinking that a reference is a copy; we had a bug like that in an early version of our Java markov program and this issue is a prennial source of bugs involving strings in C. Clone methods provide a way to make a copy when necessary.
+
+    The other side of initialization or construction is finalization or destruction--cleaning up and recovering resources when some entity is no longer needed. This is particularly important for memory, since a program that fails to recover unsued memory will eventually run out. Much modern software is embarrasingly prone to this fault. Related problems occur when open files are to be cloes: if data is being buffered, the buffer may have to be flushed (and its memory reclaimed). For standard C library functions, flushing happens automatically when the program terminates normally, but it must otherwise be programmed. The C and C++ std function atexit provides a way to get control just before a program terminates normally; interface implementers can use this facility to schedule a cleanup.
+
+FREE A RESOURCE IN THE SAME LAYER THAT ALLOCATED IT:
+
+    One way to control resource allocation and reclamation is to have the same library, package, or interface that allocates a resource be responsbile for freeing it. Another way of saying this is that the allocation state of a resource shoulf not change accross the interface. Our CSV libraries read data from files that have alreadt been opened, so they leave them open when they are done. The caller of the library needs to close files.
+
+    C++ constructors and destructors help enforce this rule. When a class instance goes out of scope or is explicitly destroyed, the destructor is called; it can flush buffers, recover memory, reset values, and do whatever else is necessary. Java does not provude an equivalent mechanism. Although it is possible to define a finalization method for a class, there is no assurance that it will run at all, let alone at a particular time, so cleanup actions cannot be guaranteed to occur, although it is often reasonable to assume they will.
+
+    Java does provide considerable help with memory management because it has built-in garbage collection. As a program runs, it allocates new objects. There is no way to deallocate them explicitly, but the run-time system keeps track of which objects are still in use and which are not, and periodically returns unused ones to the available memory pool.
+
+    There are a variety of techniques for garbage collection. Some schemes keep track of the number of uses of each obejcts, its reference count, and free and object when its reference count goes to zero. Other algs periodically follow a trail from the allocation pool to all referenced objects. Objects that are found this way are still in use; objects that are not referred to by any othre object are not in use and can be reclaimed.
+
+    The existence of automatic garbage-collection does not mean that there are no memory-management ssues ina  design. We still have to determine whether interfaces return references to shared objects or copies of them, and this affects the entire porogram. Nor is garbage-collection free--there is overhead to maintain information and to reclaim unused memory, and collection may happen at unpredictable times,
+
+    All of these problems become more complicated if a library is to be used in an environment where more than one thread of control can be executing its routines at the same time, as in a multi-threaded Java program.
+
+    To avoid problems, it is necessary to write code that is reentrant, whicb means that it works regardless of the number of simultaneous executions. Reentrant code will avoid global variables, static local variables, and any other variable that could be modified while another thread is using it, The key to good multi-thread design is to separarate the components so they share nothung exvept through well defined interfaces. Libraries that inadvertently expose variables to sharing destroy the model. (In a multi-thread program, strtok is a disaster, as are other functions in the C library that store values in internal static memory.) If variables might be shared, they must be protected by some kind of locking mechanism to ensure that only one thread at a time accesses them. Classes are a big help here because they provide focus for discussing sharing and locking models. Synchronized methods in Java provide a way for one thread to lock and entire class or instance of a class against simultaneuous modification by some other thread; synchronized blocks permt only one thread at a time to execute a section of code.
+
+    Multi threadding adds a significant complexity to programming issues, and it is too big a topic for us to discuss in detail here.
+
+
+*********************************************
+4.7 Abort, Retry, Fail?
+*********************************************
+
+    
