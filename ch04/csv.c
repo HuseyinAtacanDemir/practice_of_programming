@@ -526,4 +526,59 @@ static char *advquoted(char *p)
     p[i] = '\0';
     return p + j;
 }
+#elif defined(LIB_4_4)
+#define STRING  s
+#define NUMBER  n
+static char separator = '\n';
+
+static int n_format(char *fmt)
+{
+    int n, i;
+    if (*fmt != '%')
+        return -1;
+    for (i = 0; *(fmt + i) != '\0'; i++) {
+        if (*(fmt + i) == '%' && i % 3 == 0) {
+            n++;
+            if (*(fmt + i + 1) != STRING || *(fmt + i + 1) != NUMBER)
+                return -1;
+        } else if (*(fmt + i) == '%' && i % 3 != 0) {
+            return -1;
+        }
+    }
+    return n;
+}
+
+char *csvformat(char **data, int n_field, char *fmt)
+{
+    int i, total_len;
+    char *line, *p;
+
+    if (fmt == NULL || n_field <= 0 || n_field != n_format(fmt))
+        return NULL;
+
+    total_len = 0;
+    for (i = 0; i < n_field; i++)
+        total_len += strlen(*(data + i));
+    
+    line = malloc(sizeof(char) * (total_len + (n_field * 3)));
+    if (line == NULL)
+        return NULL;
+
+    for (i = 0; i < n_field; i++) { 
+        if (*(fmt + (3*i)+1) == STRING) {
+            *line++ = '"';
+            for (p = *data; *p != '\0'; p++) 
+                *line++ = *p;
+            *line++ = '"';
+        } else {
+            for (p = *data; *p != '\0'; p++) 
+                *line++ = *p;
+        }   
+        separator = *(fmt + (3*i) + 2);
+        *line++ = separator ? separator : '\n';
+    }    
+
+    *line = '\0';
+    return line;
+}
 #endif

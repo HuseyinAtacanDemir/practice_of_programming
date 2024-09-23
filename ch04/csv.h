@@ -33,7 +33,7 @@ extern char *csvfield   (int n); // return field n
 extern int  csvnfield   (void); // return # of fields
 extern void destroy     (void); // free up resources
 #elif defined(LIB_4_4)
-
+extern char *csvformat(char **data, int n_field, char *fmt)
 #endif
 
 #endif
