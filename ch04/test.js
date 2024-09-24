@@ -5,7 +5,7 @@ const fs = require('fs');
 let numRuns = 5;
 let forceFetch = false;
 let debug = false;
-const macros = ['PROTO', 'LIB', 'LIB_4_1', 'LIB_4_3']; // Example macros
+const macros = ['PROTO', 'LIB', 'LIB_4_1', 'LIB_4_3', 'CPP', 'CPP_4_5']; // Example macros
 const bold = "\033[1m";
 const normal = "\033[0m";
 
@@ -29,11 +29,19 @@ if (forceFetch || !fs.existsSync('data.csv')) {
 
 // Compile C programs
 macros.forEach(macro => {
-  let command = "gcc -Wall";
-  if (debug)
-    command += " -g";
-  command += ` -D${macro} csv.c test.c -o test_${macro}`;
-  runCommand(command);
+  let command = "";
+  if (macro.includes('CPP')) {
+    command = "g++"
+    if (debug)
+      command += " -g";
+    command += ` -D${macro} csv.cpp test.cpp -o test_${macro}`;
+  } else {
+    command = "gcc -Wall";
+    if (debug)
+      command += " -g";
+    command += ` -D${macro} csv.c test.c -o test_${macro}`;
+  }
+   runCommand(command);
 });
 
 // Store run times for each macro
