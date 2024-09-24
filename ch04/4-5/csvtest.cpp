@@ -9,7 +9,7 @@ int main(void)
     while (csv.getline(line) != 0) {
         cout << "line = '" << line << "'\n";
         for (int i = 0; i < csv.getnfield(); i++)
-            cout << "field[" << i << "] = '" << csv.getfield(i) << "'\n";
+            cout << "field[" << i << "] = '" << csv[i] << "'\n";
     }
     return 0;
 } 
