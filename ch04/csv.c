@@ -8,10 +8,16 @@ char *field[20];       // fields
 // unquote: remove leading and trailing quote
 char *unquote(char *p)
 {
+    char *q;
     if (p[0] == '"') {
         if (p[strlen(p) - 1] == '"')
             p[strlen(p)-1] = '\0';
         p++;
+    }
+    while (p[0] == ' ')
+      p++;
+    for (q = p + strlen(p)-1; *q == ' ' && q >= p; q--) {
+        *q = '\0';
     }
     return p;
 }
@@ -138,13 +144,16 @@ static int endofline(FILE *fin, int c)
 // split: split line into fields
 static int split(void)
 {
-    char *p, **newf;
-    char *sepp;      // ptr to temp separator char
-    int sepc;         // temp spearator char
+    char  *p, **newf;
+    char  *sepp;      // ptr to separator char
+    int   sepc;       // temp separator char
+    int   pre_ws;     // trailing white space count in prefix
+    int   post_ws;    // trailing white space count in postfix
+    nfield =  0;
 
-    nfield = 0;
     if (line[0] == '\0')
         return 0;
+
     strcpy(sline, line);
     p = sline;
 
@@ -161,8 +170,17 @@ static int split(void)
             sepp = advquoted(++p);    // skip initial quote
         else
             sepp = p + strcspn(p, fieldsep);
-        sepc = sepp[0];
-        sepp[0] = '\0';               // terminate field
+        sepc = *sepp;
+        
+        for (pre_ws = 0; *(p + pre_ws) == ' '; pre_ws++)
+            ;
+        for (post_ws = 0; *(sepp-post_ws) == ' '; post_ws++)
+            ;
+        *(sepp-post_ws) = '\0';               // terminate field
+        *sepp = '\0'; // overwrite separator
+        if (pre_ws > 0)
+            memmove(p, p+pre_ws, (sepp-post_ws-p));       
+        
         field[nfield++] = p;
         p = sepp + 1;
     } while (sepc == ',');

@@ -5,7 +5,7 @@ const fs = require('fs');
 let numRuns = 5;
 let forceFetch = false;
 let debug = false;
-const macros = ['PROTO', 'LIB', 'LIB_4_1', 'LIB_4_3', 'CPP', 'CPP_4_5']; // Example macros
+const macros = ['PROTO', 'LIB', 'LIB_4_1', 'LIB_4_3']; // Example macros
 const bold = "\033[1m";
 const normal = "\033[0m";
 
