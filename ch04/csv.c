@@ -67,7 +67,8 @@ char *csvgetline(FILE *fin)
     char *newl, *news;
 
     if (line == NULL) {           // allocate on first call
-        maxline = maxfield = 1;
+        maxline = 512;
+        maxfield = 32;
         line = (char *) malloc(maxline);
         sline = (char *) malloc(maxline);
         field = (char **) malloc(maxfield*sizeof(field[0]));
@@ -245,7 +246,8 @@ char *csvgetline(FILE *fin)
     is_line_split = false;
 
     if (line == NULL) {           // allocate on first call
-        maxline = maxfield = 1;
+        maxline = 512;
+        maxfield = 32;
         line = (char *) malloc(maxline);
         sline = (char *) malloc(maxline);
         field = (char **) malloc(maxfield*sizeof(field[0]));
@@ -402,8 +404,8 @@ int init(int n_line, int n_field)
 {
     if (!is_initialized) {           // initialize data structures
         is_initialized = true;
-        maxline = n_line ? n_line : 1;
-        maxfield = n_field ? n_field : 1;
+        maxline = n_line ? n_line : 512;
+        maxfield = n_field ? n_field : 32;
         line = (char *) malloc(maxline);
         sline = (char *) malloc(maxline);
         field = (char **) malloc(maxfield*sizeof(field[0]));

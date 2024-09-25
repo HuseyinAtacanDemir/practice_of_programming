@@ -34,6 +34,13 @@ extern int  csvnfield   (void); // return # of fields
 extern void destroy     (void); // free up resources
 #elif defined(LIB_4_4)
 extern char *csvformat(char **data, int n_field, char *fmt)
+#elif defined(LIB_4_8)
+typedef struct CSV CSV;
+
+extern CSV  *csvnew     (FILE *f, int n_line, int n_field, char *field_sep);
+extern char *csvgetline (CSV *csv);
+extern char *csvfield   (CSV *csv, int n);
+extern int  csvnfield   (CSV *csv);  
 #endif
 
 #endif

@@ -29,7 +29,22 @@ int main(void)
     destroy();
     return 0;
 }
+#elif defined(LIB_4_8)
+int main(void)
+{
+    int i;
+    char *line;
+    CSV *csv;
 
+    csv = csvnew(stdin, 0, 0, NULL);
+    while ((line = csvgetline(csv)) != NULL) {
+        printf("line: '%s'\n", line);
+        for (i = 0; i < csvnfield(csv); i++)
+            printf("field[%d] = '%s'\n", i, csvfield(csv, i));
+    }
+    return 0;
+
+}
 #else
 int main(void)
 {

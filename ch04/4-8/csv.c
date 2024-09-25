@@ -599,4 +599,185 @@ char *csvformat(char **data, int n_field, char *fmt)
     *line = '\0';
     return line;
 }
+
+#elif defined(LIB_4_8)
+#include <stdlib.h>
+
+enum { NOMEM = -2, ALREADY_INITIALIZED = -3 };         
+
+struct CSV {
+    FILE  *fin;
+    int   maxline;     
+    int   maxfield;     
+    int   nfield;   
+    char  *line;  
+    char  *sline;  
+    char  **field;  
+    char  *fieldsep;
+};
+
+static int    endofline   (FILE *fin, int c);
+static int    split       (CSV *csv);
+static char   *advquoted  (char *p, char *field_sep);
+static void   reset       (CSV *csv);
+
+CSV *csvnew(FILE *fin, int n_lines, int n_field, char *field_sep)
+{
+    CSV *csv;
+    csv = (CSV *) malloc(sizeof(CSV));
+    csv->fin = fin;
+    csv->maxline = n_lines ? n_lines : 512;
+    csv->maxfield = n_field ? n_field : 32;
+    csv->nfield = 0;
+    csv->fieldsep = field_sep != NULL ? field_sep : ",";
+    
+    csv->line = NULL;
+    csv->sline = NULL;
+    csv->field = NULL;
+
+    return csv;
+}
+
+// csvgetline: get one line, grow as needed
+// sample input: "LU",86.25,"11/4/1998","2:19PM",+4.0625
+char *csvgetline(CSV *csv)
+{
+    int i, c;
+    char *newl, *news;
+
+    if (csv->line == NULL) {           // allocate on first call
+        csv->maxline = csv->maxfield = 1;
+        csv->line = (char *) malloc(csv->maxline*sizeof(char));
+        csv->sline = (char *) malloc(csv->maxline*sizeof(char));
+        csv->field = (char **) malloc(csv->maxfield*sizeof(csv->field[0]));
+        if (csv->line == NULL || csv->sline == NULL || csv->field == NULL) {
+            reset(csv);
+            return NULL;
+        }
+    }
+    for (i=0; (c=getc(csv->fin))!=EOF && !endofline(csv->fin,c); i++) {
+        if (i >= csv->maxline-1) {     // grow line
+            csv->maxline *= 2;         // double current size
+            newl = (char *) realloc(csv->line, csv->maxline);
+            news = (char *) realloc(csv->sline, csv->maxline);
+            if (newl == NULL || news == NULL) {
+                reset(csv);
+                return NULL;
+            }
+            csv->line = newl;
+            csv->sline = news;
+        }
+        csv->line[i] = c;
+    }
+    csv->line[i] = '\0';
+    if (split(csv) == NOMEM) {
+        reset(csv);
+        return NULL;
+    }
+    return (c == EOF && i == 0) ? NULL : csv->line;
+}
+
+// csvfield: return ptr to the n-th field
+char *csvfield(CSV *csv, int n)
+{
+    if (n < 0 || n >= csv->nfield)
+        return NULL;
+    return csv->field[n];
+}
+
+// csvnfield: return number of fields
+int csvnfield(CSV *csv)
+{
+    return csv->nfield;
+}
+
+// reset: set variables back to starting values
+static void reset(CSV *csv)
+{
+    free(csv->line);
+    free(csv->sline);
+    free(csv->field);
+    csv->line = NULL;
+    csv->sline = NULL;
+    csv->field = NULL;
+    csv->maxline = csv->maxfield = csv->nfield = 0;
+}
+
+// endofline: check for and consume \r, \n, \r\n, or EOF
+static int endofline(FILE *fin, int c)
+{
+    int eol;
+
+    eol = (c=='\r' || c=='\n');
+    if (c == '\r') {
+        c = getc(fin);
+        if (c != '\n' && c != EOF)
+            ungetc(c, fin); // read too far, put c back
+    }
+    return eol;
+}
+
+// split: split line into fields
+static int split(CSV *csv)
+{
+    char  *p, **newf;
+    char  *sepp;      // ptr to separator char
+    int   sepc;       // temp separator char
+    csv->nfield =  0;
+
+    if (csv->line[0] == '\0')
+        return 0;
+
+    strcpy(csv->sline, csv->line);
+    p = csv->sline;
+
+    do {
+        if (csv->nfield >= csv->maxfield) {
+            csv->maxfield *= 2;          // double current size
+            newf = (char **) realloc(csv->field,
+                        csv->maxfield * sizeof(csv->field[0]));
+            if (newf == NULL)
+                return NOMEM;
+            csv->field = newf;
+        }
+        if (*p == '"')
+            sepp = advquoted(++p, csv->fieldsep);    // skip initial quote
+        else
+            sepp = p + strcspn(p, csv->fieldsep);
+        sepc = *sepp;
+        
+        for ( ; *p == ' '; p++)
+            ;
+        for ( ; *sepp == ' '; sepp--)
+            ;
+        *sepp = '\0'; // overwrite separator       
+        
+        csv->field[csv->nfield++] = p;
+        p = sepp + 1;
+    } while (sepc == ',');
+    
+    return csv->nfield;
+}
+
+
+// advquoted: quoted field; return ptr to next separator
+static char *advquoted(char *p, char *field_sep)
+{
+    int i, j;
+
+    for (i = j = 0; p[j] != '\0'; i++, j++) {
+        if (p[j] == '"' && p[++j] != '"') {
+            // copy up to next separator or \0
+            int k = strcspn(p+j, field_sep);
+            memmove(p+i, p+j, k);
+            i += k;
+            j += k;
+            break; 
+        }
+        p[i] = p[j];
+    }
+    p[i] = '\0';
+    return p + j;
+}
+
 #endif

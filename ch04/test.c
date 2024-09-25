@@ -20,7 +20,7 @@ int main(void)
     char *line;
     // with prior knowledge of exact field count 
     // but only heuristic knowledge of  max field length
-    init(256, 8);
+    init(0, 0);
     while ((line = csvgetline(stdin)) != NULL) {
         printf("line: '%s'\n", line);
         for (i = 0; i < csvnfield(); i++)
