@@ -459,4 +459,54 @@ produced exactly five lines of output:
   5.7 Other People's Bugs 
 ************************************* 
 
+  Realistically, most programmers do not have the fun of developing a brand new system from the ground up. Instead, they spend much of their time using,maintaining, modifying, and thus, inevitably, debugging code written by other people.
+
+    When debugging others' code. everything that we have said about how to debug your own code applies. Before starting, though, you must first acquire some understanding of how the program is organized and how the original programmers thought and write. The term used in one very large software project is "discovery", which is not a bad metaphor. The task is discovering what on earth is going on in something that you did not write.
+
+    This is a place where tools can help significantly. Text search programs like grep can find all the occurences of names. Cross references give some idea of the programs structure. A display of the graph of cuntion calls is valuavle if it is not too big. Stepping through a program a function call at a time with a debuger can reveal the sequence of events. A revision history of the program may give some clues by showing what has been done to the program over time. Frequent changes are often a sign of code that is poorly understood or subject to changing requirements, and thus potentially buggy.
+
+    Sometimes you need to track down errors in software you are not reponsible for and do not have the source code for. In that case, the tas is to identify and characterize the bug sufficiently well that you can report it accurately, and at the same time perhaps find a "work around" that avoids the rpoblem.
+
+    If you think that you have found a bug in someone else's program, the first step is to amke absolutely sure it is a genuine bug, so you don't wste the author's time and lose your own credibility.
+
+    When you find a compiler bug, make sure that the error is really in the compiler and not in your own code, For example, whether a right shift opeartion fills with zero bits (logical shift) or propagates the sign bit (arithmetic shift) is unspecified in C and C++, so novices sometimes think it is an aerror if a construct like
+?       i = -1;
+?       printf("%d\n", i >> 1);
+yields an unexpected answer. But this is a protability issue, because this statement can legitimately behave differently on different systems, Try your test on multiple systems and be sure you understand what happes; check the laguage definition to be sure.
+
+    Make sure the bug is new. Do you have the latest version of the program? Is there a list of bug fixes? Most software goes through multile releases; if you find a bug in version 4.0b1, it might well be fixed or replaced by a new one in version 4.04b2. In any case, few programmers have much enthusiasm for fixing bugs in anything but the current version of a program.
+
+    Finally, put yourself in the shoes of the person who receives your report, You want to provide the owner with as good a test case as you canmanage, It is not very helpful if th ebug can be demosntrated only with large inputs, or an elaborate environment, or multiple supporting files. Strip the test down to a minimal and self contained case. Include other information that could possible be relevant, like the version of the program itself, and of th ecompiler, OS, and hardware. For the buggy version of isprint mentioned in section 5.4,w e could provide this as a test program:
+
+        // test program for isprint bug
+        int main(void)
+        {
+            int c;
+  
+            while (isprint(c = getchar()) || c != EOF)
+                printf("%c", c);
+            return 0;
+        }
+
+    Any line of printable text will serve as a test case, since the outpu will contain only half the input:
     
+        % echo 1234567890  | isprint_test
+        24680
+        %
+
+    The best bug reports are the ones that need only a line or two of input on a plain vanilla system to demonstrate the fault, and that include a fix. Send the kind of bug report you'd like to receive yourself.
+
+
+************************************* 
+  5.8 Summary 
+************************************* 
+
+    With the right attitude debuggin can be fun, like solving a puzzle, but whether we enjoy it or not, debugging is an art that we will practice regulary. Still, it would be nice if bugs did not happen, so we try to avoif them by writing code well int he first place. Well written code has fewer bugs to begin with and those that remain are easier to find.
+
+    ONce a bug has been seen, the first thing to do is to think hard about thw clues it presents, How could it have come about? Is it something familiar? Was soemthing just changed in the program? Is there somehing special about the input data that provoked it? A few well chosen test cases and a few print statements in the code may be enough.
+
+    If there are not good clues, hard thinkinh is still the best first step, to be followed by systematic attempts to narrow down the location of the problem, One step os cutting downt he input data to make a small input that fails; another is cutting out code to eliminate regions that cannot be realted. It is possbile to insert checking code that gets turned on only after the program has executed some number of steps, again to try to localize the problem. All of these are instances of a general strategy, divide and conquer, which is as effective in debugging as it is in politics and war.
+
+    Use other aids as well, Explaining your code to someone else (even a teddy bear) is wonderfullt effective. Use a debugger to get a stack trace. Use some of the commercial tools that check for memory leaks, array bound violations, suspect code, and the like. Step through yuor program when it has beocome clear that you have the wrong mental picture of how the code works.
+
+    Know youself, and the kinds of errors you make. Once you have found and fixed a bug, make sure that you eiminate other bugs that might be similar, Think about what happened so you can avoid making that kind of mistake again.
