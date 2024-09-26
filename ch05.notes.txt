@@ -1,0 +1,462 @@
+**********************************
+**********************************
+  Chapter 5: Debugging
+**********************************
+**********************************
+
+        bug.
+            b. A defect or fault in a machine, plan, or the line. orig. U.S. 1889 Pall Mall Gaz. 11 Mar. 1/1 Mr. Edison, I was informed, had been up the two previous nights discovering 'a bug' in his phonograph--an expression for solving a difficulty, and implying that some imaginary insect has secreted itself inside and is causing all the trouble.
+                  Oxford English Dictionary, 2nd edition
+
+
+    We have presented a lot of code in the past four chapters, and we have pretended that it all pretty much worked the first time. Naturally, this was not true; there were plenty of bugs. The word "bug" did not originate with programmers, but it is certainly one of the most common terms in computong. Why should software be so hard?
+
+    One reason is that the complexity of a program is related to the number of ways that its components can interact, and sofwtare is full of components and interactions. Many techniques attempt to reduce the connections between components so there are fewer pieces to interact; examples include information hiding, abstraction and interfaces, and the language features that support them. There are also techniques for ensuring the intergrity of a software design--program proofs, modeling, requirements analysis, formal verification--but none of these has yet changed the way software is built; they have been successful only on small problems. The reality is that there will always be errors that we find by testing and eliminate by debugging.
+
+    Good programmers know that they soend as mucgh time debugging as writing so they try to learn from theur mistakes. Every bug you find can teach you how to prevent a similar bug from happening again ot to recognize it if it does.
+
+    Debugging is hard and can take long and unpredictable amounts of time, so the goal is to avoid having to do much of it. Techniques that help reduce debugging time include good desing, good style, boundary coundition tests, assertions and sanity checks in the code, defensive programming, well-designed interfaces, limited global data, and checking tools. An ounce of prevention really is worth a pound of cure.
+
+    What is the role of language? A major deature in evolution of programming languages has been the attept to prevent bugs through language features. Some features make classes of errors less likely: range checking on subscripts, restricted pointers or no pointers at all, garbage collection, string data types, typed IO, adn strong type checking. On the opposite side of the coin, some features are prone to error, like goto statements, global variables, unrestricted pointers, and automatic type conversions. Programmers should know the potentially risky buts of their languages and take extra care when using them, They should also enable all compiler checks and heed the warnings.
+
+    Each language feature that prevents some problem has a cost of its own. If a higher level language makes the simple bugs dusappear automatically, the price is that it makes it easier to create higher level bugs. No language revents you from making mistakes.
+
+    Even though e wish it were the oposie, a mojority of programming time is sent testing and debugging. In this chapter, we will discuss how to make yuor debugging time as short and productive as possible; we will come back to testing in Chapter 6.
+
+************************************* 
+  5.1 Debuggers
+************************************* 
+
+    Compilers for major languages usually come with sophisticated debuggers, often packaged as part of a development environment that integrates creation and editing of source code, compilation, execution, and debugging, all in a single system. Debuggers include graphical interfaces for stepping through a program one statement ot function at a time, stopping at particular lines or when a specidif condition occurs. They also provide facilities for formatting and dislplaying the values of variables.
+
+    A debugger can be invoked directly when a problem is known to exist. Somw debuggers take over automatically when something unexpectedly goes wrong during program execution. It's usually easy to find out where the program was executing when it died, examine the sequence of functions that were active (stack trace) and display the values of local and global variables. That much information may be sufficient to identify a bug. If not, breakpoints and stepping make it possible to re-run a failing program one step at a time to find the first place where something goes wrong.
+
+    In the right environment and in the hands of an experienced user, a good debugger can make debugging effective and efficient, if not exactly painless. With such powerful tools at one's disposal, why would anyone ever debug without the? Why do we need a whole chapter on debugging?
+
+    There are several good reasons, some objective and some based on personal experience. Some languages outside the mainstream have no debugger or provide only rudiemntary debugging capabilities. Debuggers are system-dependent, so you may not have access to the familiar debugger from one system when you work on another. Some programs are not handled well by debuggers: multi process or multi thread programs operating systems, and distributed systems must often be debugged by lower level approaches. in such situations you are on your own, without much help besides print statements and your own experience and ability to reason about the code.
+
+    As a personal advice, we tend not to use debuggers beyond getting a stack trace or the value of a variable or two. One reason is that it is easy to get lost in details of complucated data structures and control flow. we find stepping through a program less productive than thinking harder and adding output statements and self checking code at critical places. Clicking over statments takes longer than scanning the output of judiciously places displays. It takes less time to decide where to put print statements than to singlw step to the critical section of code, even assuming we know where that is. More important debugging statements stay with the program, debugger sessions are transient.
+
+    Blind probing with a debugger is not likely to be productive, It is more helpful to use the debugger to discover the state of the program when it fails, then think about how the failure could have happened, Debuggers can be arcane and difficult programs, and especially for beginners may provide more confusion than help. If you ask the wrong question they will probably give you an answer but you may not know it is misleading.
+
+    A debugger can be of enourmous value, however, and you should certainly include one in your debugging toolkit; it is likely to be the frist thing you turn to. But if you do not have a debugger or if you are stuck on an especially hard problem, the techniques in this chapter will help you to debug effectively and efficiently anyway. They should make your use of your debugger more productive as well, since they are largely concerned with how to reason about errors and probable causes.
+
+ 
+************************************* 
+  5.2 Good Clues, Easy Bugs 
+************************************* 
+
+    Oops! Somwthing is badly wrong. My program crashed,  or printed nonsense, or seems to be running forever. Now what?
+
+    Beginners have a tendency to blame the compiler, the library, or anything other than their own code. Experienced programmers would love to do the same, but they know that, realistically, most problems are their own fault.
+
+    Fortunately, most bugs are simple and can be found with simple techniques. Examine the evidence in the erronous output and try to infer how it could have beenproduced. Look at any debugging output before the carsh; if possible get a stack trace from a debugger. Now yyou know something of what happened, and where. Pause to reflect. How could that happen? Reason back from the state of the crashed program to determine what could have cuased this.
+
+    Debugging involves backwards reasoninig, like solving murder mysteries. Sometthing impossible occurred, and the only solid information os that it really did occur. Se we must think backwards from the result to discover the reasons, Once wehave a full explanation we will know what to fix and along the way likely discover a few other things we had not expected.
+
+LOOK FOR FAMILIAR PATTERNS:
+
+    Ask yourself whether thsis is a familiar patter: "I have seen that before" is often the beginning of understanding, or even the whole answer. Common bugs have distinctive signatures. For instance, nopvice C programmers often write:
+
+?       int n;    
+?       scanf("%d", n);
+
+instead of
+        int n;
+        scanf("%d", &n);
+and this typically causes an attempt to acces out of bounds memory when a line of input is read. People who teach C recognize the symptom instantly.
+
+    ismatched types and conversions in printf and scanf are an endless source of easy bugs:
+
+?       int n = 1;
+?       double d = PI;
+?       printf("%d %f\n", d, n);
+
+    The signature of this error is sometimes the appereance of preposterous values: huge integers or improbably large or small floating point values, On a sun SPARC the output from this program is a hige number and an astronomical one (folded to fi)
+
+1074340347 26815615859885200153410879426023339635019365859717932180477149637953077886114805641400796821289594743537151163524101175474084764156422771408323839623430144.000000
+
+    Another common error is using %f instead of %lf to read a double with scanf. Some compilers catch such mistakes by verifying that the types of scanf and printf arguents atch their format strings; if all warnings are neabled, for the printf above, the GNU compiler gcc reports that:
+
+        x.c:9: warning: intformat, double arg (arg 2)
+        x.c:9: warning: double format, different type arg (arg 3)
+
+    Failing to initialize a local variable gives ruse to another distinctive errr. The result is often an exteremely large value, the garbage lefr over from whatever previous value swas stored in the same memory lcoation. Some compilers will warn you, though you may have to enable the compile time check, and they can never catch all cases. Memory returned by allocators like malloc realloc and new is likely to be garbage too; just be sure to initialize it.
+
+EXAMINE THE MOST RECENT CHANGE
+
+    What was the last change? If you are changing only one thing at a time as a program evolves, the bug most likely is either in the new code or has been exposed by it. Looking carefully at recent changes helps to localize the problem. If the bug appears int he new version and not in the old, the new code is part of the problem. This means that you shoul pres4rve at least the previous version of the progra, which you believe to be correct, so that you can compare behaviors. It also means that you should keep records of changes made and bugs fixed, so you do not have to rediscover this vital information while you are trying to fix a bug. Source code control systems and other history mechanisms are helpful ehre.
+
+DO NOT MAKE THE SAME MISTAKE TWICE
+
+    After you fux a bug, ask whether you mught ahve made the same mistake somwhere else. This happened to one of us just days before beginnig to write this chapter, The pgoram was a quick prottoype for a colleague, and included some biolerplate for optional argumens:
+
+
+?       for (i = 1; i < argc; i++) {
+?           if (argv[i][0] != '-')
+?               break;
+?           switch (argv[i][1]) {
+?           case 'o':
+?               outname = argv[i];
+?               break;
+?           case 'f':
+?               from = atoi(argv[i]);
+?               break;  
+?           case 't':
+?               to = atoi(argv[i]);
+?               break
+?           ...
+
+    Shortly after our colleague tried it, he reported that the output file anme always had a prefix -o attached to it. This was embarrasing but easy to repair; the code should have read
+        outname = &argv[i][2];
+
+    So that was fixed up and shipped off, and back came another report that the program failed to handle an argument like -f123 properly: the converted numeric value was always zero. This is the same error; the next case in the switch should have read:
+        from = atoi(&argv[i][2]);
+
+    Because the author was still in a hurry, he failed to notice that the same blunder occurred twice more and it took another round before all of thefundamentally identical errors were fixed.
+
+    Easy code can have bugs if its familiarity causes us to let down our guard. Even when code is so simple you could write it in your sleep, do not fall asleep while writing it.
+
+DEBUG IT NOW NOT LATER
+
+    Being in too much of a hurry can hurt in other situations as well. Do not ignore a crash whenit happens track ti down right away since it may not happen again until it is too late. A damous example occurred ont he Mars Pathfinder mission. After the flawless landing in July 1997 the spacecraft's computers tended to reset once a day or so, and the engineers were baffled. Once they tracked down the problem, they realized that they had seen that problem eofre. Durin pre-laucnh tests the resets had occurred but had been ignored because the engineers were working on unrelated problems. So they were forced to deal with the problem later when the machine was tens of millions of miles away and much ahrder to fix.
+
+GET A STACK TRACE
+
+    Although debuggers can probe running programs, one of hteur most ocmmon uses is ro examine the state of a program after death. THe source line number of the failure often part of a stack trace, is the most useful sinel piece of debugging information; improbable values of arguments are also a big clue (zero pointers, integers that are huge when they hould be small, or negative when yhey should be positive, character strings that are not alphabetic).
+
+    Here is a typical example, based on the discussion of sirting in Chapter 2. To sort and array of ints we should call qsort with the integer comparison function icmp:
+
+        int arr[N];
+        qsort(arr, N, sizeof(arr[0]), icmp);
+but suppose it is inadvertantly passed the name of the string comparison fn scmp instead:
+?       int arr[N];
+?       qsort(arr, N, suzeof(arr[0]), scmp);
+
+    A compiler cannot detect a mismatch of types here, so disaster awaits. When we run the program, it crashes by attempting to access an illegal memory location. Running the dbx debugger produces a stack trace like this:
+
+0 strcmp(0xla2, 0xlc2) ["strcmp.s":31]
+1 scmp(pl = 0x10001048, p2 = 0x1000105c) ["badqs.c":13]
+2 qst(0x10001048, 0x10001074, 0x400b20, 0x4) ["qsort.c":147] 
+3 qsort(0x10001048, 0xlc2, 0x4, 0x400b20) ["qsort.c":63]
+4 mainO ["badqs.c":45]
+5 __istart() ["crtltinit.s":13]
+
+    This says that the program died in strcmp; by inspection, the two pointers passde to strcmp are much too small, a clear sign of trouble. the stack trace gives a trail of line numbers where each fn was called, Line 13 in our test file badqs.c is the call
+        return strcmp(v1, v2);
+which identifies the failing call and points towards the error.
+    
+    A debugger can also be used to display values of local or global variables that will give additional information about what wne wrong.
+
+READ BEFORE TYPING
+
+    One effective but under appreaciated debugging technique is to read the code very carefully and think about it for a while without making changes. There is a powerful urge to get tot he keyboard and start modifying the program to see if the bug goes away. But chances are that you do not know what is really broken and will change the wrong thing, perhaps breaking something else. A listing of the critical part of program on paper can give a different perspective than what you see on the screen, and encourages you to take more time for reflection. Do not make listings as a matter of routine, though. Printing a complete program wastes trees since it is hard to see the strcuture when it is spread across many pages and the listing will be obsolete the moment you start editing again.
+
+    Take a  break for a while; sometimes what you see in the source doe is what yo meant rather than what you wrote, and an interval away from it can soften you misconceptions and help the code speak for itself when you return.
+
+    Resist the urge to start typing: thinking is a worthwhile alternative.
+
+
+************************************* 
+  5.3 No Clues, Hard Bugs 
+************************************* 
+
+   "I haven't got a clue. What on earth is going on?" IF you really haven't got any idea what could be wrong, life gets tougher.
+
+MAKE THE BUG REPRODUCIBLE:
+
+    The first step is to make sure you can make the bug appear on demand. It is frustrating to chase down a bug that does not happen every time. Spend some time constructing input and parameter settings that reliably cause the problem, then wrap up the recipe so it can be run with a button push or a few keystrokes. If it is a hard bug, you will be making it happen over and over as you track downt he problem, so you will save yourself time by making it easy to reproduce.
+
+    If the bug cannot be made to happen every time, try to understand why not. Does some set of conditions make it happen more often than others? Even if you cannot make it happen every time, if you can decrease the time spent waiting for ti, you will find it faster.
+  
+    If a program provides debugging output, enable it. Simulation programs like the Markov chain program in CHapter 3 should include an option that produces debugging information such as the seed fo the random number generator so that output can be reproduces; another option should allow for setting the seed. Many programs include such options and it is a good idea to include similar facilities in your own programs.
+
+DIVIDE AND CONQUER
+
+    Can the input that causes the program to fail be made smaller o more focused? Narrow down the possibilities by creating the smallest input where the bug still shows up. What changes make the error go away? Try to find crucial test cases that fovus on the error. Each test case should aim at a definitive outcome that confirms or denies a specific hypothesis about what is wrong.
+
+    Proceed by binary search. Throw away half the input and see if the output is still wrong; if not, go back to the previous state and discard the other half of the input. The same binary search process can be used on the program text itself: eliminate some part of the program that should have no relationship to the bug and see if the bug is still tehre. An editor with undo is helpful in reducing test cases and ig programs without loosing the bug.
+
+STUDY THE NUMEROLOGY OF FAILURES
+
+    Sometimes a pattern in the numerology of failing examples gives a clue that focueses the search. We found some spelling mistakes in a newly written section of this bookk, where occasional letters had simply disappeared. This was mystifying. Teh text had been created by cutting and pastign from another file, s it seemed possible that something was wrong with the cut or paste commands in the text editor. But where to start looking for the problem? For clues we looked at the data, and noticed that the missing characters seemed uniformly distributed through the text. We measured the intervals and found that the distance between dropped characters was always 1023 bytes, a suspiciously non random value. A search through the editor source code for numbers near 1024 found a couple of candidates. On eof those was in new code, so we examined that first, and the bug was easy to spot, a classic off-by-one error where a null byte overwrote the last character in a 1024-byte buffer.
+
+    Studying the patterns of numbers related to the failure pointed us right at the bug. Elapsed time? A couple of minutes of mysification, five minutes of looking at the data to discover the patterns of missing charactes, a minute to search for likely places to fix, and another minute to identify and eliminate the bug. This one would have been hopeless to find with a debugger, since it involved two multiprocess programs, driven by mouse clicks, communicating through a file sytem.
+
+DISPLAY OUTPUT TO LOCALIZE YOUR SEARCH
+
+    If you do not understand what the program is doing, adding statements to display more information can be the easiest, most cost effective way to find out. Put them in to verify your understanding or refine tour ideas of what is wrong. For example, display :can not get here: if you think it is not possible to reach a certain point in the code; then if you see that message, move the output statements back towards the start to figure out where things first begin to go wrong. Or show :got here: messages going forward, to find the last palce where things seem to be working. Each message should be distinc so you can tell which one you are looking at.
+
+    Display messages ina compact fixed format so they are easy to scan by eye or with programs like the pattern matching tool grep. If you are displaying the value of a variable, format it the same way each time. In C and C++ show pointers as hex numbers with %x or %p this will help you to see whether two pointers have the same value or are related. Learn to read pointer values and recognize likely and unlikely ones, like zero, megative numbers, odd numbers, and small unmbers, Familiarity with the form of addresses will pay off when you are using a debugger too.
+
+    If output is potentially voluminous it might be sufficient to print single letter outputs like A B ... as a compact display of where the program went.
+
+ERITE SELF CHECKING CODE
+
+    If more information is needed, you can write your own check function to test a condition, dumo relevant variables, and abort the program:
+
+        // check: test condition, print and die
+        void check(char *s)
+        {
+            if (var1 > var2) {
+                printf("%s: var1 %d var2 %d\n", s, var1, var2);
+                fflush(stdout); // make sure all output is out
+                abort();        // signal abnormal termination
+            }
+        } 
+
+    We wrote check to call abort, a standard C library function taht causes program execution to be terminated abnormally for analysis with a debugger. In a different application, you might want check to carry on after printing.
+
+    Next, add calls to check wherever they might be useful in your code:
+
+        check("before suspect");
+        // .... suspect code......
+        check("after suspect");
+
+    After a bug is fixed, don't throw check away, Leave it in the source, commented out or controlled by a debugging option, so taht it can be turned on again when the next difficult problem appears.
+
+    For harder problems, check might evolve to do verification and display of data structures. this approach can be generalized to routines that perform ongoing consistency checks of data structures and other information. In a program with intricate data structures, it is a good idea to write these checks before problems happen, as components of the porgram proper, so they can be turned on when trouble starts. Do not use them only when debugging, leave them installed during all stages of program develipment. If they are not expensive, it might be wise to elave them always enabled. Large programs like telephonw switching systems often devote a significant amount of code to "audit" subsystems that monitor information and equipment, and report or evenfix problems if they occur.
+
+WRITE A LOG FILE
+
+    Another tactic is to write a log file containing a fixed format stream of debugging information. When a crash occurs, the log records what happened just before the crash. Web servers and other network programs maintain extensive logs of traffic so they can monitor themselves and their clients; theis fragment comes froma local system:
+
+
+[Sun Dec 27 16:19:24 1998]
+HTTPd: access to /usr/local/httpd/cgi-bin/test.html
+failed for ml.cs.bell-labs.com,
+reason: client denied by server (CGI non-executable) from http://m2.cs.bel1-1abs.com/cgi-bi n/test.pi
+
+    Be sure to flush IO buffers so the final log records appear in the log file. output functions like printf normally buffer their outout to print efficiently; abnormal termination may discard this buffered output. In C, a call to fflush guarantees that all output is writte before the program dies, there are analogous flush functions for output streams in C++ and Java. Or if you can afford the overhead,you can avoid the flushing problem altogether by using unbuffered IO for log files, The standard fucntions setbuf and setvbuf control buffering: setbuf(fp, NULL) turns off buffering on the stream fp. the standrad error streasm (stderr, cerr, System.err) are normally unbuffered by default.
+
+DRAW A PICTURE
+
+    Sometimes pictures are more effective than text for testing and debugging. Pictures are especially helpful for understanding data structures as we saw in chapter 2 and of coruse hen writing graphics software, but they can be used for all kinds of programs. Scatter plots disply misplaced values more effectively than columns of numbers, bucket sizes in allocators and hash tables, and the like.
+
+    If you dont understnad what is happening inside your progam, try annotating the data structures with statistics and plottning the result. The following grapsh plot for the C Markov program from chaoter 3: hash chain lens on the X axis and the number of elements in chains of that lenght on the y axis. The input data is our standard test the book of psalms (43k words, 23k prefixes). The first two graphs are for the good hash multiplies 31 and 37 and the third is for the awful multiplier of 128. In the first two cases, no chain is longer than 15 or 16 elements and most elements are in chains of len 5 or 6. in the third, the distribution is broader and the longest chain has 197 elements and therea re thousands of elements in chains longer than 20.
+
+USE TOOLS
+
+    Make good use of the facilities of the environment where tou are debugging. For example, fiel comparison program like diff compares the outputs from succesful and failed debugging runs so you can focus on what has hcnaged. If your debuggiing output is long use gro to searhc it or an editor to examine it. Resist the temptation to send deugging output to a printed: computers scan columnious output better than people do. Use shell scripts and otehr tools to automate the processing of outptu from debugging runs.
+
+    Write trivial programs to test hypotheses or confirm your understanding of how something works. For instance, is it valid to free a NULL pointer?
+
+        int main(void)
+        {
+            free(NULL);
+            return 0;
+        }
+
+    Source code control programs like RCs keep track of versions of code so ytou can see what has changed and revert to previous versions to restore a known state. Besides indicating what has changed recently, they can also identify sections of code that have a long history of frequent modification; these are often a good place for bugs to lurk.
+
+KEEP RECORDS
+      
+    If the search for a bug goes on for any length of time, you will begin to lose track of what you trued and what you learned. If you record your tests and results, you are less likely to overlook something or to think that you have checked some possibility when you have not. The act of writing will help you reember the problem the next time something similar comes up, and will also serve when you are explaining it to someone else.
+
+
+
+************************************* 
+  5.4 Last Resorts 
+************************************* 
+
+    What do you do if none of this advice helps? Thhis may be the time to use a good debugger to step through the program. If your mental model of how something works is just plain wrong, so you are looking in the wrong place entirely, or looking in the right place but not seeing the problem, a debugger forces you to think diferently. These "mmental model" bugs are among the hardest to find; the mechanical aid is invaluable.
+
+  Sometimes the misconception is simple: incorrect operator precedence, or the wrong operator, or indentation that does not match the actual structure, or a scope error where a local name hides a global name or a global name intrudes into a local scope. For example, programmers often forget that & and | have lower precedence than ++ and !=. They write
+?       if (x & 1 == 0)
+?           ...
+and can't figure out why this is always false. occasionally a slip of the finger converts a single = into two and vice versa:
+?       while ((c = getchar()) != EOF)
+?           if (c = '\n')
+                break;
+Or extra code is left behind during editing:
+?       for (i = 0; i < n; i++)
+?           a[i++] = 0;
+Or hasty typing creates a problem:
+?       switch(c) {
+?           case '<':
+?               mode = LESS;
+?               break;
+?           case '>':
+?               mode = GREATER;
+?               break;
+?           defualt:
+?               mode = EQUAL;
+?               break;
+?       }
+
+    Sometimes the error involves arguments in the wrong order ina  situation where type checking cant help, like writing
+?       memset(p, n, 0);  // store n 0's in p
+instead of
+        memset(p, 0, n);  // store n 0's in p
+
+    Sometimes something changes behind your back --global or shared variables are modified and you do not realize that some other routine can touch them.
+
+    Sometimes your alg or DST has a fatal flaw and you just cannot see it. While preparing material on linked lists, we wrote a package f list functions to create new elements, link them to the front or back of the lists, and so on; these functions appear in Chapter 2. of course we wrote a test program to make sure everything was correct. The first few tests worked but thenone failed spectacularly. In essence, this was the testgin program:
+
+?       while (scanf("%s %d", name, &value) != EOF) {
+?           p = newitem(name, value);
+?           list1 = addfront(list1, p);
+?           list2 = addend(list2, p);
+?       }
+?       for (p = list1; p != NULL; p = p->next) {
+?           printf("%s %d\n", p->name, p->value);
+It was surprisingly difficult to see that the first loop was putting the same node p on both lists so the pointers were hopelessly scrambled by the time we got to printing.
+
+    It is tough to find this kind of bug, because your brain takes you right around the mistake. Thus a debugger is a help, since it forces you to go ina  different direction, to follow what the program IS doing, not what you THINK it is dooing. Often the underlying problem is something wtong with the structure of the whole program, and to see the error you need to return to your starting assumptions.
+
+    Notice btw that in the list ex the error was in the test code, which made the bug that much ahrder to find. It is frustratingly easy to waste time chasing bugs that are not there, because the test program is wrong, or by testing the wrogng version of the program, or by failin gto update or recompile before testing.
+
+    If you cannot find a bug oafter considerable work, take a break. Clear you rmind, do something else. Talk to a friend and ask for help. the answer might appear out of the blue, but if not, you wont be struck in the same rut in the next debugging session.
+
+    Once in a long while, the problem really is the cmopiler or a library or the OS or even the hardware, especially if something changed in the environment just before a bug appeared. You should never start by blaming one of these, but when everything else has been eliminated, that might be all that is left. We once had to move a large text formatting program from its original Unix home to a PC. The program compiled without incident, but bheaved in an extremely odd way: it dropped roughly every second char of input. OUr first thought was that this must be some property of using 16 bit integers instead of 32 or perhaps some strange byte order problem. But by printing out the caharacters seen by the main loop, we finally tracked ot down to an error in the standard header file ctype.h provided by the compiler vendor. it implemented isprint as a function macro:
+?       #defoine isprint(c) ((c) >= 040 && (c) < 0177)
+and the main loop was basically
+?       while (isprint(c - getchar()))
+?           ...
+Each time an input char was blank (octal 040, a poor way to write ' ') or greater, which was most of the time, getchar was called a second time because the macro evaluated its argument twice, and the frst input character disappeared forever, The original code was not as clean as it should have been --there is too much in the loop condition-- but the vendors header file was inexusably wrong.
+
+    One can still find instances of this problem today; this macro comes froma  differnt verndors current header files:
+?       #define __iscsym(c) (islanum(c) || ((c) == '_'))
+
+    Memory "leaks" -- the failure to reclaim memory that is no longer in use-- are a significant source of erratic behavior. Another problem is forgetting to clos efiles, until the table of open files is full and the program cannot open any more. Programs with leaks tend to fail mysterioulsy because they run out of some resource but the specific failure cannot be reproduces.
+
+    Occasiunally hadware itself goes bad, The floating point flaw in the 1994 Oentium processor that caused certain computations to produce wring answers was a highly publicized and costly bug in the design of the hadrware, but once it had been identified, it was of course reproducible. One of the strangest bugs we ever saw involved a calculator program, long ago on a two processor system, sometemis the expression 1/2 would print 0.5 and sometimes it would print some consistent but utterly wrong value like 0.7432; there was no pattern as to whether one got the right answer or th wwrong one. The problem was eventually traced to a failure of the floating point unit in one of the processors. as the calcualter program was randomly executed on one processor or the other, asnwers were either correct or nonsense.
+
+    Many years ago we used a machine whose internal temperature could be estumated from the number of low order buts it got wring in floating point calculations. one of the circuit cards was loose, as the machine got warmer, the card tilted further out of its socket, and more data bits were disconnected from the backplane.
+
+  
+
+************************************* 
+  5.5 Non reproducible Bugs 
+************************************* 
+
+    Bugs that won't stand still are the most difficult to deal with, and usually the problem is not as obvious as failing hardware. The very fact that the behavior is non deterministic is itself information, however; it means that the error is not likely to be a flaw in your algorithm but that in some way your code is using information that changes each time the program runs.
+
+    Check whether all variables have been initialized; you may be picking up a random value from whatever was previously stored in the same memory location. Local variables of functions and memory obtained from allocaters are the most likely culprits in C and C++. Set all variables to known values; if there is a random number seed that is normally set from the time of day, force it to a constant, like zero.
+
+    If the bug changes behavior or even disappears when debugging code is added, it may be a memory allocation error --somewhere you have written outside of allocated memory, and the addition of debugging code changes the layout of storage enough to chagne the effect of the bug. Most output functions, from printf to dialog windows, allocate memory themselves, further muddying the waters.
+
+    If the crash site seems far away from anything that could be wrong, the most likely problem is overwriting memory by storing into a memory location that is not used until much later. Sometimes this is a dangling pointer problem, where a pointer to a local variable is inadvertantly returned froma  function, then used. Returning the address of a local variable is a recipe for delayed disaster:
+?       char *msg(int n, char *s)
+?       {
+?           char buf[100];
+?           
+?           sprintf(buf, "error %d %s\n", n, s);
+?           return buf;
+?       }
+By the time the pointer returned by msg is used, it no longer points to meaningful storage. You must allocate storage with malloc, use a static array, or require the caller to provide the space.
+
+    Using a dynamically allocated value after it has been freed has similar symptoms. we mention this in Chapter 2 when we wrote freeall. This code is wrong:
+?       for (p = listp; p != NULL; p = p->next)
+?           free(p);
+Once memory has been freed, it must not be used since its contents may have changed and there is no qurantee that p->next still points to the right place.
+
+    In some implementations of malloc and free, freeing an item twice corrupts the internal data structures but does not cause a trouble until much later, when a subsequent call slips on the mess made earlier. Some allocators come with debugging options that can be set to check the consistency of the arena at each call; turn them on if you have a non-deterministic bug. Failing that, you canwrite your own allocator that does some of its own consistency checking or logs all calls for separate analysis. An allocator that does not have to run fast is easy to write, so this strategy is feasible when the situation is dire. There are also excellent commercial products that check memory management and catch errors and leaks; writing your own malloc and free can give you some benefits if you do not have access to them.
+
+    When a program works for one person but fails for another, something must depend on external environment of the program. This might include files read by the program, fiel permissions, environment variables, search path for commands, defaults, startup files etc. it is hard to be a consultant for these situations, since you have to become the other person to uplicate the environment of the broken program.
+
+  Ex 5-1 Write a version of malloc and free that can be used for debugging storage management problems. One approach is to check the entire workspace on each call of malloc and free; another is to write logging information that can be processed by antoher program. Either way, add markers tot he beginnig and end of each allocated block to detect overruns at either end.
+
+
+
+************************************* 
+  5.6 Debugging Tools 
+************************************* 
+
+    Debuggers are not hte only tools that help find bugs. A variety of programs can help us wade through voluminous output to select improtant bits, find anomalies, or rearrange data to make it easier to see what is going on. Many og these programs are part of the standard tool kit; some are written to help find a particular bug or to analyze a specific program.
+
+    In this section we will describe a simple program called strings that is especially useful for looking at files that are mostly non printing characters, uch as executables or the mysterious binary formats favored by some word processors. There is often valuable information hidden within, lie ht text of a document, or error messages and undocumented options, or the names of files and directories, or the names of functions a program might call.
+
+    We also find strings helpful for locating text in other binary files. Image files often contain ASCII strings that identify the program that created them, and compressed files and archives (suzh as zip files) may contain file names; strings will find these too.
+
+    unix systems provide an implementation fo strings already, although it is a litte different from this one, It recognizes when its input is a program and examines on the text and data segments, ignoring the symbol table. Its -a option forces it to read the whole file.
+
+    In effect, strings extracts the ASCII text from a binary file so the text can be read or processed by other programs, If an error message carries no identification, it may be evident what program produced it, let alone why. In that case, searching through likely directories with a command like
+        % strings *.exe *.dll | grep 'mystery message'
+might locate the producer.
+
+    The strings fucntion reads a file and prints all runs of at leats MINLEN = 6 printable cahracters.
+
+        // strings: extract printable strings from stream
+        void strings(char *name, FILE *fin)
+        {
+            int c, i;
+            char buf[BUFSIZ];
+
+            do { // once for each string
+                for (i = 0; (c = getc(fin)) != EOF; ) {
+                    if (!isprint(c))
+                        break;
+                     buf[i++] = c;
+                     if (i >= BUFSIZ)
+                        break; 
+                }
+                if (i >= MINLEN) // print if long enough
+                    printf("%s:%.*s\n", name, i, buf);
+            } while (c != EOF);
+        }
+
+    The printf format string %.s takes the string length from the next argument (i), since the string (buf) is not null terminated.
+
+    The do whiel loop finds and then prints each string, terminating at EOF. Checking for end of file at the bottom allows the getc and strign loops to share a termination condition and lets a single printf hande end of string, end of file, and string too long.
+
+    A standard issue outer loop with a test at the top, or single getc loop with a more complex body, would require duplicating the printf. This function started life that way, but it had a bug in the printf statement. We fixed that in one place but forgot to fix two others ("Did I make the same mistake somewhere else?") At that point, it became clear that the program needed to be rewritten so there was less duplicated code; that led to the do while.
+
+    The main routine of strings calls the strings function fo reach of its argument files:
+        // strings main: find printable strings in files
+        int main(int argc, char *argv[])
+        {
+            int i;
+            FILE *fin;
+  
+            setprogname("strings");
+            if (argc == 1)
+                eprintf("usage: strings filenames");
+            else {
+                for (i = 1; i < argc; i++) {
+                    if ((fin = fopen(argv[i], "rb")) == NULL)
+                        weprintf("can't open %s:", argv[i]);
+                    else {
+                        strings(argv[i], fin);
+                        fclose(fin);
+                    }
+                }
+            }
+            return 0;
+        }
+
+    You might be surprised that strings does not read the stdin if no files are named. Originally it did. To explain why it does not now, we need to tell a debuggin story.
+
+    The obvious test case for strings is to run the program on itself. This worked fine on Unix, but under Windows 95 the command
+
+        C:\> strings <strings.exe
+
+produced exactly five lines of output: 
+
+        !This program cannot be run in DOS mode
+        '.rdata
+        @.data
+        .idata
+        .reloc
+
+    The first line looks like an error message and we wasted some time before realizing it is actually a string in the program, and the output is correct, at least as far as it goes. It is not unknown to have a debugging session derailed by misunderstanding the source of a message.
+
+    But there should be more output. Where is it? late one night, the light finally dawned. ("I've seen that before!") This is a protability problem that is described in more detail in Chapter 8. We had originally written the program to read only from its stdin using getchar. On Windows, however, getchar returns EOF when it encounters a particular byte (0x1A or control-z) in text mode input an this was causing the early termination.
+
+    This is absolutely legal behavior, but not what we were expecting given out Unix background. The solution is to open the file in binary mode using the mode "rb". But stdin is already open and there is no std way to change its mode. (Functions like fdopen or setmode could be used but they are not part of the C standard.) Ultimately we face a set of unpalatable alternatives: foce th euser to provude a file name so it works properly on Windows but is unconventional on Unix; silently produce wrong answers if a Windows users attempts to read from stdin; or use conditional compilation to make the behavior adapt to different systems, at the price of reduced portability. We chose the first option so the same program works the same way everywhere.
+
+  Ex 5-2 the strings program prints strings with MINLEN or more characters, which sometimes produces more output than is useful, Provide strings with an optional argument to define the minimum string lenght.
+
+  Ex 5-3 Write vis, which copies input to output, except that it displays non printable bytes like backspaces ontrol chars and non ascii chars as \Xhh where hh is the hexadecimal representation of the nonprintable byte. By contrast with strings, vis is most useful for examining inputs that contain only a few non printing chars.
+
+  Ex 5-4 What does vis produce if input is \X0A? How could you make the output of vis unambigous?
+
+  Ex 5-5 Extend vis to process a sequence of files, fold long liens at any desired column, and remove nonn printable characters entirely. What other features might be consistent with the role of the program?
+
+
+
+************************************* 
+  5.7 Other People's Bugs 
+************************************* 
+
+    
