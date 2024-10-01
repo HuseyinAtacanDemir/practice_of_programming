@@ -1,0 +1,29 @@
+Ex 6-3 Describe how you would test freq.
+
+#include <stdio.h>
+#include <ctype.h>
+#include <limits.h>
+
+unsigned long count[UCHAR_MAX+1];
+// freq main: display byte freq counts
+int main(void)
+{
+    int c;
+
+    while((c = getchar()) != EOF)
+        count[c]++;
+    for (c = 0; c < UCHAR_MAX; c++)
+        if (count[c] != 0)
+            printf("%.2x %c %lu\n",
+                c, isprint(c) ? c : '-', count[c]);
+    return 0;
+}
+
+I would test against files with:
+  - only one type of char of known amount
+  - all possible chars one of each
+  - one char
+  - no input
+  - one char more times than long can handle
+  
+and compare the results against expected results.

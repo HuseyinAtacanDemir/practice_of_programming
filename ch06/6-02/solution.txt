@@ -1,0 +1,131 @@
+  Ex 6-2 As we are writing this book in late 1998, the Year 2000 problem looms as perhaps the biggest boundary condition problem ever.
+
+    (a) What dates would you use to check whether a system is likely to work in the year 2000? Supposing that test are expensive to perform, in what order would you do your tests after trying January 1, 2000 itself?
+
+        If I am not mistaken, the millenium bug was caused by a integer overflow due to the fact that the unix time was implemented with a data format that could not represent values above dec 31 1999 23:59:59.
+
+        Therefore, not only do we need to test the jan 1st, we might need to start testing before and try the system to roll to january 1st on its own to see whether it can or not.
+
+        So we might start with dec 31 1999 23:59:59 or 23:59:58 and wait for two seconds and print the time again to see whether we get the correct result.
+
+        I am not certain about the implementation of unix time, therefore the above suggestions should be taken with a grain of salt. If the increments are made by milliseconds, then starting 1-2 milliseconds before the millenium and waiting for 5 milliseconds could be sufficient: starting from dec 31 1999 23:59:59:0998 checking until jan 1st 2000 00:00:00:0002 etc
+
+    (b) How would you test the std fn ctime, which returns a string representation of the date in this form:
+        Fri Dec 31 23:58:27 EST 1999\n\0
+    Suppose yuor program calls ctime. How would you write yuor code to defend against flawed implementation?
+
+        Let's check the manual for ctime first:
+          The man page on my system specifies that ctime always returns a string of len 26 and that all fields returned have const len:
+              day of week   : 3
+              month str     : 3
+              day of month  : 3
+              hh:mm:ss      : 8
+              yyyy          : 4
+              newline       : 1
+              TOTAL        +: 22 + 4 (spaces between fields)
+          Seems like ctime on my system is implemented differently than the one provided in the book. In order to test ctime on a given system, we need to create a set of assumptions on  what we expect from ctime:
+            Taking the book as the source, we can add 4 to 26 (3 chars for timezn and 1 for inter-field padding) resulting in a total str len of 30.
+            1) we can check whether the returned string is null or any err value is present
+            2) We can check time = ctime(); assert(strlen(time) == 30);
+            3) We can strtok the result and check each field with a predetermined set of valid input (expected number of fields, expected contents of each field at field_idx, expected length of field at idx, expected type of field at idx, expected range of field at idx, etc):
+            enum { NUMBER = 0, STRING = 1 };
+            int n_expected_field = 6;
+            int field_type_table[n_expected_field] = { 
+                STRING, 
+                STRING, 
+                NUMBER, 
+                NUMBER, 
+                STRING, 
+                NUMBER 
+            };
+
+            int field_len_table[n_expected_field] = { 3, 3, NUMBER, NUMBER, 3, NUMBER };
+
+            static char **valid_days = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+            static char **valid_months =  {"Jan", "Feb", "Mar", "Apr", "May", ..., "Dec"};
+            static char **valid_timezones = {"EST", "GMT", ...};
+            static char **valid_str_table[n_expected_field] = {
+                valid-days,
+                valid_months,
+                NULL, // day is numeric
+                NULL, // time is numeric
+                valid_timezones,
+                NULL  // year is numeric
+            };
+
+            int is_field_valid_number(char *s, int field_index)
+            {
+                if (field_index == 2) { // day
+                } else if (field_index == 3) { // time
+                } else if (field_index == 5) { // year
+
+                } else {
+                    // err
+                }
+            }
+
+            int is_field_valid_string(char *s, int field_index) 
+            {
+                ... // check against valid_str_table per field_index
+            }
+
+            void test_ctime(){
+                char *s, *time;
+                
+                time = ctime();
+
+                assert(strlen(time) == 30);
+
+                strcpy(s, time);
+                assert(s[strlen(s)-1] == '\n');
+
+                s[strlen(s)-1] = '\0'; //trim
+                
+                for (i = 0, s = strtok(s, " "); s != NULL; i++, s = strtok(NULL, " ")) {
+                    // remove padding whitespaces from strtok
+                    // move onto next field, keeping i the same
+                    if (strlen(s) == 0) {
+                        i--;
+                        continue;
+                    }
+
+                    // check if we got more fields than expected
+                    assert(i < n_field_expected);
+
+                    // check if field len is expected
+                    assert(is_field_len_valid(s, i));
+
+                    // check if field is valid str or valid number
+                    if (field_type_table[i] == STRING)
+                        assert(is_field_valid_str(s, i));
+                    else
+                        assert(is_field_valid_number(s, i));
+
+                }
+                // finally test if the whole date is sensible, no feb 31st etc
+                assert(valid_date(time));
+            }
+          
+          one can add a guard --during compilation, or as a once per ctime is called during the runtime of the program-- where the test suite for ctime is ran.   
+
+    (c) Describe how you would test a calendar program that prints output like this:
+        January 2000
+      S  M Tu  W Th  F  S
+                        1
+      2  3  4  5  6  7  8
+      9 10 11 12 13 14 15
+     16 17 18 19 20 21 22
+     23 24 25 26 27 28 29
+     30 31
+
+        1) One can check whether the date is correct
+            a) Days/ months/ years are actually true
+        2) Formatting is correct
+            a) Table width and height for given date range is correct
+            b) Field contents and lengths are correct (including padding)
+        3) Leap years can be checked
+        4) Millenium bug cases can be checked
+
+    (d) What other time boundaries can you think of in systems that you use, and how would you test to see whether they are handled correctly?
+
+        hmm, I am not sure, the above listed boundaries are the ones that are relevant for the systems I use as well, and I think I went a little overboard when asnwering the above questions, so I have nothing more to add left :)

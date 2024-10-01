@@ -1,0 +1,116 @@
+  Ex 6-1 Check out these examples at their boundaries, then fix them as necessary according to the principles of style in CHapter 1 and the advice in this chapter.
+    a) this is supposed to compute factorials:
+        int factorial(int n)
+        {
+            int fac;
+            fac = 1;
+            while (n--)
+                fac *= n;
+            return fac;
+        }
+
+        The post decrement in this while loop will let a 0 slide into the body of the for loop, essentially rendering all factorials be equal to 0, except 0 factorial.
+        The more idiomati way if writing this would be:
+
+        int factorial(int n)
+        {
+            int fac;
+            for (fac = 1; n > 0; n--)
+                fac *= n;
+            return fac;
+        }
+        
+        With this piece of code, if the input n is zero, the body of the for loop is not processed and the fn returns 1. Otherwise, since the decrement is done after the computation of the factorial, n=0 will never seep into the body of the loop.
+
+        Negative values for n are also discarded.
+        Large values of n, that will result in an overflow on variable fac can be detected as an augmentation of this code.
+
+    b) This is supoposed to print the chars of a string on per line:
+        i = 0;
+        do {
+            putchar(s[i++]);
+            putchar('\n');
+        } while (s[i] != '\0');
+
+        An empty str input will start reading other areas of memory in this example, the mroe idiomatic way of achiving this would be:
+        char *p;
+        for (p = s; p!= NULL && *p != '\0'; p++)
+            printf("%c\n", *p);
+
+        added a null check in case.
+
+    c) This is meant to copy a str from src to dest
+        void strcpy(char *dest, char *src)
+        {
+            int i;
+
+            for (i = 0; src[i] != '\0'; i++)
+                dest[i] = src[i];
+        }
+
+        this code will not copy the '\0' to the destination, which is a problem if the string in dest will be processed by other fns later on that expects a null terminated str.
+
+        void strcpt(char *dest, char *src)
+        {
+            if (dest == NULL || src == NULL)
+                return;
+            for ( ; (*dest = *src) != '\0'; dest++, src++)
+                ;
+        }
+
+    d) Another str copy, which attempts to copy n chars from s to t:
+
+        void strncpy(caht *t, char *s, int n)
+        {
+            while (n > 0 && *s != '\0') {
+                *t = *s;
+                t++;
+                s++;
+                n--;
+            }
+        }
+        Again, this would not copy the empty string proeprly
+        void strncpy(char *t, char *s, int n)
+        {
+            int i;
+            for (i = 0; i < n; i++) {
+                if ((*t = *s) == '\0')
+                    break;
+                s++;
+                t++;
+            }
+        }
+
+    e) A numerical comparison:
+        if (i > j)
+            printf("%d is greater than %d.\n", i, j);
+        else
+            printf("%d is smaller than %d.\n", i, j);
+        
+        vs
+          
+        if (i > j)
+            printf("%d is greater than %d.\n", i, j);
+        else if (i < j)
+            printf("%d is smaller than %d.\n", i, j);
+        else
+            printf("%d is equal to %d.\n", i, j);
+
+    f) A char class test:
+        if (c >= 'A' && c <= 'Z') {
+            if (c <= 'L')
+                cout << "first half of alphabet";
+            else
+                cout << "second half of alphabet";
+        }
+        
+        vs
+
+        if ((c >= 'A' && c <= 'L') || (c >= 'a' && c <= 'L'))
+            cout << "first half of alphabet";
+        else if ((c > 'L' && c <= 'Z') || (c > 'l' && c <= 'z'))
+            cout << "second half of alphabet";
+        else
+            cout << "not in english alphabet";
+            
+        

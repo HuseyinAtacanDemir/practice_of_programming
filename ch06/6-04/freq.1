@@ -1,0 +1,67 @@
+.TH FREQ 1 "2024" "1.0" "User Commands"
+.SH NAME
+freq \- count and display the frequency of distinct elements
+.SH SYNOPSIS
+.B freq
+[ \-h ] [ \-F DELIM ] [ \-\-binary ] [ \-s ] [ \-i | \-d | \-f | \-l ] file1 [file2 ...]
+.SH DESCRIPTION
+.B freq
+reads from one or more input files and counts the frequency of distinct elements. It outputs the elements along with their counts in the following format:
+.sp
+element:count
+.sp
+By default, freq processes input as delimited text. It can also process byte streams and handle various data types using appropriate options.
+.SH OPTIONS
+.TP
+.B \-h, \-\-help
+Display help information and exit.
+.TP
+.B \-F DELIM, \-\-delimiter=DELIM
+Specify the delimiter to split input elements (supports regex). If not specified, the default delimiter is whitespace.
+.TP
+.B \-\-binary
+Process the input as a raw byte stream, without delimiters.
+.TP
+.B \-s, \-\-sort
+Sort the output by the element values.
+.TP
+.B \-i, \-\-int
+Interpret the input as integers.
+.TP
+.B \-d, \-\-double
+Interpret the input as doubles.
+.TP
+.B \-f, \-\-float
+Interpret the input as floats.
+.TP
+.B \-l, \-\-long
+Interpret the input as long integers.
+.SH EXAMPLES
+.TP
+Count distinct words in a file using spaces as delimiters:
+.sp
+.B freq
+file.txt
+.TP
+Use a comma as the delimiter for splitting input elements:
+.sp
+.B freq \-F ","
+file.csv
+.TP
+Count distinct integers from a byte stream:
+.sp
+.B freq \-\-binary \-i
+file.bin
+.TP
+Sort the output while counting distinct floats:
+.sp
+.B freq \-f \-s
+file.txt
+.SH SEE ALSO
+.B sort(1),
+uniq(1)
+.SH AUTHOR
+Written by Your Name
+.SH REPORTING BUGS
+Report bugs to <your-email@example.com>
+
