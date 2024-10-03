@@ -3,39 +3,45 @@
 freq \- count and display the frequency of distinct elements
 .SH SYNOPSIS
 .B freq
-[ \-h ] [ \-F DELIM ] [ \-\-binary ] [ \-s ] [ \-i | \-d | \-f | \-l ] file1 [file2 ...]
+[ \-haFRsidflS ] [ \fB\-F\fR ] [ \fB\-S\fR \fIsize\fR ] [ \fB\-i\fR | \fB\-d\fR | \fB\-f\fR | \fB\-l\fR ] [ \fB\-\-delimiter\fR=\fIDELIM\fR ] [ \fB\-\-struct\fR=\fIsize\fR ] [ file ... ]
 .SH DESCRIPTION
 .B freq
-reads from one or more input files and counts the frequency of distinct elements. It outputs the elements along with their counts in the following format:
+reads from stdin or input files. Counts the frequency of distinct elements. It outputs the elements along with their counts in the following format:
 .sp
 element:count
 .sp
-By default, freq processes input as delimited text. It can also process byte streams and handle various data types using appropriate options.
+By default, \fBfreq\fR processes input as delimited text. It can also process byte streams and handle various data types using appropriate options.
 .SH OPTIONS
 .TP
-.B \-h, \-\-help
+.BR \-h ", " \-\-help
 Display help information and exit.
 .TP
-.B \-F DELIM, \-\-delimiter=DELIM
-Specify the delimiter to split input elements (supports regex). If not specified, the default delimiter is whitespace.
+.BR \-a ", " \-\-aggregate
+Aggregate the input files and preform freq on the aggregated input set
 .TP
-.B \-\-binary
-Process the input as a raw byte stream, without delimiters.
+.BR \-F " " \fIDELIM\fR ", " \fB\-\-delimiter\fR=\fIDELIM\fB
+Specify the delimiter to split input elements (supports regex). If not specified, the default delimiter is empty string.
 .TP
-.B \-s, \-\-sort
+.BR \-R ", " \-\-raw
+Process the input as a raw byte stream, without delimiters. Assumes packed data. 
+.TP
+.BR \-s ", " \-\-sort
 Sort the output by the element values.
 .TP
-.B \-i, \-\-int
+.BR \-i ", " \-\-int
 Interpret the input as integers.
 .TP
-.B \-d, \-\-double
+.BR \-d ", " \-\-double
 Interpret the input as doubles.
 .TP
-.B \-f, \-\-float
+.BR \-f ", " \-\-float
 Interpret the input as floats.
 .TP
-.B \-l, \-\-long
+.BR \-l ", " \-\-long
 Interpret the input as long integers.
+.TP
+.BR \-S " " \fIsize\fR ", " \-\-struct= \fIsize\fR
+Interpret the input as packed structs of \fIsize\fR bytes. Requires the \fB\-R\fR (or \fB\-\-raw\fR) option to be selected.
 .SH EXAMPLES
 .TP
 Count distinct words in a file using spaces as delimiters:
@@ -61,7 +67,7 @@ file.txt
 .B sort(1),
 uniq(1)
 .SH AUTHOR
-Written by Your Name
+Written by John Demir
 .SH REPORTING BUGS
-Report bugs to <your-email@example.com>
+Report bugs to had287@nyu.edu
 

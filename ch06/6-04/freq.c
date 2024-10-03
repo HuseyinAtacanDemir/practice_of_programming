@@ -1,139 +1,96 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <getopt.h>
-#include <string.h>
-
-#include "eprintf.h"
-#include "hash.h"
-//#include "qsort.h"
-
-#define N_SUPPORTED_OPTS  8
-#define TYPE_OPT_MASK     0xF0
-
-enum { HELP, DELIM, RAW, SORT, INT, DOUBLE, FLOAT, LONG };
-
-static struct option long_opts[] = {
-    {"help",      no_argument,       0, 'h'},
-    {"delim",     required_argument, 0, 'D'},
-    {"raw",       no_argument,       0, 'R'},
-    {"sort",      no_argument,       0, 's'},
-    {"int",       no_argument,       0, 'i'},
-    {"double",    no_argument,       0, 'd'},
-    {"float",     no_argument,       0, 'f'},
-    {"long",      no_argument,       0, 'l'},
-    {0, 0, 0, 0}
-};
-
-
-void  usage       (void);
-void  freq        (FILE *fin, unsigned int opt_state, char *delim);
-int   parse_opts  (int argc, char **argv, unsigned int *opt_state, char **delim);
-
+#include "freq.h"
 
 int main(int argc, char **argv)
 {
-    FILE *fin;
-    char *delim;
-    int i, next_opt_idx;
-    unsigned int opt_state;
-
     setprogname("freq");
 
-    opt_state = 0x0;    
-    delim = " ";
+    int 			err;
+    char 			*delim;
+    unsigned 	opt_state;
 
-    next_opt_idx = parse_opts(argc, argv, &opt_state, &delim);
+    opt_state = parse_opts(argc, argv, &delim);
 
-    if (next_opt_idx == argc)
-        freq(stdin, opt_state, delim);
+		// optind: index of next opt in argv, see "man 3 getopt"
+    if (optind == argc)
+        freq(NULL, opt_state, delim);
 
-    for (i = next_opt_idx; i < argc; i++)
-        if ((fin = fopen(argv[i], "r")) == NULL)
-            eprintf("can't open file %s", argv[i]);
-        else {
-            freq(fin, opt_state, delim);
-            fclose(fin);
-        }
+    for ( ; optind < argc; optind++)
+        freq(argv[optind], opt_state, delim);
 
+   	exit(EXIT_SUCCESS);
+}
+
+void freq(char *filename, unsigned opt_state, char *delim)
+{
+		if (filename == NULL)
+				return -1;
     return 0;
 }
 
-void freq (FILE *fin, unsigned int opt_state, char *delim)
+unsigned parse_opts(int argc, char **argv, char **delim) 
 {
-    printf("Freq! fin: %p opts: 0x%x  delim: \"%s\"\n", fin, opt_state, delim);
-}
+    int opt;
+    unsigned type_opts, opt_state;
 
-void usage(void)
-{
-    printf("Usage: freq [OPTIONS] file1 [file2 ...]\n"
-           "Options:\n"
-           "  -h, --help              Display this help and exit\n"
-           "  -D, --delim=DELIM       Set delimiter (supports regex)\n"
-           "  -R, --raw               Process as raw byte stream\n"
-           "  -s, --sort              Sort the output\n"
-           "  -i, --int               Interpret input as integers\n"
-           "  -d, --double            Interpret input as doubles\n"
-           "  -f, --float             Interpret input as floats\n"
-           "  -l, --long              Interpret input as long integers\n"
-    );
-}
-
-int parse_opts(int argc, char **argv, unsigned int *opt_state, char **delim) 
-{
-    int opt, opt_idx, err_flag;
-    unsigned int type_opt_isolated;
-
-    opterr = opt_idx = err_flag = 0;
-    while ((opt = getopt_long(argc, argv, ":hD:Rsidfl", long_opts, &opt_idx)) != -1) {
+    // opterr: getopt.h global var, 0'ing it supresses getop.h errs, "man 3 getopt"
+    opt_state = opterr = 0;	
+    *delim = NULL;
+    while ((opt = getopt_long(argc, argv, "+:hD:Rsidfl", LONG_OPTS, NULL)) != -1) {
         switch (opt) {
             case 'h':
-                usage();
+								usage();
                 exit(EXIT_SUCCESS);
             case 'D': 
-                *delim = (char *) emalloc((sizeof(char) * strlen(optarg)) + 1);            
-                strcpy(*delim, optarg);
-                *opt_state |= 0x1 << DELIM;
-                break;
+                *delim = estrdup(optarg);
             case 'R':
-                *opt_state |= 0x1 << RAW;
-                break;
             case 's':
-                *opt_state |= 0x1 << SORT;
-                break;
             case 'i':
-                *opt_state |= 0x1 << INT;
-                break;
             case 'd':
-                *opt_state |= 0x1 << DOUBLE;
-                break;
             case 'f':
-                *opt_state |= 0x1 << FLOAT;
-                break;
             case 'l':
-                *opt_state |= 0x1 << LONG;
+								set_opt_bit(&opt_state, opt);
                 break;
-            case ':':
-                weprintf("option -- %c requires an argument", optopt);
-                err_flag = 1;
-                break;
+            case ':': // optind: getopt.h global var, index of next arg, "man 3 getopt"
+                weprintf("option %s requires an argument", argv[optind-1]);
+                exit(EXIT_FAILURE);
             case '?':
-                weprintf("invalid option -- %c", optopt);
-                err_flag = 1;
-                break;
+								if (optopt)		
+                		weprintf("invalid option -%c", optopt);
+                else
+                		weprintf("invalid option %s", argv[optind-1]);
+                exit(EXIT_FAILURE);
         }
     }
-    if (err_flag) {
-        usage();
+    
+    type_opts = opt_state & TYPE_OPT_MASK;
+
+    if (type_opts & (type_opts - 1)) { // if more than one type bit is set
+        weprintf("Mutually exclusive options (%s) cannot be used together.", 
+              MUTUALLY_EXCLUSIVE_OPTS);
         exit(EXIT_FAILURE);
     }
 
-    type_opt_isolated = *opt_state & TYPE_OPT_MASK;
-    if (type_opt_isolated & (type_opt_isolated - 1)) { //if more than one bit is set
-        weprintf("Mutually exclusive options (-i, -d, -f, -l) cannot be used together.");
-        usage();
+    if (*delim == NULL)
+        *delim = estrdup(DEFAULT_DELIM);
+
+    return opt_state;
+}
+
+void set_opt_bit(unsigned *opt_state, int opt)
+{
+		int i;
+		for (i = 0; i < N_SUPPORTED_OPTS; i++)
+				if (LONG_OPTS[i].val == opt)
+						break;
+    if (i >= N_SUPPORTED_OPTS) {
+        weprintf("invalid option -%c", optopt);
         exit(EXIT_FAILURE);
     }
+		*opt_state |= 1 << i;
+}
 
-    return optind; // return the index of next opt provided by getopt.h 
+void usage()
+{
+    weprintf(USAGE_INFO_STR);
 }
 

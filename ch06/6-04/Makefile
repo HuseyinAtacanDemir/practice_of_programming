@@ -4,6 +4,7 @@ CC = gcc
 # Compiler flags for normal and debug modes
 CFLAGS = -Wall
 DEBUG_FLAGS = -g -DDEBUG
+TEST_FLAGS	= -g -DTEST
 RELEASE_FLAGS = -O2
 
 # Include directories (if your headers are in the same directory)
@@ -28,6 +29,9 @@ all: $(TARGET)
 debug: CFLAGS += $(DEBUG_FLAGS)
 debug: $(TARGET)
 
+test: CFLAGS += $(TEST_FLAGS)
+test: $(TARGET)
+
 # Normal mode target
 release: CFLAGS += $(RELEASE_FLAGS)
 release: $(TARGET)
@@ -45,5 +49,5 @@ clean:
 	rm -f $(OBJS) $(TARGET)
 
 # Phony targets
-.PHONY: all debug release test clean
+.PHONY: all debug release clean
 
