@@ -283,6 +283,9 @@ void test_parse_opts_single_short_opts(int *total, int *pass, int *fail)
                 sprintf(exp_msg, "freq_test: option -%c requires an argument\n", i);
                 cases[i] = (struct TESTCASE){ 2, 0, 2, 1 << STRUCT, estrdup(exp_msg), create_argv(2, "./freq", "-S") };
                 break;
+            case '-':
+                cases[i] = (struct TESTCASE){ 2, 0, 2, 0, "", create_argv(2, "./freq", "--")};
+                break;
             default:
                 sprintf(opt, "-%c", i);
                 sprintf(exp_msg, "freq_test: invalid option -%c\n", i);
