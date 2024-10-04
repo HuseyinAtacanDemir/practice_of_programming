@@ -44,12 +44,16 @@ utest: CFLAGS += $(TEST_FLAGS)
 utest: $(TEST_TARGET)
 	./$(TEST_TARGET)
 
+# Pattern rule to compile .c files into .o object files
+%.o: %.c $(HDRS)
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
 # Rule to build the target
-$(TARGET): $(OBJS) $(HDRS)
+$(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) $(INCLUDES) -o $(TARGET) $(OBJS)
 
 # Rule to build the unit test target
-$(TEST_TARGET): $(TEST_OBJS) $(HDRS)
+$(TEST_TARGET): $(TEST_OBJS)
 	$(CC) $(CFLAGS) $(INCLUDES) -o $(TEST_TARGET) $(TEST_OBJS)
 
 # Clean target to remove object files and executables

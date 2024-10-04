@@ -20,18 +20,18 @@
 #define OPT_STR           "+:haD:RsidflS:"
 
 char *USAGE_INFO_STR = 
-"Usage: freq [ -haDRsidflS ] [ -D DELIM ] [-S size] [ -i | -d | -f | -l | -S ] [ file ... ]\n"
-"Options:\n"
-"\t-h      , --help              Display this help and exit\n"
-"\t-a      , --aggregate         Aggregate input files into a combined output\n"
-"\t-D DELIM, --delim=DELIM       Set delimiter (supports regex)\n"
-"\t-R      , --raw               Process as raw byte stream\n"
-"\t-s      , --sort              Sort the output\n"
-"\t-i      , --int               Interpret input as integers\n"
-"\t-d      , --double            Interpret input as doubles\n"
-"\t-f      , --float             Interpret input as floats\n"
-"\t-l      , --long              Interpret input as long integers\n"
-"\t-S SIZE , --struct=SIZE       Interpret input as packed structs of len SIZE bytes\n";
+    "Usage: freq [ -haDRsidflS ] [ -D DELIM ] [-S size] [ -i | -d | -f | -l | -S ] [ file ... ]\n"
+    "Options:\n"
+    "\t-h      , --help              Display this help and exit\n"
+    "\t-a      , --aggregate         Aggregate input files into a combined output\n"
+    "\t-D DELIM, --delim=DELIM       Set delimiter (supports regex)\n"
+    "\t-R      , --raw               Process as raw byte stream\n"
+    "\t-s      , --sort              Sort the output\n"
+    "\t-i      , --int               Interpret input as integers\n"
+    "\t-d      , --double            Interpret input as doubles\n"
+    "\t-f      , --float             Interpret input as floats\n"
+    "\t-l      , --long              Interpret input as long integers\n"
+    "\t-S SIZE , --struct=SIZE       Interpret input as packed structs of len SIZE bytes\n";
 
 // struct option: defined in getopt.h, see man 3 getopt 
 const static struct option LONG_OPTS[] = {

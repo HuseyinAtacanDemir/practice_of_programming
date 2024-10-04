@@ -231,8 +231,8 @@ int test_set_opt_bit(int opt, unsigned old_optstate, unsigned exp_optstate, char
 
 void test_parse_opts_single_short_opts(int *total, int *pass, int *fail)
 {
-    int i, local_total, local_pass, local_fail;
-    char usage_info_str[1024];
+    int i, j, local_total, local_pass, local_fail;
+    char exp_msg[1024], opt[4];
      
     struct TESTCASE {
         int       argc;
@@ -241,28 +241,55 @@ void test_parse_opts_single_short_opts(int *total, int *pass, int *fail)
         unsigned  exp_optstate;
         char      *exp_msg;
         char      **argv;
-    };
-
+    } cases[UCHAR_MAX+1];
     
     printf("\tsingle short opts\n"); 
 
-    sprintf(usage_info_str, "freq_test: %s\n", USAGE_INFO_STR);
-
-    struct TESTCASE cases[] = {
-        { 1, 0, 1, 0,           "",             create_argv(1, "./freq") },
-        { 2, 0, 2, 1 << HELP,   usage_info_str, create_argv(2, "./freq", "-h") },
-        { 2, 0, 2, 1 << AGGR,   "",             create_argv(2, "./freq", "-a") },
-        { 2, 0, 2, 1 << DELIM,  "freq_test: option -D requires an argument\n",
-                                                create_argv(2, "./freq", "-D") },
-        { 2, 0, 2, 1 << RAW,    "",             create_argv(2, "./freq", "-R") },
-        { 2, 0, 2, 1 << SORT,   "",             create_argv(2, "./freq", "-s") },
-        { 2, 0, 2, 1 << INT,    "",             create_argv(2, "./freq", "-i") },
-        { 2, 0, 2, 1 << DOUBLE, "",             create_argv(2, "./freq", "-d") },
-        { 2, 0, 2, 1 << FLOAT,  "",             create_argv(2, "./freq", "-f") },
-        { 2, 0, 2, 1 << LONG,   "",             create_argv(2, "./freq", "-l") },
-        { 2, 0, 2, 1 << STRUCT, "freq_test: option -S requires an argument\n", 
-                                                create_argv(2, "./freq", "-S") }
-    };
+    for (i = 0; i <= UCHAR_MAX; i++) {
+        switch(i) {
+            case 0:
+                cases[i] = (struct TESTCASE){ 1, 0, 1, 0, "", create_argv(1, "./freq") };
+                break;
+            case 'a':
+                cases[i] = (struct TESTCASE){ 2, 0, 2, 1 << AGGR, "", create_argv(2, "./freq", "-a") };
+                break;
+            case 'R':
+                cases[i] = (struct TESTCASE){ 2, 0, 2, 1 << RAW, "", create_argv(2, "./freq", "-R") };
+                break;
+            case 's':
+                cases[i] = (struct TESTCASE){ 2, 0, 2, 1 << SORT, "", create_argv(2, "./freq", "-s") };
+                break;
+            case 'i':
+                cases[i] = (struct TESTCASE){ 2, 0, 2, 1 << INT, "", create_argv(2, "./freq", "-i") };
+                break;
+            case 'd':
+                cases[i] = (struct TESTCASE){ 2, 0, 2, 1 << DOUBLE, "", create_argv(2, "./freq", "-d") };
+                break;
+            case 'f':
+                cases[i] = (struct TESTCASE){ 2, 0, 2, 1 << FLOAT, "", create_argv(2, "./freq", "-f") };
+                break;
+            case 'l':
+                cases[i] = (struct TESTCASE){ 2, 0, 2, 1 << LONG, "", create_argv(2, "./freq", "-l") };
+                break;
+            case 'h':
+                sprintf(exp_msg, "freq_test: %s\n", USAGE_INFO_STR);
+                cases[i] = (struct TESTCASE){ 2, 0, 2, 1 << HELP, estrdup(exp_msg), create_argv(2, "./freq", "-h")};
+                break;
+            case 'D':
+                sprintf(exp_msg, "freq_test: option -%c requires an argument\n", i);
+                cases[i] = (struct TESTCASE){ 2, 0, 2, 1 << DELIM, estrdup(exp_msg), create_argv(2, "./freq", "-D") };
+                break;
+            case 'S':
+                sprintf(exp_msg, "freq_test: option -%c requires an argument\n", i);
+                cases[i] = (struct TESTCASE){ 2, 0, 2, 1 << STRUCT, estrdup(exp_msg), create_argv(2, ".freq", "-S") };
+                break;
+            default:
+                sprintf(opt, "-%c", i);
+                sprintf(exp_msg, "freq_test: invalid option -%c\n", i);
+                cases[i] = (struct TESTCASE){ 2, 0, 2, 0, estrdup(exp_msg), create_argv(2, "./freq", estrdup(opt))};
+                break;
+        }
+    }
 
     local_total = local_pass = local_fail = 0;
     for (i = 0; i < (sizeof(cases)/sizeof(cases[0])); i++) {
@@ -277,7 +304,12 @@ void test_parse_opts_single_short_opts(int *total, int *pass, int *fail)
             local_fail++;
         local_total++;
     }
-
+    
+    for (i = 0; i <= UCHAR_MAX; i++) {
+        free(cases[i].argv);
+        if (strcmp("", cases[i].exp_msg) != 0)
+            free(cases[i].exp_msg);
+    }
 
     printf("\t\tTotal: %d, Passed: %d, Failed: %d\n", local_total, local_pass, local_fail);
     *total += local_total;
@@ -387,7 +419,7 @@ char **create_argv(int argc, ...)
 
 char *concat_str_arr(char **arr, char *delim)
 {
-    char *s, *t;
+    char *s;
     int i, len, old_len;
     s = emalloc(sizeof(char));
     *s = '\0';
