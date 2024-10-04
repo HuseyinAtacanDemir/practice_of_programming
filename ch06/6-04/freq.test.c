@@ -32,6 +32,7 @@
   void create_pipe      (int pipefd[]);
   void read_pipe_to_buf (char **buf, int pipefd[]);
   char **create_argv    (int argc, ...);
+  char *concat_str_arr  (char **arr, char *delim);
 
 int main(void)
 {
@@ -236,7 +237,7 @@ void test_parse_opts_single_short_opts(int *total, int *pass, int *fail)
     struct TESTCASE {
         int       argc;
         int       exp_size;
-        int       exp_optind;
+        int       exp_optind; // GNU getopt intializes optind to 1
         unsigned  exp_optstate;
         char      *exp_msg;
         char      **argv;
@@ -248,14 +249,28 @@ void test_parse_opts_single_short_opts(int *total, int *pass, int *fail)
     sprintf(usage_info_str, "freq_test: %s\n", USAGE_INFO_STR);
 
     struct TESTCASE cases[] = {
-        { 1, 0, 0, 0, "",              create_argv(1, "./freq") },
-        { 2, 0, 2, 1, usage_info_str,  create_argv(2, "./freq", "-h") }
+        { 1, 0, 1, 0, "",             create_argv(1, "./freq") },
+        { 2, 0, 2, 1, usage_info_str, create_argv(2, "./freq", "-h") },
+        { 2, 0, 2, 1, "",             create_argv(2, "./freq", "-a") },
+        { 2, 0, 2, 1, 
+          "freq_test: option -D requires an argument\n",
+          create_argv(2, "./freq", "-D") },
+        { 2, 0, 2, 1, "", create_argv(2, "./freq", "-R") },
+        { 2, 0, 2, 1, "", create_argv(2, "./freq", "-s") },
+        { 2, 0, 2, 1, "", create_argv(2, "./freq", "-i") },
+        { 2, 0, 2, 1, "", create_argv(2, "./freq", "-d") },
+        { 2, 0, 2, 1, "", create_argv(2, "./freq", "-f") },
+        { 2, 0, 2, 1, "", create_argv(2, "./freq", "-l") },
+        { 2, 0, 2, 1, 
+          "freq_test: option -S requires an argument\n", 
+          create_argv(2, "./freq", "-S") }
     };
 
     local_total = local_pass = local_fail = 0;
     for (i = 0; i < (sizeof(cases)/sizeof(cases[0])); i++) {
-        printf("\t\targc: %d, exp_optstate: %u, exp_optind: %d: ", 
-              cases[i].argc, cases[i].exp_optstate, cases[i].exp_optind);
+        printf("\t\tcmd: \"%s\" argc: %d, exp_optstate: %u, exp_optind: %d: ", 
+                concat_str_arr(cases[i].argv, " "),cases[i].argc, 
+                cases[i].exp_optstate, cases[i].exp_optind);
         fflush(stdout);
         if(test_parse_opts(cases[i].argc, cases[i].argv, cases[i].exp_optstate,
                            cases[i].exp_size, cases[i].exp_optind, cases[i].exp_msg))
@@ -372,3 +387,25 @@ char **create_argv(int argc, ...)
     return argv;
 }
 
+char *concat_str_arr(char **arr, char *delim)
+{
+    char *s, *t;
+    int i, len, old_len;
+    s = emalloc(sizeof(char));
+    *s = '\0';
+    len = old_len = 0;
+    for (i = 0; *(arr+i) != NULL; i++) {
+        if (*(arr+i+1) != NULL) {
+            len += strlen(arr[i]) + strlen(delim) + 1;
+            s = erealloc(s, sizeof(char) * len);
+            memcpy(s+old_len, arr[i], strlen(arr[i]));
+            memcpy(s+old_len+strlen(arr[i]), delim, strlen(delim)+1); 
+        } else {
+            len += strlen(arr[i]) + 1;
+            s = erealloc(s, sizeof(char) * len);
+            memcpy(s+old_len, arr[i], strlen(arr[i])+1);
+        }
+        old_len = len-1;
+    }
+    return s;
+}

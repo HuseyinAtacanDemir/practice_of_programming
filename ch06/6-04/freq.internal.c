@@ -17,6 +17,7 @@
 
 #define MUTEX_OPTS        "-i -d -f -l -S"
 #define DEFAULT_DELIM     ""
+#define OPT_STR           "+:haD:RsidflS:"
 
 char *USAGE_INFO_STR = 
 "Usage: freq [ -haDRsidflS ] [ -D DELIM ] [-S size] [ -i | -d | -f | -l | -S ] [ file ... ]\n"
@@ -62,7 +63,7 @@ unsigned parse_opts(int argc, char **argv, char **delim, int *size)
     // opterr: getopt.h global var, 0'ing it supresses getop.h errs, "man 3 getopt"
     opt_state = opterr = 0;	
     *delim = NULL;
-    while ((opt = getopt_long(argc, argv, "+:hD:Rsidfl", LONG_OPTS, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, OPT_STR, LONG_OPTS, NULL)) != -1) {
         switch (opt) {
             case 'h':
 								usage();
