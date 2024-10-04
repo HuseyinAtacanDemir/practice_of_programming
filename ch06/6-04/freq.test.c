@@ -27,7 +27,6 @@
   int test_parse_opts  (int argc, char **argv, unsigned exp_optstate, 
                         int exp_size, int exp_optind, char *exp_msg);
 
-
 // HELPERS
   void create_pipe      (int pipefd[]);
   void read_pipe_to_buf (char **buf, int pipefd[]);
