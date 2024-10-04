@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <string.h>
+#include <limits.h>
 
 #include "eprintf.h"
 #include "hash.h"
@@ -17,7 +18,7 @@
 #define MUTEX_OPTS        "-i -d -f -l -S"
 #define DEFAULT_DELIM     ""
 
-const static char *USAGE_INFO_STR = 
+static char *USAGE_INFO_STR = 
 "Usage: freq [ -hDRsidflS ] [ -D DELIM ] [-S size] [ -i | -d | -f | -l | -S ] [ file ... ]\n"
 "Options:\n"
 "\t-h      , --help              Display this help and exit\n"
@@ -112,11 +113,15 @@ unsigned parse_opts(int argc, char **argv, char **delim, int *size)
 void set_opt_bit(unsigned *opt_state, int opt)
 {
 		int i;
+    if (opt < 0 || opt > UCHAR_MAX) {
+        weprintf("invalid option format: %d", opt);
+        exit(EXIT_FAILURE);
+    }
 		for (i = 0; i < N_SUPPORTED_OPTS; i++)
 				if (LONG_OPTS[i].val == opt)
 						break;
     if (i >= N_SUPPORTED_OPTS) {
-        weprintf("invalid option -%c", optopt);
+        weprintf("invalid option -%c", (char) opt);
         exit(EXIT_FAILURE);
     }
 		*opt_state |= 1 << i;
