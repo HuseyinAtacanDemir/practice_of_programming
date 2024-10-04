@@ -249,21 +249,19 @@ void test_parse_opts_single_short_opts(int *total, int *pass, int *fail)
     sprintf(usage_info_str, "freq_test: %s\n", USAGE_INFO_STR);
 
     struct TESTCASE cases[] = {
-        { 1, 0, 1, 0, "",             create_argv(1, "./freq") },
-        { 2, 0, 2, 1, usage_info_str, create_argv(2, "./freq", "-h") },
-        { 2, 0, 2, 1, "",             create_argv(2, "./freq", "-a") },
-        { 2, 0, 2, 1, 
-          "freq_test: option -D requires an argument\n",
-          create_argv(2, "./freq", "-D") },
-        { 2, 0, 2, 1, "", create_argv(2, "./freq", "-R") },
-        { 2, 0, 2, 1, "", create_argv(2, "./freq", "-s") },
-        { 2, 0, 2, 1, "", create_argv(2, "./freq", "-i") },
-        { 2, 0, 2, 1, "", create_argv(2, "./freq", "-d") },
-        { 2, 0, 2, 1, "", create_argv(2, "./freq", "-f") },
-        { 2, 0, 2, 1, "", create_argv(2, "./freq", "-l") },
-        { 2, 0, 2, 1, 
-          "freq_test: option -S requires an argument\n", 
-          create_argv(2, "./freq", "-S") }
+        { 1, 0, 1, 0,           "",             create_argv(1, "./freq") },
+        { 2, 0, 2, 1 << HELP,   usage_info_str, create_argv(2, "./freq", "-h") },
+        { 2, 0, 2, 1 << AGGR,   "",             create_argv(2, "./freq", "-a") },
+        { 2, 0, 2, 1 << DELIM,  "freq_test: option -D requires an argument\n",
+                                                create_argv(2, "./freq", "-D") },
+        { 2, 0, 2, 1 << RAW,    "",             create_argv(2, "./freq", "-R") },
+        { 2, 0, 2, 1 << SORT,   "",             create_argv(2, "./freq", "-s") },
+        { 2, 0, 2, 1 << INT,    "",             create_argv(2, "./freq", "-i") },
+        { 2, 0, 2, 1 << DOUBLE, "",             create_argv(2, "./freq", "-d") },
+        { 2, 0, 2, 1 << FLOAT,  "",             create_argv(2, "./freq", "-f") },
+        { 2, 0, 2, 1 << LONG,   "",             create_argv(2, "./freq", "-l") },
+        { 2, 0, 2, 1 << STRUCT, "freq_test: option -S requires an argument\n", 
+                                                create_argv(2, "./freq", "-S") }
     };
 
     local_total = local_pass = local_fail = 0;
