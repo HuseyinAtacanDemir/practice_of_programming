@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 
-enum { HELP, DELIM, RAW, SORT, INT, DOUBLE, FLOAT, LONG, STRUCT };
+enum { HELP, AGGR, DELIM, RAW, SORT, INT, DOUBLE, FLOAT, LONG, STRUCT };
 
 void      usage         (void);
 void		  freq          (char *filename, unsigned opt_state, char *delim, int size);

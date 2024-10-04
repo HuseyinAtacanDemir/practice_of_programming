@@ -39,6 +39,8 @@ int main(void)
     test_set_opt_bit_boundaries(&total, &pass, &fail);
     test_set_opt_bit_nonzero_optstates(&total, &pass, &fail);
 
+
+
     printf("\nTotal: %d, Passed: %d, Failed: %d\n", total, pass, fail);
     return 0;
 }
@@ -57,31 +59,34 @@ void test_set_opt_bit_all_chars(int *total, int *pass, int *fail)
         fflush(stdout);
         switch(opt) {
             case 'h':
-                expected_opt_state |= 1 << 0;
+                expected_opt_state |= 1 << HELP;
+                break;
+            case 'a':
+                expected_opt_state |= 1 << AGGR;
                 break;
             case 'D':
-                expected_opt_state |= 1 << 1;
+                expected_opt_state |= 1 << DELIM;
                 break;
             case 'R':
-                expected_opt_state |= 1 << 2;
+                expected_opt_state |= 1 << RAW;
                 break;
             case 's':
-                expected_opt_state |= 1 << 3;
+                expected_opt_state |= 1 << SORT;
                 break;
             case 'i':
-                expected_opt_state |= 1 << 4;
+                expected_opt_state |= 1 << INT;
                 break;
             case 'd':
-                expected_opt_state |= 1 << 5;
+                expected_opt_state |= 1 << DOUBLE;
                 break;
             case 'f':
-                expected_opt_state |= 1 << 6;
+                expected_opt_state |= 1 << FLOAT;
                 break;
             case 'l': 
-                expected_opt_state |= 1 << 7;
+                expected_opt_state |= 1 << LONG;
                 break;
             case 'S':
-                expected_opt_state |= 1 << 8;
+                expected_opt_state |= 1 << STRUCT;
                 break;
             default:
                 sprintf(expected_msg, "freq_test: invalid option -%c\n", opt);
@@ -143,7 +148,8 @@ void test_set_opt_bit_nonzero_optstates(int *total, int *pass, int *fail)
 
     local_total = local_pass = local_fail = 0;
     struct TESTCASE cases[] = {
-        { 0x05, (0x05 | (1 << HELP)),   'h', ""},
+        { 0x04, (0x04 | (1 << HELP)),   'h', ""},
+        { 0x05, (0x05 | (1 << AGGR)),   'a', ""},
         { 0x06, (0x06 | (1 << DELIM)),  'D', ""},
         { 0x07, (0x07 | (1 << RAW)),    'R', ""},
         { 0x08, (0x08 | (1 << SORT)),   's', ""},

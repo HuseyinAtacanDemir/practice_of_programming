@@ -3,7 +3,7 @@
 freq \- count and display the frequency of distinct elements
 .SH SYNOPSIS
 .B freq
-[ \-haFRsidflS ] [ \fB\-F\fR ] [ \fB\-S\fR \fIsize\fR ] [ \fB\-i\fR | \fB\-d\fR | \fB\-f\fR | \fB\-l\fR ] [ \fB\-\-delimiter\fR=\fIDELIM\fR ] [ \fB\-\-struct\fR=\fIsize\fR ] [ file ... ]
+[ \-haDRsidflS ] [ \fB\-D\fR \fIDELIM\fR] [ \fB\-S\fR \fIsize\fR ] [ \fB\-i\fR | \fB\-d\fR | \fB\-f\fR | \fB\-l\fR ] [ \fB\-\-delimiter\fR=\fIDELIM\fR ] [ \fB\-\-struct\fR=\fIsize\fR ] [ file ... ]
 .SH DESCRIPTION
 .B freq
 reads from stdin or input files. Counts the frequency of distinct elements. It outputs the elements along with their counts in the following format:
@@ -17,9 +17,9 @@ By default, \fBfreq\fR processes input as delimited text. It can also process by
 Display help information and exit.
 .TP
 .BR \-a ", " \-\-aggregate
-Aggregate the input files and preform freq on the aggregated input set
+Aggregate the input files and perform freq on the aggregated input set
 .TP
-.BR \-F " " \fIDELIM\fR ", " \fB\-\-delimiter\fR=\fIDELIM\fB
+.BR \-D " " \fIDELIM\fR ", " \fB\-\-delimiter\fR=\fIDELIM\fB
 Specify the delimiter to split input elements (supports regex). If not specified, the default delimiter is empty string.
 .TP
 .BR \-R ", " \-\-raw
@@ -44,19 +44,19 @@ Interpret the input as long integers.
 Interpret the input as packed structs of \fIsize\fR bytes. Requires the \fB\-R\fR (or \fB\-\-raw\fR) option to be selected.
 .SH EXAMPLES
 .TP
-Count distinct words in a file using spaces as delimiters:
+Count distinct chars in a file using no delimiters (each char read is counted until EOF):
 .sp
 .B freq
 file.txt
 .TP
 Use a comma as the delimiter for splitting input elements:
 .sp
-.B freq \-F ","
+.B freq \-D ","
 file.csv
 .TP
 Count distinct integers from a byte stream:
 .sp
-.B freq \-\-binary \-i
+.B freq \-\-raw \-i
 file.bin
 .TP
 Sort the output while counting distinct floats:
@@ -65,7 +65,10 @@ Sort the output while counting distinct floats:
 file.txt
 .SH SEE ALSO
 .B sort(1),
-uniq(1)
+.B uniq(1)
+.SH HISTORY
+.TP
+The first version of \fBfreq\fR appeared as the \fIauthor\fR's solution to the question 6-4 in the book \fBPractice of Programming\fR by Brian W. Kernighan and Rob Pike.
 .SH AUTHOR
 Written by John Demir
 .SH REPORTING BUGS

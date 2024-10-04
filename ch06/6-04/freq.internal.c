@@ -9,11 +9,11 @@
 #include "hash.h"
 //#include "qsort.h"
 
-#define N_SUPPORTED_OPTS  9
+#define N_SUPPORTED_OPTS  10
 
-#define TYPE_OPTS_MASK    0x1F0
-#define RAW_OPT_MASK      0x002
-#define STRUCT_OPT_MASK   0x100
+#define TYPE_OPTS_MASK    0x3E0
+#define RAW_OPT_MASK      0x004
+#define STRUCT_OPT_MASK   0x200
 
 #define MUTEX_OPTS        "-i -d -f -l -S"
 #define DEFAULT_DELIM     ""
@@ -22,6 +22,7 @@ static char *USAGE_INFO_STR =
 "Usage: freq [ -hDRsidflS ] [ -D DELIM ] [-S size] [ -i | -d | -f | -l | -S ] [ file ... ]\n"
 "Options:\n"
 "\t-h      , --help              Display this help and exit\n"
+"\t-a      , --aggregate         Aggregate input files into a combined output\n"
 "\t-D DELIM, --delim=DELIM       Set delimiter (supports regex)\n"
 "\t-R      , --raw               Process as raw byte stream\n"
 "\t-s      , --sort              Sort the output\n"
@@ -34,6 +35,7 @@ static char *USAGE_INFO_STR =
 // struct option: defined in getopt.h, see man 3 getopt 
 const static struct option LONG_OPTS[] = {
     {"help",      no_argument,       0, 'h'},
+    {"aggregate", no_argument,       0, 'a'},
     {"delim",     required_argument, 0, 'D'},
     {"raw",       no_argument,       0, 'R'},
     {"sort",      no_argument,       0, 's'},
@@ -73,6 +75,7 @@ unsigned parse_opts(int argc, char **argv, char **delim, int *size)
                 *size = eatoi(optarg);
 								set_opt_bit(&opt_state, opt);
                 break;
+            case 'a':
             case 'R':
             case 's':
             case 'i':
