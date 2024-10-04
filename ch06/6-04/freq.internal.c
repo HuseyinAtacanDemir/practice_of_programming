@@ -18,8 +18,8 @@
 #define MUTEX_OPTS        "-i -d -f -l -S"
 #define DEFAULT_DELIM     ""
 
-static char *USAGE_INFO_STR = 
-"Usage: freq [ -hDRsidflS ] [ -D DELIM ] [-S size] [ -i | -d | -f | -l | -S ] [ file ... ]\n"
+char *USAGE_INFO_STR = 
+"Usage: freq [ -haDRsidflS ] [ -D DELIM ] [-S size] [ -i | -d | -f | -l | -S ] [ file ... ]\n"
 "Options:\n"
 "\t-h      , --help              Display this help and exit\n"
 "\t-a      , --aggregate         Aggregate input files into a combined output\n"
