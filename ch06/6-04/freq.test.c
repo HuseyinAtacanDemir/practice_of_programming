@@ -19,7 +19,9 @@
     void  test_set_opt_bit_nonzero_optstates    (int *, int *, int *);
 
   // parse_opts  
-    void test_parse_opts_single_short_opts      (int *, int *, int *);
+    void test_parse_opts_single_short_opts            (int *, int *, int *);
+    void test_parse_opts_short_opts_combined_separate (int *, int *, int *);
+    void test_parse_opts_short_opts_combined_together (int *, int *, int *);
 
 // TEST_LOGIC
   int test_set_opt_bit (int opt, unsigned old_optstate, 
@@ -47,6 +49,8 @@ int main(void)
 
     printf("\nPARSE_OPTS:\n"); 
     test_parse_opts_single_short_opts(&total, &pass, &fail);
+    test_parse_opts_short_opts_combined_separate(&total, &pass, &fail);
+    test_parse_opts_short_opts_combined_together(&total, &pass, &fail);
 
     printf("\nTotal: %d, Passed: %d, Failed: %d\n", total, pass, fail);
     return 0;
@@ -230,7 +234,7 @@ int test_set_opt_bit(int opt, unsigned old_optstate, unsigned exp_optstate, char
 
 void test_parse_opts_single_short_opts(int *total, int *pass, int *fail)
 {
-    int i, j, local_total, local_pass, local_fail;
+    int i, local_total, local_pass, local_fail;
     char exp_msg[1024], opt[4];
      
     struct TESTCASE {
@@ -317,6 +321,69 @@ void test_parse_opts_single_short_opts(int *total, int *pass, int *fail)
     *total += local_total;
     *pass += local_pass;
     *fail += local_fail;
+}
+
+void test_parse_opts_short_opts_combined_separate(int *total, int *pass, int *fail)
+{
+    int i, local_total, local_pass, local_fail;
+    struct TESTCASE {
+        int       argc;
+        int       exp_size;
+        int       exp_optind; // GNU getopt intializes optind to 1
+        unsigned  exp_optstate;
+        char      *exp_msg;
+        char      **argv;
+    };
+
+    printf("\tshort opts combined separate\n"); 
+
+    local_total = local_pass = local_fail = 0;
+
+    struct TESTCASE cases[1] = {
+        {2, 0, 2, 0x0, "", create_argv(2, "./freq", "-idfl")}
+    };
+
+    for (i = 0; i < 1L; i++) {
+        printf("\t\tcmd: \"%s\" argc: %d, exp_optstate: %u, exp_optind: %d: ", 
+                concat_str_arr(cases[i].argv, " "), cases[i].argc, 
+                cases[i].exp_optstate, cases[i].exp_optind);
+        fflush(stdout);
+        if (test_parse_opts(cases[i].argc, cases[i].argv, cases[i].exp_optstate,
+                           cases[i].exp_size, cases[i].exp_optind, cases[i].exp_msg))
+            local_pass++;
+        else
+            local_fail++;
+        local_total++;
+    }
+
+    printf("\t\tTotal: %d, Passed: %d, Failed: %d\n", local_total, local_pass, local_fail);
+    *total += local_total;
+    *pass += local_pass;
+    *fail += local_fail;    
+}
+
+void test_parse_opts_short_opts_combined_together (int *total, int *pass, int *fail)
+{
+    int local_total, local_pass, local_fail;
+    struct TESTCASE {
+        int       argc;
+        int       exp_size;
+        int       exp_optind; // GNU getopt intializes optind to 1
+        unsigned  exp_optstate;
+        char      *exp_msg;
+        char      **argv;
+    };
+    
+    printf("\tshort opts combined together\n"); 
+
+    local_total = local_pass = local_fail = 0;
+
+    
+
+    printf("\t\tTotal: %d, Passed: %d, Failed: %d\n", local_total, local_pass, local_fail);
+    *total += local_total;
+    *pass += local_pass;
+    *fail += local_fail;  
 }
 
 int test_parse_opts(int argc, char **argv, unsigned exp_optstate, 
