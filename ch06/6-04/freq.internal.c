@@ -154,7 +154,8 @@ void usage(void)
     weprintf(UsageInfoStr);
 }
 
-int is_quoted_str(char *str) {
+int is_quoted_str(char *str) 
+{
     if (!str)
         return 0;
     else if (str[0] != '"')
