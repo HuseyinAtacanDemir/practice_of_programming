@@ -364,46 +364,70 @@ void test_parse_opts_short_combined_single(int *total, int *pass, int *fail)
 
     local_total = local_pass = local_fail = 0;
 
-    struct TestCase cases[16] = {
+    struct TestCase cases[] = {
     // Valid combinations
-    {3, 0, 3, 0x28, "", create_argv(3, "./freq_test", "-i", "-R")}, 
-    {4, 0, 4, 0x0C, "", create_argv(4, "./freq_test", "-D", "delim", "-R")},  
-    {2, 0, 2, 0x10, "", create_argv(2, "./freq_test", "-s")}, 
-    {3, 0, 3, 0x88, "", create_argv(3, "./freq_test", "-f", "-R")}, 
-    {4, 10, 4, 0x208, "", create_argv(4, "./freq_test", "-S", "10", "-R")}, 
+    {3, 0, 3, 0x28, "", 
+      create_argv(3, "./freq_test", "-i", "-R")}, 
+    
+    {4, 0, 4, 0x0C, "", 
+      create_argv(4, "./freq_test", "-D", "\"delim\"", "-R")},  
+    
+    {4, 0, 4, 0x112, "", 
+      create_argv(4, "./freq_test", "-s", "-a", "-l")}, 
+    
+    {3, 0, 3, 0x88, "", 
+      create_argv(3, "./freq_test", "-f", "-R")}, 
+    
+    {4, 10, 4, 0x208, "", 
+      create_argv(4, "./freq_test", "-S", "10", "-R")}, 
 
     // Invalid combinations (mutually exclusive)
     {3, 0, 3, 0x00, "freq_test: Mutually exclusive options (-i -d -f -l -S) "
-      "cannot be used together\n", create_argv(3, "./freq_test", "-i", "-d")}, 
+      "cannot be used together\n", 
+      create_argv(3, "./freq_test", "-i", "-d")}, 
+    
     {3, 0, 3, 0x00, "freq_test: Mutually exclusive options (-i -d -f -l -S) "
-      "cannot be used together\n", create_argv(3, "./freq_test", "-f", "-l")}, 
+      "cannot be used together\n", 
+      create_argv(3, "./freq_test", "-f", "-l")}, 
+    
     {5, 0, 6, 0x00, "freq_test: Mutually exclusive options (-i -d -f -l -S) "
-      "cannot be used together\n", create_argv(5, "./freq_test", 
-                                                      "-i", "-d", "-S", "5")}, 
+      "cannot be used together\n", 
+      create_argv(5, "./freq_test", "-i", "-d", "-S", "5")}, 
+    
     {4, 0, 4, 0x00, "freq_test: Mutually exclusive options (-i -d -f -l -S) "
-      "cannot be used together\n", create_argv(4, "./freq_test", 
-                                                            "-S", "5", "-i")}, 
+      "cannot be used together\n", 
+      create_argv(4, "./freq_test", "-S", "5", "-i")}, 
+    
     {4, 0, 4, 0x00, "freq_test: Mutually exclusive options (-i -d -f -l -S) "
-      "cannot be used together\n", create_argv(4, "./freq_test", 
-                                                            "-S", "5", "-d")},  
+      "cannot be used together\n", 
+      create_argv(4, "./freq_test","-S", "5", "-d")},  
 
     // Missing required arguments
-    {3, 0, 3, 0x00, "freq_test: option -D requires an argument\n", 
+    {3, 0, 3, 0x00, "freq_test: option -D requires an argument in quotes: "
+      "\"arg\"\n", 
       create_argv(3, "./freq_test", "-D", "-R")},  
+    
     {3, 0, 3, 0x00, "freq_test: option -S requires an argument\n", 
       create_argv(3, "./freq_test", "-S", "-R")},  
 
     // Option -S requires -R
     {4, 0, 4, 0x00, "freq_test: option -S SIZE (--struct=SIZE) requires -R "
-      "(--raw) option.\n", create_argv(4, "./freq_test", "-S", "10", "-s")},  
-    {4, 10, 4, 0x208, "", create_argv(4, "./freq_test", "-S", "10", "-R")},  
+      "(--raw) option.\n", 
+      create_argv(4, "./freq_test", "-S", "10", "-s")},  
+    
+    {4, 10, 4, 0x208, "", 
+      create_argv(4, "./freq_test", "-S", "10", "-R")},  
 
     // Valid multiple short options
-    {4, 0, 4, 0x38, "", create_argv(4, "./freq_test", "-i", "-R", "-s")},  
-    {4, 0, 4, 0x98, "", create_argv(5, "./freq_test", "-f", "-R", "-s")},  
+    {7, 0, 7, 0x3E, "", // 0000 0011 1110 
+      create_argv(7, "./freq_test", "-i", "-R", "-s", "-a", "-D", "\",\"")},  
+    {4, 0, 4, 0x98, "", 
+      create_argv(5, "./freq_test", "-f", "-R", "-s")},
+
+    {0, 0, 0, 0, "", NULL}  
     };
 
-    for (i = 0; i < 16; i++) {
+    for (i = 0; cases[i].argc != 0; i++) {
         printf("\t\tcmd: \"%s\" argc: %d, exp_optstate: %u, exp_optind: %d: ", 
                 concat_str_arr(cases[i].argv, " "), cases[i].argc, 
                 cases[i].exp_optstate, cases[i].exp_optind);
@@ -425,7 +449,7 @@ void test_parse_opts_short_combined_single(int *total, int *pass, int *fail)
 
 void test_parse_opts_short_combined_concat(int *total, int *pass, int *fail)
 {
-    int local_total, local_pass, local_fail;
+    int i, local_total, local_pass, local_fail;
     struct TestCase {
         int       argc;
         int       exp_size;
@@ -438,6 +462,82 @@ void test_parse_opts_short_combined_concat(int *total, int *pass, int *fail)
     printf("\n\tshort opts combined together\n"); 
 
     local_total = local_pass = local_fail = 0;
+
+    struct TestCase cases[] = {
+    // Valid combinations
+    {2, 0, 2, 0x28, "", 
+      create_argv(2, "./freq_test", "-iR")}, 
+    
+    {3, 0, 3, 0x0C, "", 
+      create_argv(3, "./freq_test", "-RD", "\"delim\"")},  
+    
+    {2, 0, 2, 0x112, "", 
+      create_argv(2, "./freq_test", "-sal")}, 
+    
+    {2, 0, 2, 0x88, "", 
+      create_argv(2, "./freq_test", "-fR")}, 
+    
+    {3, 10, 3, 0x208, "", 
+      create_argv(3, "./freq_test", "-SR", "10")}, 
+
+    // Invalid combinations (mutually exclusive)
+    {2, 0, 2, 0x00, "freq_test: Mutually exclusive options (-i -d -f -l -S) "
+      "cannot be used together\n", 
+      create_argv(2, "./freq_test", "-id")}, 
+    
+    {2, 0, 2, 0x00, "freq_test: Mutually exclusive options (-i -d -f -l -S) "
+      "cannot be used together\n", 
+      create_argv(2, "./freq_test", "-fl")}, 
+    
+    {3, 0, 3, 0x00, "freq_test: Mutually exclusive options (-i -d -f -l -S) "
+      "cannot be used together\n", 
+      create_argv(3, "./freq_test", "-idS", "5")}, 
+    
+    {3, 0, 3, 0x00, "freq_test: Mutually exclusive options (-i -d -f -l -S) "
+      "cannot be used together\n", 
+      create_argv(3, "./freq_test", "-Si", "5")}, 
+    
+    {3, 0, 3, 0x00, "freq_test: Mutually exclusive options (-i -d -f -l -S) "
+      "cannot be used together\n", 
+      create_argv(3, "./freq_test","-Sd", "5")},  
+
+    // Missing required arguments
+    {2, 0, 2, 0x00, "freq_test: option -D requires an argument in quotes: "
+      "\"arg\"\n", 
+      create_argv(2, "./freq_test", "-DR")},  
+    
+    {2, 0, 2, 0x00, "freq_test: option -S requires an argument\n", 
+      create_argv(2, "./freq_test", "-SR")},  
+
+    // Option -S requires -R
+    {3, 0, 3, 0x00, "freq_test: option -S SIZE (--struct=SIZE) requires -R "
+      "(--raw) option.\n", 
+      create_argv(3, "./freq_test", "-Ss", "10")},  
+    
+    {3, 10, 3, 0x208, "", 
+      create_argv(3, "./freq_test", "-SR", "10")},  
+
+    // Valid multiple short options
+    {3, 0, 3, 0x3E, "", // 0000 0011 1110 
+      create_argv(3, "./freq_test", "-iRsaD", "\",\"")},  
+    {2, 0, 2, 0x98, "", 
+      create_argv(2, "./freq_test", "-fRs")},
+    
+    {0, 0, 0, 0, "", NULL} 
+    };
+
+    for (i = 0; cases[i].argc != 0; i++) {
+         printf("\t\tcmd: \"%s\" argc: %d, exp_optstate: %u, exp_optind: %d: ", 
+                concat_str_arr(cases[i].argv, " "), cases[i].argc, 
+                cases[i].exp_optstate, cases[i].exp_optind);
+        fflush(stdout);
+        if (test_parse_opts(cases[i].argc,cases[i].argv,cases[i].exp_optstate,
+                     cases[i].exp_size, cases[i].exp_optind, cases[i].exp_msg))
+            local_pass++;
+        else
+            local_fail++;
+        local_total++;
+    }
 
     printf("\t\tTotal: %d, Passed: %d, Failed: %d\n", 
             local_total, local_pass, local_fail);
@@ -478,16 +578,19 @@ int test_parse_opts(int argc, char **argv, unsigned exp_optstate,
         wait(&status);
         read_pipe_to_buf(&buf, pipefd);
 
-        if (WIFSIGNALED(status) && WTERMSIG(status) == SIGABRT) {
-            printf("Failed: %s\n", buf);
-            pass = 0;
-        } else if (WIFEXITED(status) && WEXITSTATUS(status) == EXIT_FAILURE 
+        if (WIFEXITED(status) && WEXITSTATUS(status) == EXIT_FAILURE 
                     && strcmp(buf, exp_msg) != 0) {
             printf("Failed: Expected: %s Actual: %s\n", exp_msg, buf);
             pass = 0;
         } else if (WIFEXITED(status) && WEXITSTATUS(status) == EXIT_SUCCESS 
                     && strcmp(buf, exp_msg) != 0) {
             printf("Failed: Expected: %s Actual: %s\n", exp_msg, buf);
+            pass = 0;
+        } else if (WIFSIGNALED(status) && WTERMSIG(status) == SIGABRT) {
+            printf("Failed: %s\n", buf);
+            pass = 0;
+        } else if (WIFSIGNALED(status)) {
+            printf("Failed: signal: %d %s\n", WTERMSIG(status), buf);
             pass = 0;
         } else {
             printf("Pass\n");
