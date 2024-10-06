@@ -9,6 +9,7 @@ extern char *InvOptMutex;
 extern char *InvOptChar;
 extern char *InvOptStr;
 extern char *InvOptFormat;
+extern char *OptReqsQt;
 extern char *OptReqsArg;
 extern char *OptSReqsArgR;
 extern char *UsageInfoStr;

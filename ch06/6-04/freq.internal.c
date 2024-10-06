@@ -23,6 +23,7 @@ char *InvOptMutex   = "Mutually exclusive options (-i -d -f -l -S) "
 char *InvOptChar    = "invalid option -%c";
 char *InvOptStr     = "invalid option %s";
 char *InvOptFormat  = "invalid option format: %d";
+char *OptReqsQt     = "option %s requires an argument in quotes: \"arg\"";
 char *OptReqsArg    = "option %s requires an argument";
 char *OptSReqsArgR  = "option -S SIZE (--struct=SIZE) "
                       "requires -R (--raw) option.";
@@ -56,6 +57,8 @@ const static struct option LongOpts[] = {
     {0, 0, 0, 0}
 };
 
+static int is_quoted_str(char *str);
+
 void freq(char *filename, unsigned opt_state, char *delim, int size)
 {
 		if (filename == NULL)
@@ -77,12 +80,16 @@ unsigned parse_opts(int argc, char **argv, char **delim, int *size)
             case 'h':
 								usage();
                 exit(EXIT_SUCCESS);
-            case 'D': 
+            case 'D':
+                if (!is_quoted_str(optarg)) {
+                    weprintf(OptReqsQt, "-D");
+                    exit(EXIT_FAILURE);
+                }
                 *delim = estrdup(optarg);
 								set_opt_bit(&opt_state, opt);
                 break;
             case 'S':
-                *size = eatoi(optarg);
+                *size = eatoi((char *) optarg);
             case 'a':
             case 'R':
             case 's':
@@ -145,4 +152,16 @@ void set_opt_bit(unsigned *opt_state, int opt)
 void usage(void)
 {
     weprintf(UsageInfoStr);
+}
+
+int is_quoted_str(char *str) {
+    if (!str)
+        return 0;
+    else if (str[0] != '"')
+        return 0;
+    else if (strlen(str) < 2)
+        return 0;
+    else if (str[strlen(str)-1] != '"')
+        return 0;
+    return 1;
 }
