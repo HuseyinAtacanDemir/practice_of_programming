@@ -39,6 +39,7 @@
   void read_pipe_to_buf (char **buf, int pipefd[]);
   char **create_argv    (int argc, ...);
   char *concat_str_arr  (char **arr, const char *delim);
+  char *rus_doll_fmt    (int n, ...);
 
 int main(void)
 {
@@ -561,7 +562,76 @@ void test_parse_opts_short_combined_concat(int *total, int *pass, int *fail)
 
 void test_parse_opts_long_single(int *total, int *pass, int *fail)
 {
+    int i, local_total, local_pass, local_fail;
+    char *exp_msg;
+    struct TestCase {
+        int       argc;
+        int       exp_size;
+        int       exp_optind; // GNU getopt intializes optind to 1
+        unsigned  exp_optstate;
+        char      *exp_msg;
+        char      **argv;
+    };
+    
+    printf("\n\tlong opts singler\n"); 
 
+    local_total = local_pass = local_fail = 0;
+
+    struct TestCase cases[] = {
+    {2, 0, 0, 0x0, rus_doll_fmt(2, "freq_test: %s\n", UsageInfoStr), 
+      create_argv(2, "./freq", "--help")},    
+
+    {2, 0, 2, 0x2, NULL, 
+      create_argv(2, "./freq", "--aggregate")},    
+
+    {2, 0, 0, 0x0, rus_doll_fmt(3, "freq_test: %s\n", OptReqsArg, "--delim"), 
+      create_argv(2, "./freq", "--delim")},    
+
+    {2, 0, 2, 0x8, NULL, 
+      create_argv(2, "./freq", "--raw")},    
+
+    {2, 0, 2, 0x10, NULL, 
+      create_argv(2, "./freq", "--sort")},    
+
+    {2, 0, 2, 0x20, NULL, 
+      create_argv(2, "./freq", "--int")},    
+
+    {2, 0, 2, 0x40, NULL, 
+      create_argv(2, "./freq", "--double")},    
+
+    {2, 0, 2, 0x80, NULL, 
+      create_argv(2, "./freq", "--float")},    
+
+    {2, 0, 2, 0x100, NULL, 
+      create_argv(2, "./freq", "--long")},    
+
+    {2, 0, 0, 0x0, rus_doll_fmt(3, "freq_test: %s\n", OptReqsArg, "--struct"), 
+      create_argv(2, "./freq", "--struct")},    
+
+    {0, 0, 0, 0, NULL, NULL} 
+    };
+
+    for (i = 0; cases[i].argc != 0; i++) {
+         printf("\t\tcmd: \"%s\" argc: %d, exp_optstate: %u, exp_optind: %d: ", 
+                concat_str_arr(cases[i].argv, " "), cases[i].argc, 
+                cases[i].exp_optstate, cases[i].exp_optind);
+        fflush(stdout);
+        if (test_parse_opts(cases[i].argc,cases[i].argv,cases[i].exp_optstate,
+                     cases[i].exp_size, cases[i].exp_optind, cases[i].exp_msg))
+            local_pass++;
+        else
+            local_fail++;
+        local_total++;
+        free(cases[i].argv);
+        if (cases[i].exp_msg)
+            free(cases[i].exp_msg);
+    }
+
+    printf("\t\tTotal: %d, Passed: %d, Failed: %d\n", 
+            local_total, local_pass, local_fail);
+    *total += local_total;
+    *pass += local_pass;
+    *fail += local_fail; 
 }
  
 void test_parse_opts_long_combined_single(int *total, int *pass, int *fail)
@@ -612,11 +682,11 @@ int test_parse_opts(int argc, char **argv, unsigned exp_optstate,
         read_pipe_to_buf(&buf, pipefd);
 
         if (WIFEXITED(status) && WEXITSTATUS(status) == EXIT_FAILURE 
-                    && strcmp(buf, exp_msg) != 0) {
+                    && exp_msg && strcmp(buf, exp_msg) != 0) {
             printf("Failed: Expected: %s Actual: %s\n", exp_msg, buf);
             pass = 0;
         } else if (WIFEXITED(status) && WEXITSTATUS(status) == EXIT_SUCCESS 
-                    && strcmp(buf, exp_msg) != 0) {
+                    && exp_msg && strcmp(buf, exp_msg) != 0) {
             printf("Failed: Expected: %s Actual: %s\n", exp_msg, buf);
             pass = 0;
         } else if (WIFSIGNALED(status) && WTERMSIG(status) == SIGABRT) {
@@ -712,4 +782,47 @@ char *concat_str_arr(char **arr, const char *delim)
     return s;
 }
 
+// format strings and return one string, 
+// assumes all str args have format info except the last one
+// works backwards on the input args list 
+// example usage: 
+//    char *str = concat_with_fmt(3, "./freq: %s\n", "opt %s invalid", "-X");
+//    printf(str);
+//    $> ./freq: opt -X invalid
+//    $> _
+char *rus_doll_fmt(int n, ...) 
+{
+    int i, len;
+    char *str, *nxt, **argv;
+    va_list args;
+
+    if (n <= 0)
+        return NULL;
+
+    va_start(args, n);
+    argv = (char **) emalloc(n * sizeof(char *));
+    for (len = i = 0; i < n; i++) {
+        argv[i] = va_arg(args, char *);
+        len += strlen(argv[i]);
+    }
+    va_end(args);
+
+
+    str = (char *) emalloc((len * sizeof(char *)) + 1); // accounting for '\0'
+    nxt = (char *) emalloc((len * sizeof(char *)) + 1); // accounting for '\0'
+    str[0] = '\0';
+    nxt[0] = '\0';
+
+    for (i = n-1; i >= 0; i--) {
+        if (!strlen(nxt)) {
+            sprintf(nxt, "%s", argv[i]);
+        } else {
+            sprintf(str, argv[i], nxt);
+            strcpy(nxt, str);
+        }
+    }
+    free(argv);
+    free(nxt);
+    return str;
+}
 // endregion: helpers
