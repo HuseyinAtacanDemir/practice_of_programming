@@ -64,7 +64,7 @@ void test_set_opt_bit_all_chars(int *total, int *pass, int *fail)
     char exp_msg[128];
 
     local_total = local_pass = local_fail = 0;
-    printf("\twhole char set individually\n");
+    printf("\n\twhole char set individually\n");
     for (opt = 0; opt <= UCHAR_MAX; opt++) {
         opt_state = exp_optstate = 0x0;
         printf("\t\tShort Opt: %c \\x%X: ", (isprint(opt) ? opt : '?'), opt);
@@ -123,7 +123,7 @@ void test_set_opt_bit_boundaries(int *total, int *pass, int *fail)
     char exp_msg[128];
     unsigned exp_optstate, opt_state;
 
-    printf("\topt boundaries\n"); 
+    printf("\n\topt boundaries\n"); 
 
     local_total = local_pass = local_fail = 0;
     exp_optstate = opt_state = 0x0;
@@ -158,7 +158,7 @@ void test_set_opt_bit_nonzero_optstates(int *total, int *pass, int *fail)
         char      exp_msg[128];
     };
 
-    printf("\tnonzero optstates\n"); 
+    printf("\n\tnonzero optstates\n"); 
 
     local_total = local_pass = local_fail = 0;
     struct TestCase cases[] = {
@@ -255,7 +255,7 @@ void test_parse_opts_single_short_opts(int *total, int *pass, int *fail)
         char      **argv;
     } cases[UCHAR_MAX+1];
     
-    printf("\tsingle short opts\n"); 
+    printf("\n\tsingle short opts\n"); 
 
     for (i = 0; i <= UCHAR_MAX; i++) {
         switch(i) {
@@ -360,16 +360,50 @@ void test_parse_opts_short_combined_single(int *total, int *pass, int *fail)
         char      **argv;
     };
 
-    printf("\tshort opts combined separate\n"); 
+    printf("\n\tshort opts combined separate\n"); 
 
     local_total = local_pass = local_fail = 0;
 
-    struct TestCase cases[1] = {
-        {2, 0, 2, 0x0, "freq_test: Mutually exclusive options (-i -d -f -l -S)"
-        " cannot be used together\n", create_argv(2, "./freq", "-idfl")}
+    struct TestCase cases[16] = {
+    // Valid combinations
+    {3, 0, 3, 0x28, "", create_argv(3, "./freq_test", "-i", "-R")}, 
+    {4, 0, 4, 0x0C, "", create_argv(4, "./freq_test", "-D", "delim", "-R")},  
+    {2, 0, 2, 0x10, "", create_argv(2, "./freq_test", "-s")}, 
+    {3, 0, 3, 0x88, "", create_argv(3, "./freq_test", "-f", "-R")}, 
+    {4, 10, 4, 0x208, "", create_argv(4, "./freq_test", "-S", "10", "-R")}, 
+
+    // Invalid combinations (mutually exclusive)
+    {3, 0, 3, 0x00, "freq_test: Mutually exclusive options (-i -d -f -l -S) "
+      "cannot be used together\n", create_argv(3, "./freq_test", "-i", "-d")}, 
+    {3, 0, 3, 0x00, "freq_test: Mutually exclusive options (-i -d -f -l -S) "
+      "cannot be used together\n", create_argv(3, "./freq_test", "-f", "-l")}, 
+    {5, 0, 6, 0x00, "freq_test: Mutually exclusive options (-i -d -f -l -S) "
+      "cannot be used together\n", create_argv(5, "./freq_test", 
+                                                      "-i", "-d", "-S", "5")}, 
+    {4, 0, 4, 0x00, "freq_test: Mutually exclusive options (-i -d -f -l -S) "
+      "cannot be used together\n", create_argv(4, "./freq_test", 
+                                                            "-S", "5", "-i")}, 
+    {4, 0, 4, 0x00, "freq_test: Mutually exclusive options (-i -d -f -l -S) "
+      "cannot be used together\n", create_argv(4, "./freq_test", 
+                                                            "-S", "5", "-d")},  
+
+    // Missing required arguments
+    {3, 0, 3, 0x00, "freq_test: option -D requires an argument\n", 
+      create_argv(3, "./freq_test", "-D", "-R")},  
+    {3, 0, 3, 0x00, "freq_test: option -S requires an argument\n", 
+      create_argv(3, "./freq_test", "-S", "-R")},  
+
+    // Option -S requires -R
+    {4, 0, 4, 0x00, "freq_test: option -S SIZE (--struct=SIZE) requires -R "
+      "(--raw) option.\n", create_argv(4, "./freq_test", "-S", "10", "-s")},  
+    {4, 10, 4, 0x208, "", create_argv(4, "./freq_test", "-S", "10", "-R")},  
+
+    // Valid multiple short options
+    {4, 0, 4, 0x38, "", create_argv(4, "./freq_test", "-i", "-R", "-s")},  
+    {4, 0, 4, 0x98, "", create_argv(5, "./freq_test", "-f", "-R", "-s")},  
     };
 
-    for (i = 0; i < 1; i++) {
+    for (i = 0; i < 16; i++) {
         printf("\t\tcmd: \"%s\" argc: %d, exp_optstate: %u, exp_optind: %d: ", 
                 concat_str_arr(cases[i].argv, " "), cases[i].argc, 
                 cases[i].exp_optstate, cases[i].exp_optind);
@@ -401,7 +435,7 @@ void test_parse_opts_short_combined_concat(int *total, int *pass, int *fail)
         char      **argv;
     };
     
-    printf("\tshort opts combined together\n"); 
+    printf("\n\tshort opts combined together\n"); 
 
     local_total = local_pass = local_fail = 0;
 
