@@ -12,7 +12,7 @@
 #define N_SUPPORTED_OPTS  10
 
 #define TYPE_OPTS_MASK    0x3E0
-#define RAW_OPT_MASK      0x004
+#define RAW_OPT_MASK      0x008
 #define STRUCT_OPT_MASK   0x200
 
 #define DEFAULT_DELIM     ""
@@ -111,7 +111,7 @@ unsigned parse_opts(int argc, char **argv, char **delim, int *size)
         exit(EXIT_FAILURE);
     }
 
-    if (opt_state & STRUCT_OPT_MASK && !(opt_state & RAW_OPT_MASK)) {
+    if ((opt_state & STRUCT_OPT_MASK) && !(opt_state & RAW_OPT_MASK)) {
         weprintf(OptSReqsArgR);
         exit(EXIT_FAILURE);
     }
