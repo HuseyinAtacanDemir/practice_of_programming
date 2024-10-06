@@ -20,9 +20,13 @@
     void  test_set_opt_bit_nonzero_optstates    (int *, int *, int *);
 
   // parse_opts  
-    void test_parse_opts_single_short_opts       (int *, int *, int *);
-    void test_parse_opts_short_combined_single   (int *, int *, int *);
-    void test_parse_opts_short_combined_concat   (int *, int *, int *);
+    void test_parse_opts_short_single           (int *, int *, int *);
+    void test_parse_opts_short_combined_single  (int *, int *, int *);
+    void test_parse_opts_short_combined_concat  (int *, int *, int *);
+    void test_parse_opts_long_single            (int *, int *, int *); 
+    void test_parse_opts_long_combined_single   (int *, int *, int *); 
+    void test_parse_opts_long_combined_concat   (int *, int *, int *); 
+    void test_parse_opts_short_long_mixed       (int *, int *, int *); 
 
 // TEST_LOGIC
   int test_set_opt_bit (int opt, unsigned old_optstate, 
@@ -39,24 +43,30 @@
 int main(void)
 {
     int total, pass, fail;
-    
+
     total = pass = fail = 0;
     printf("FREQ UNIT TEST SUITE\n");
-   
-    printf("\nSET_OPT_BIT:\n"); 
+
+    printf("\nSET_OPT_BIT:\n");
     test_set_opt_bit_all_chars(&total, &pass, &fail);
     test_set_opt_bit_boundaries(&total, &pass, &fail);
     test_set_opt_bit_nonzero_optstates(&total, &pass, &fail);
 
-    printf("\nPARSE_OPTS:\n"); 
-    test_parse_opts_single_short_opts(&total, &pass, &fail);
+    printf("\nPARSE_OPTS:\n");
+    test_parse_opts_short_single(&total, &pass, &fail);
     test_parse_opts_short_combined_single(&total, &pass, &fail);
     test_parse_opts_short_combined_concat(&total, &pass, &fail);
-
+    test_parse_opts_long_single(&total, &pass, &fail);
+    test_parse_opts_long_combined_single(&total, &pass, &fail);
+    test_parse_opts_long_combined_concat(&total, &pass, &fail);
+    test_parse_opts_short_long_mixed(&total, &pass, &fail);
+    
     printf("\nTotal: %d, Passed: %d, Failed: %d\n", total, pass, fail);
+    
     return 0;
 }
 
+// region: set_opt_bit
 void test_set_opt_bit_all_chars(int *total, int *pass, int *fail)
 {
     int local_total, local_pass, local_fail, opt;
@@ -239,9 +249,10 @@ int test_set_opt_bit(int opt, unsigned old_optstate,
         return pass;
     }
 }
+// endregion: set_opt_bit
 
-//TODO: fix the freeing logic, you are estrdup'ing everywhere!!
-void test_parse_opts_single_short_opts(int *total, int *pass, int *fail)
+// region: parse_opts
+void test_parse_opts_short_single(int *total, int *pass, int *fail)
 {
     int i, local_total, local_pass, local_fail;
     char exp_msg[1024], opt[4];
@@ -438,6 +449,7 @@ void test_parse_opts_short_combined_single(int *total, int *pass, int *fail)
         else
             local_fail++;
         local_total++;
+        free(cases[i].argv);
     }
 
     printf("\t\tTotal: %d, Passed: %d, Failed: %d\n", 
@@ -537,6 +549,7 @@ void test_parse_opts_short_combined_concat(int *total, int *pass, int *fail)
         else
             local_fail++;
         local_total++;
+        free(cases[i].argv);
     }
 
     printf("\t\tTotal: %d, Passed: %d, Failed: %d\n", 
@@ -546,6 +559,26 @@ void test_parse_opts_short_combined_concat(int *total, int *pass, int *fail)
     *fail += local_fail;  
 }
 
+void test_parse_opts_long_single(int *total, int *pass, int *fail)
+{
+
+}
+ 
+void test_parse_opts_long_combined_single(int *total, int *pass, int *fail)
+{
+
+}
+ 
+void test_parse_opts_long_combined_concat(int *total, int *pass, int *fail)
+{
+
+}
+ 
+void test_parse_opts_short_long_mixed(int *total, int *pass, int *fail)
+{
+
+}
+ 
 int test_parse_opts(int argc, char **argv, unsigned exp_optstate, 
                     int exp_size, int exp_optind, char *exp_msg)
 {
@@ -603,6 +636,9 @@ int test_parse_opts(int argc, char **argv, unsigned exp_optstate,
     }
 }
 
+// endregion: parse_opts
+
+// region: helpers
 void create_pipe(int pipefd[])
 {
     close(pipefd[0]);               // Close read end of the pipe
@@ -675,3 +711,5 @@ char *concat_str_arr(char **arr, const char *delim)
 
     return s;
 }
+
+// endregion: helpers
