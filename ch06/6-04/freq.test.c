@@ -348,7 +348,7 @@ void test_parse_opts_short_single(int *total, int *pass, int *fail)
 
 void test_parse_opts_short_combined_single(int *total, int *pass, int *fail)
 {
-    int i, ntotal, npass, nfail;
+    int i, npass, nfail;
     struct TestCase {
         int       argc;
         int       exp_size;
@@ -360,7 +360,7 @@ void test_parse_opts_short_combined_single(int *total, int *pass, int *fail)
 
     printf("\n\tshort opts combined separate\n"); 
 
-    ntotal = npass = nfail = 0;
+    npass = nfail = 0;
 
     struct TestCase cases[] = {
     // Valid combinations
@@ -427,23 +427,22 @@ void test_parse_opts_short_combined_single(int *total, int *pass, int *fail)
                      cases[i].exp_size, cases[i].exp_optind, cases[i].exp_msg))
             npass++;
         else
-            nfail++;
-        ntotal++;
+            nfail++;;
         if (cases[i].exp_msg)
             free(cases[i].exp_msg);
         free(cases[i].argv);
     }
 
-    printf("\t\tTotal: %d, Passed: %d, Failed: %d\n", 
-            ntotal, npass, nfail);
-    *total += ntotal;
+    printf("\t\tTotal: %d, Passed: %d, Failed: %d\n", i, npass, nfail);
+
+    *total += i;
     *pass += npass;
     *fail += nfail;    
 }
 
 void test_parse_opts_short_combined_concat(int *total, int *pass, int *fail)
 {
-    int i, ntotal, npass, nfail;
+    int i, npass, nfail;
     struct TestCase {
         int       argc;
         int       exp_size;
@@ -455,7 +454,7 @@ void test_parse_opts_short_combined_concat(int *total, int *pass, int *fail)
     
     printf("\n\tshort opts combined together\n"); 
 
-    ntotal = npass = nfail = 0;
+    npass = nfail = 0;
 
     struct TestCase cases[] = {
     // Valid combinations
@@ -472,7 +471,7 @@ void test_parse_opts_short_combined_concat(int *total, int *pass, int *fail)
       create_argv(2, "./freq_test", "-fR")}, 
     
     {3, 10, 3, 0x208, NULL, 
-      create_argv(3, "./freq_test", "-SR", "10")}, 
+      create_argv(3, "./freq_test", "-RS", "10")}, 
 
     // Invalid combinations (mutually exclusive)
     {2, 0, 2, 0x00, rus_doll_fmt(3, "freq_test: %s\n", InvOptMutex, MutexOpts), 
@@ -490,7 +489,10 @@ void test_parse_opts_short_combined_concat(int *total, int *pass, int *fail)
     
     {3, 0, 3, 0x00, rus_doll_fmt(3, "freq_test: %s\n", OptReqsArg, "-S"), 
       create_argv(3, "./freq_test","-Sd", "5")},  
-
+    
+    {3, 0, 3, 0x00, rus_doll_fmt(3, "freq_test: %s\n", OptReqsArg, "-S"), 
+      create_argv(3, "./freq_test","-dfiSR", "5")},  
+    
     // Missing required arguments
     {2, 0, 2, 0x00, rus_doll_fmt(3, "freq_test: %s\n", OptReqsQt, "-D"), 
       create_argv(2, "./freq_test", "-DR")},  
@@ -524,23 +526,21 @@ void test_parse_opts_short_combined_concat(int *total, int *pass, int *fail)
             npass++;
         else
             nfail++;
-        ntotal++;
 
         if (cases[i].exp_msg)
             free(cases[i].exp_msg);        
         free(cases[i].argv);
     }
 
-    printf("\t\tTotal: %d, Passed: %d, Failed: %d\n", 
-            ntotal, npass, nfail);
-    *total += ntotal;
+    printf("\t\tTotal: %d, Passed: %d, Failed: %d\n", i, npass, nfail);
+    *total += i;
     *pass += npass;
     *fail += nfail;  
 }
 
 void test_parse_opts_long_single(int *total, int *pass, int *fail)
 {
-    int i, ntotal, npass, nfail;
+    int i, npass, nfail;
     struct TestCase {
         int       argc;
         int       exp_size;
@@ -551,8 +551,6 @@ void test_parse_opts_long_single(int *total, int *pass, int *fail)
     };
     
     printf("\n\tlong opts single\n"); 
-
-    ntotal = npass = nfail = 0;
 
     struct TestCase cases[] = {
     {2, 0, 0, 0x0, rus_doll_fmt(2, "freq_test: %s\n", UsageInfoStr), 
@@ -588,6 +586,7 @@ void test_parse_opts_long_single(int *total, int *pass, int *fail)
     {0, 0, 0, 0, NULL, NULL} 
     };
 
+    npass = nfail = 0;
     for (i = 0; cases[i].argc != 0; i++) {
          printf("\t\tcmd: \"%s\" argc: %d, exp_optstate: %u, exp_optind: %d: ", 
                 concat_str_arr(cases[i].argv, " "), cases[i].argc, 
@@ -598,15 +597,14 @@ void test_parse_opts_long_single(int *total, int *pass, int *fail)
             npass++;
         else
             nfail++;
-        ntotal++;
+
         free(cases[i].argv);
         if (cases[i].exp_msg)
             free(cases[i].exp_msg);
     }
 
-    printf("\t\tTotal: %d, Passed: %d, Failed: %d\n", 
-            ntotal, npass, nfail);
-    *total += ntotal;
+    printf("\t\tTotal: %d, Passed: %d, Failed: %d\n", i, npass, nfail);
+    *total += i;
     *pass += npass;
     *fail += nfail; 
 }
@@ -625,11 +623,16 @@ int test_parse_opts(int argc, char **argv, unsigned exp_optstate,
                     int exp_size, int exp_optind, char *exp_msg)
 {
     pid_t pid;
-    int status, size, pipefd[2], pass;
+    int status, pass, size, pipefd[2];
     unsigned opt_state;
     char *delim, *buf;
 
-    buf = NULL;
+    delim = buf = NULL;
+    size = 0;
+    
+    if (exp_msg == NULL)
+        exp_msg = "";
+
     assert(pipe(pipefd) == 0);
 
     pid = fork();
@@ -637,46 +640,47 @@ int test_parse_opts(int argc, char **argv, unsigned exp_optstate,
 
     if (pid == 0) {
         create_pipe(pipefd);
-        delim = NULL;
-        size = 0;
 
         opt_state = parse_opts(argc, argv, &delim, &size);
 
-        if (delim)
-            free(delim);
         assert(opt_state == exp_optstate);
         assert(size == exp_size);
         assert(optind == exp_optind);
 
-        exit(EXIT_SUCCESS);
-    } else {
-        close(pipefd[1]);
-        wait(&status);
-        read_pipe_to_buf(&buf, pipefd);
+        if (delim)
+            free(delim);
 
-        if (WIFEXITED(status) && WEXITSTATUS(status) == EXIT_FAILURE 
-                    && exp_msg && strcmp(buf, exp_msg) != 0) {
-            printf("Failed: Expected: %s Actual: %s\n", exp_msg, buf);
-            pass = 0;
-        } else if (WIFEXITED(status) && WEXITSTATUS(status) == EXIT_SUCCESS 
-                    && exp_msg && strcmp(buf, exp_msg) != 0) {
-            printf("Failed: Expected: %s Actual: %s\n", exp_msg, buf);
-            pass = 0;
-        } else if (WIFSIGNALED(status) && WTERMSIG(status) == SIGABRT) {
-            printf("Failed: %s\n", buf);
-            pass = 0;
-        } else if (WIFSIGNALED(status)) {
-            printf("Failed: signal: %d %s\n", WTERMSIG(status), buf);
-            pass = 0;
-        } else {
-            printf("Pass\n");
-            pass = 1;
-        }
-        
-        if (buf)
-            free(buf);
-        return pass;
+        exit(EXIT_SUCCESS);
     }
+
+    close(pipefd[1]);
+    wait(&status);
+    read_pipe_to_buf(&buf, pipefd);
+
+    if (WIFEXITED(status))
+        // EXIT_FAILURE or EXIT_SUCCESS
+        if (WEXITSTATUS(status) == 1 || WEXITSTATUS(status) == 0)
+            pass = (strcmp(exp_msg, buf) == 0);
+        else
+            pass = 0;
+    else if (WIFSIGNALED(status))
+        pass = 0;
+    else
+        pass = 1;
+
+    if (pass)
+        printf("Pass\n");
+    else if (exp_msg)
+        printf("Failed: EXIT_CODE: %d, SIGNAL: %d, Expected: %s Actual: %s\n", 
+                WEXITSTATUS(status), WTERMSIG(status), exp_msg, buf);
+    else
+        printf("Failed: EXIT_CODE: %d, SIGNAL: %d: %s\n", 
+                WEXITSTATUS(status), WTERMSIG(status), buf);
+
+    if (buf)
+        free(buf);
+
+    return pass > 0 ? 1 : 0;
 }
 
 // endregion: parse_opts
