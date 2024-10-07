@@ -31,7 +31,8 @@
   int test_set_opt_bit (int opt, unsigned old_optstate, 
                         unsigned exp_optstate, char *exp_msg);
   int test_parse_opts  (int argc, char **argv, unsigned exp_optstate, 
-                        int exp_size, int exp_optind, char *exp_msg);
+                        int exp_size, int exp_optind, char *exp_delim, 
+                        char *exp_msg);
 
 // HELPERS
   void create_pipe      (int pipefd[]);
@@ -811,7 +812,7 @@ int test_set_opt_bit(int opt, unsigned old_optstate,
 }
 
 int test_parse_opts(int argc, char **argv, unsigned exp_optstate, 
-                    int exp_size, int exp_optind, char *exp_msg)
+                    int exp_size, int exp_optind, char *exp_delim, char *exp_msg)
 {
     pid_t pid;
     int status, pass, size, pipefd[2];
@@ -837,6 +838,7 @@ int test_parse_opts(int argc, char **argv, unsigned exp_optstate,
         assert(opt_state == exp_optstate);
         assert(size == exp_size);
         assert(optind == exp_optind);
+        assert(strcmp(delim, exp_delim) == 0);
 
         if (delim)
             free(delim);
