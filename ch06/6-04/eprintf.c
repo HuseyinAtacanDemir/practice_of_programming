@@ -21,7 +21,7 @@ void eprintf(char *fmt, ...)
     if (fmt[0] != '\0' && fmt[strlen(fmt)-1] == ':') 
         fprintf(stderr, " %s ", strerror(errno));
     fprintf(stderr, "\n");
-    exit(2); /* conventional value forfailed execution */ 
+    exit(EXIT_FAILURE); /* conventional value forfailed execution */ 
 }
 
 /* weprintf: print warning message */ 
@@ -57,7 +57,7 @@ void efprintf(FILE *fin, char *fmt, ...)
     if (fmt[0] != '\0' && fmt[strlen(fmt)-1] == ':') 
         fprintf(fin, " %s ", strerror(errno));
     fprintf(fin, "\n");
-    exit(2); /* conventional value forfailed execution */ 
+    exit(EXIT_FAILURE); /* conventional value forfailed execution */ 
 }
 
 /* wefprintf: print warning message to file */ 
