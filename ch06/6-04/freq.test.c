@@ -25,7 +25,6 @@
     void test_parse_opts_short_combined_concat  (int *, int *, int *);
     void test_parse_opts_long_single            (int *, int *, int *); 
     void test_parse_opts_long_combined_single   (int *, int *, int *); 
-    void test_parse_opts_long_combined_concat   (int *, int *, int *); 
     void test_parse_opts_short_long_mixed       (int *, int *, int *); 
 
 // TEST_LOGIC
@@ -59,7 +58,6 @@ int main(void)
     test_parse_opts_short_combined_concat(&total, &pass, &fail);
     test_parse_opts_long_single(&total, &pass, &fail);
     test_parse_opts_long_combined_single(&total, &pass, &fail);
-    test_parse_opts_long_combined_concat(&total, &pass, &fail);
     test_parse_opts_short_long_mixed(&total, &pass, &fail);
     
     printf("\nTotal: %d, Passed: %d, Failed: %d\n", total, pass, fail);
@@ -70,73 +68,80 @@ int main(void)
 // region: set_opt_bit
 void test_set_opt_bit_all_chars(int *total, int *pass, int *fail)
 {
-    int local_total, local_pass, local_fail, opt;
-    unsigned exp_optstate, opt_state;
-    char exp_msg[128];
+    int ntotal, npass, nfail, opt, n;
+    unsigned exp_optstate;
+    char *exp_msg, buf[5];
 
-    local_total = local_pass = local_fail = 0;
     printf("\n\twhole char set individually\n");
-    for (opt = 0; opt <= UCHAR_MAX; opt++) {
-        opt_state = exp_optstate = 0x0;
+
+    ntotal = npass = nfail = 0;
+    n =  UCHAR_MAX + 1;
+    exp_msg = NULL;
+    for (opt = 0; opt < n; opt++) {
         printf("\t\tShort Opt: %c \\x%X: ", (isprint(opt) ? opt : '?'), opt);
         fflush(stdout);
+
+        exp_optstate = 0x1;
         switch(opt) {
-            case 'h':
-                exp_optstate |= 1 << HELP;
-                break;
-            case 'a':
-                exp_optstate |= 1 << AGGR;
-                break;
-            case 'D':
-                exp_optstate |= 1 << DELIM;
-                break;
-            case 'R':
-                exp_optstate |= 1 << RAW;
-                break;
-            case 's':
-                exp_optstate |= 1 << SORT;
-                break;
-            case 'i':
-                exp_optstate |= 1 << INT;
-                break;
-            case 'd':
-                exp_optstate |= 1 << DOUBLE;
-                break;
-            case 'f':
-                exp_optstate |= 1 << FLOAT;
-                break;
-            case 'l': 
-                exp_optstate |= 1 << LONG;
-                break;
             case 'S':
-                exp_optstate |= 1 << STRUCT;
+                exp_optstate <<= 1;
+            case 'l':
+                exp_optstate <<= 1;
+            case 'f':
+                exp_optstate <<= 1;
+            case 'd':
+                exp_optstate <<= 1; 
+            case 'i':
+                exp_optstate <<= 1;
+            case 's':
+                exp_optstate <<= 1; 
+            case 'R':
+                exp_optstate <<= 1;
+            case 'D':
+                exp_optstate <<= 1;
+            case 'a': 
+                exp_optstate <<= 1;
+            case 'h':
                 break;
             default:
-                sprintf(exp_msg, "freq_test: invalid option -%c\n", opt);
+                exp_optstate = 0x0;
+                if (opt) {
+                  sprintf(buf, "-%c", opt);
+                  exp_msg = rus_doll_fmt(3, "freq_test: %s\n", InvOptStr, buf);
+                } else {
+                  sprintf(buf, "%d", opt);
+                  exp_msg = rus_doll_fmt(3, "freq_test: %s\n", InvOptFormat, buf);
+                }
         }
-        if(test_set_opt_bit(opt, opt_state, exp_optstate, exp_msg))
-            local_pass++;
+         
+        if(test_set_opt_bit(opt, 0x0, exp_optstate, exp_msg))
+            npass++;
         else
-            local_fail++;
-        local_total++;
+            nfail++;
+        ntotal++;
+
+        if (exp_msg != NULL) {
+            free(exp_msg);
+            exp_msg = NULL;
+        }
     }
 
     printf("\t\tTotal: %d, Passed: %d, Failed: %d\n", 
-            local_total, local_pass, local_fail);
-    *total += local_total;
-    *pass += local_pass;
-    *fail += local_fail;
+            ntotal, npass, nfail);
+    *total += ntotal;
+    *pass += npass;
+    *fail += nfail;
 }
 
 void test_set_opt_bit_boundaries(int *total, int *pass, int *fail)
 {
-    int i, local_total, local_pass, local_fail;
+    int i, ntotal, npass, nfail;
     char exp_msg[128];
     unsigned exp_optstate, opt_state;
 
     printf("\n\topt boundaries\n"); 
 
-    local_total = local_pass = local_fail = 0;
+    ntotal = npass = nfail = 0;
     exp_optstate = opt_state = 0x0;
 
     int test_cases[] = { INT_MAX, INT_MIN, UCHAR_MAX+1, CHAR_MIN-1 };
@@ -147,62 +152,66 @@ void test_set_opt_bit_boundaries(int *total, int *pass, int *fail)
         sprintf(exp_msg, "freq_test: invalid option format: %d\n", 
                 test_cases[i]);
         if (test_set_opt_bit(test_cases[i], opt_state, exp_optstate, exp_msg))
-            local_pass++;
+            npass++;
         else
-            local_fail++;
-        local_total++;
+            nfail++;
+        ntotal++;
     }
     printf("\t\tTotal: %d, Passed: %d, Failed: %d\n", 
-            local_total, local_pass, local_fail);
-    *total += local_total;
-    *pass += local_pass;
-    *fail += local_fail;
+            ntotal, npass, nfail);
+    *total += ntotal;
+    *pass += npass;
+    *fail += nfail;
 }
 
 void test_set_opt_bit_nonzero_optstates(int *total, int *pass, int *fail)
 {
-    int i, local_total, local_pass, local_fail;
+    int i, ntotal, npass, nfail;
     struct TestCase {
         unsigned  old_optstate;
         unsigned  new_optstate;
         int       opt;
-        char      exp_msg[128];
+        char      *exp_msg;
     };
 
     printf("\n\tnonzero optstates\n"); 
 
-    local_total = local_pass = local_fail = 0;
+    ntotal = npass = nfail = 0;
     struct TestCase cases[] = {
-        { 0x04, (0x04 | (1 << HELP)),   'h', ""},
-        { 0x05, (0x05 | (1 << AGGR)),   'a', ""},
-        { 0x06, (0x06 | (1 << DELIM)),  'D', ""},
-        { 0x07, (0x07 | (1 << RAW)),    'R', ""},
-        { 0x08, (0x08 | (1 << SORT)),   's', ""},
-        { 0x09, (0x09 | (1 << INT)),    'i', ""},
-        { 0x0A, (0x0A | (1 << DOUBLE)), 'd', ""},
-        { 0x0B, (0x0B | (1 << FLOAT)),  'f', ""},
-        { 0x0C, (0x0C | (1 << LONG)),   'l', ""},
-        { 0x0D, (0x0D | (1 << STRUCT)), 'S', ""},
-        { 0x0E, 0x0E,                   'x', "freq_test: invalid option -x\n"}
+        { 0x04, (0x04 | (1 << HELP)),   'h', NULL},
+        { 0x05, (0x05 | (1 << AGGR)),   'a', NULL},
+        { 0x06, (0x06 | (1 << DELIM)),  'D', NULL},
+        { 0x07, (0x07 | (1 << RAW)),    'R', NULL},
+        { 0x08, (0x08 | (1 << SORT)),   's', NULL},
+        { 0x09, (0x09 | (1 << INT)),    'i', NULL},
+        { 0x0A, (0x0A | (1 << DOUBLE)), 'd', NULL},
+        { 0x0B, (0x0B | (1 << FLOAT)),  'f', NULL},
+        { 0x0C, (0x0C | (1 << LONG)),   'l', NULL},
+        { 0x0D, (0x0D | (1 << STRUCT)), 'S', NULL},
+        { 0x0E, 0x0E,                   'x', 
+                          rus_doll_fmt(3, "freq_test: %s\n", InvOptStr, "-x")},
+        { 0, 0, 0, NULL }
     };
 
-    for (i = 0; i < (sizeof(cases)/sizeof(cases[0])); i++) {
+    for (i = 0; i < cases[i].old_optstate != 0; i++) {
         printf("\t\tOld_optstate: %u, Expected_optstate: %u, Opt: %d: ", 
                 cases[i].old_optstate, cases[i].new_optstate, cases[i].opt);
         fflush(stdout);
         if (test_set_opt_bit(cases[i].opt, cases[i].old_optstate, 
                         cases[i].new_optstate, cases[i].exp_msg))
-            local_pass++;
+            npass++;
         else
-            local_fail++;
-        local_total++;
+            nfail++;
+        ntotal++;
+        if (cases[i].exp_msg)
+            free(cases[i].exp_msg);
     }
 
     printf("\t\tTotal: %d, Passed: %d, Failed: %d\n", 
-            local_total, local_pass, local_fail);
-    *total += local_total;
-    *pass += local_pass;
-    *fail += local_fail;
+            ntotal, npass, nfail);
+    *total += ntotal;
+    *pass += npass;
+    *fail += nfail;
 }
 
 int test_set_opt_bit(int opt, unsigned old_optstate, 
@@ -238,7 +247,7 @@ int test_set_opt_bit(int opt, unsigned old_optstate,
             printf("Failed: %s\n", buf);
             pass = 0;
         } else if (WIFEXITED(status) && WEXITSTATUS(status) == EXIT_FAILURE 
-                   && strcmp(buf, exp_msg) != 0) {
+                   && exp_msg && strcmp(buf, exp_msg) != 0) {
             printf("Failed: Expected: %s Actual: %s\n", exp_msg, buf);
             pass = 0;
         } else {
@@ -255,114 +264,91 @@ int test_set_opt_bit(int opt, unsigned old_optstate,
 // region: parse_opts
 void test_parse_opts_short_single(int *total, int *pass, int *fail)
 {
-    int i, local_total, local_pass, local_fail;
-    char exp_msg[1024], opt[4];
-     
-    struct TestCase {
-        int       argc;
-        int       exp_size;
-        int       exp_optind; // GNU getopt intializes optind to 1
-        unsigned  exp_optstate;
-        char      *exp_msg;
-        char      **argv;
-    } cases[UCHAR_MAX+1];
+    int i, npass, nfail, exp_optind;
+    unsigned exp_optstate;
+    char opt[4], *exp_msg, *cmd_str, **argv;
     
     printf("\n\tsingle short opts\n"); 
 
+    npass = nfail = 0;
+
     for (i = 0; i <= UCHAR_MAX; i++) {
+        exp_optind = 2;
+        exp_optstate = 0x1;
+        exp_msg = NULL;
+
+        sprintf(opt, "-%c", i);
         switch(i) {
-            case 0:
-                cases[i] = (struct TestCase){ 1, 0, 1, 0, "", 
-                                             create_argv(1, "./freq") };
-                break;
-            case 'a':
-                cases[i] = (struct TestCase){ 2, 0, 2, 1 << AGGR, "", 
-                                              create_argv(2, "./freq", "-a") };
-                break;
-            case 'R':
-                cases[i] = (struct TestCase){ 2, 0, 2, 1 << RAW, "", 
-                                              create_argv(2, "./freq", "-R") };
-                break;
-            case 's':
-                cases[i] = (struct TestCase){ 2, 0, 2, 1 << SORT, "", 
-                                              create_argv(2, "./freq", "-s") };
-                break;
-            case 'i':
-                cases[i] = (struct TestCase){ 2, 0, 2, 1 << INT, "", 
-                                              create_argv(2, "./freq", "-i") };
-                break;
-            case 'd':
-                cases[i] = (struct TestCase){ 2, 0, 2, 1 << DOUBLE, "", 
-                                              create_argv(2, "./freq", "-d") };
-                break;
-            case 'f':
-                cases[i] = (struct TestCase){ 2, 0, 2, 1 << FLOAT, "", 
-                                              create_argv(2, "./freq", "-f") };
+            case 'S':
+                exp_optstate <<= STRUCT;
+                exp_msg = rus_doll_fmt(3, "freq_test: %s\n", OptReqsArg, opt);
                 break;
             case 'l':
-                cases[i] = (struct TestCase){ 2, 0, 2, 1 << LONG, "", 
-                                              create_argv(2, "./freq", "-l") };
+                exp_optstate <<= LONG;
                 break;
-            case 'h':
-                sprintf(exp_msg, "freq_test: %s\n", UsageInfoStr);
-                cases[i] = (struct TestCase){ 2, 0, 2, 1 << HELP, 
-                            estrdup(exp_msg), create_argv(2, "./freq", "-h")};
+            case 'f':
+                exp_optstate <<= FLOAT;
+                break;
+            case 'd':
+                exp_optstate <<= DOUBLE;
+                break;
+            case 'i':
+                exp_optstate <<= INT;
+                break;
+            case 's':
+                exp_optstate <<= SORT;
+                break;
+            case 'R':
+                exp_optstate <<= RAW;
                 break;
             case 'D':
-                sprintf(exp_msg, 
-                        "freq_test: option -%c requires an argument\n", i);
-                cases[i] = (struct TestCase){ 2, 0, 2, 1 << DELIM,  
-                            estrdup(exp_msg), create_argv(2, "./freq", "-D") };
+                exp_optstate <<= DELIM;
+                exp_msg = rus_doll_fmt(3, "freq_test: %s\n", OptReqsArg, opt);
                 break;
-            case 'S':
-                sprintf(exp_msg, 
-                        "freq_test: option -%c requires an argument\n", i);
-                cases[i] = (struct TestCase){ 2, 0, 2, 1 << STRUCT, 
-                            estrdup(exp_msg), create_argv(2, "./freq", "-S") };
+            case 'a':
+                exp_optstate <<= AGGR;
+                break;
+            case 'h':
+                exp_msg = rus_doll_fmt(2, "freq_test: %s\n", UsageInfoStr);
                 break;
             case '-':
-                cases[i] = (struct TestCase){ 2, 0, 2, 0, "", 
-                                              create_argv(2, "./freq", "--")};
+                exp_optstate = 0;
+                break;
+            case '\0':
+                exp_optind = 1;
+                exp_optstate = 0;
                 break;
             default:
-                sprintf(opt, "-%c", i);
-                sprintf(exp_msg, "freq_test: invalid option -%c\n", i);
-                cases[i] = (struct TestCase){ 2, 0, 2, 0, 
-                    estrdup(exp_msg), create_argv(2, "./freq", estrdup(opt))};
-                break;
+                exp_msg = rus_doll_fmt(3, "freq_test: %s\n", InvOptStr, opt);
+                exp_optstate = 0x0;
         }
-    }
 
-    local_total = local_pass = local_fail = 0;
-    for (i = 0; i < (sizeof(cases)/sizeof(cases[0])); i++) {
-        printf("\t\tcmd: \"%s\" argc: %d, exp_optstate: %u, exp_optind: %d: ", 
-                concat_str_arr(cases[i].argv, " "),cases[i].argc, 
-                cases[i].exp_optstate, cases[i].exp_optind);
+        argv = create_argv(2, "./freq_test:", opt);
+        cmd_str = concat_str_arr(argv, " ");
+
+        printf("\t\tcmd: \"%s\", exp_optstate: %u: ", cmd_str, exp_optstate);
         fflush(stdout);
-        if(test_parse_opts(cases[i].argc, cases[i].argv, cases[i].exp_optstate,
-                     cases[i].exp_size, cases[i].exp_optind, cases[i].exp_msg))
-            local_pass++;
+        
+        if(test_parse_opts(2, argv, exp_optstate, 0, exp_optind, exp_msg))
+            npass++;
         else
-            local_fail++;
-        local_total++;
+            nfail++;
+        
+        free(cmd_str);
+        free(argv);
+        if (exp_msg)
+            free(exp_msg);
     }
     
-    for (i = 0; i <= UCHAR_MAX; i++) {
-        free(cases[i].argv);
-        if (strcmp("", cases[i].exp_msg) != 0)
-            free(cases[i].exp_msg);
-    }
-
-    printf("\t\tTotal: %d, Passed: %d, Failed: %d\n", 
-            local_total, local_pass, local_fail);
-    *total += local_total;
-    *pass += local_pass;
-    *fail += local_fail;
+    printf("\t\tTotal: %d, Passed: %d, Failed: %d\n", i, npass, nfail);
+    *total += i;
+    *pass += npass;
+    *fail += nfail;
 }
 
 void test_parse_opts_short_combined_single(int *total, int *pass, int *fail)
 {
-    int i, local_total, local_pass, local_fail;
+    int i, ntotal, npass, nfail;
     struct TestCase {
         int       argc;
         int       exp_size;
@@ -374,69 +360,62 @@ void test_parse_opts_short_combined_single(int *total, int *pass, int *fail)
 
     printf("\n\tshort opts combined separate\n"); 
 
-    local_total = local_pass = local_fail = 0;
+    ntotal = npass = nfail = 0;
 
     struct TestCase cases[] = {
     // Valid combinations
-    {3, 0, 3, 0x28, "", 
+    {3, 0, 3, 0x28, NULL, 
       create_argv(3, "./freq_test", "-i", "-R")}, 
     
-    {4, 0, 4, 0x0C, "", 
+    {4, 0, 4, 0x0C, NULL, 
       create_argv(4, "./freq_test", "-D", "\"delim\"", "-R")},  
     
-    {4, 0, 4, 0x112, "", 
+    {4, 0, 4, 0x112, NULL, 
       create_argv(4, "./freq_test", "-s", "-a", "-l")}, 
     
-    {3, 0, 3, 0x88, "", 
+    {3, 0, 3, 0x88, NULL, 
       create_argv(3, "./freq_test", "-f", "-R")}, 
     
-    {4, 10, 4, 0x208, "", 
+    {4, 10, 4, 0x208, NULL, 
       create_argv(4, "./freq_test", "-S", "10", "-R")}, 
 
     // Invalid combinations (mutually exclusive)
-    {3, 0, 3, 0x00, "freq_test: Mutually exclusive options (-i -d -f -l -S) "
-      "cannot be used together\n", 
+    {3, 0, 3, 0x00, rus_doll_fmt(3, "freq_test: %s\n", InvOptMutex, MutexOpts), 
       create_argv(3, "./freq_test", "-i", "-d")}, 
     
-    {3, 0, 3, 0x00, "freq_test: Mutually exclusive options (-i -d -f -l -S) "
-      "cannot be used together\n", 
+    {3, 0, 3, 0x00, rus_doll_fmt(3, "freq_test: %s\n", InvOptMutex, MutexOpts), 
       create_argv(3, "./freq_test", "-f", "-l")}, 
     
-    {5, 0, 6, 0x00, "freq_test: Mutually exclusive options (-i -d -f -l -S) "
-      "cannot be used together\n", 
+    {5, 0, 6, 0x00, rus_doll_fmt(3, "freq_test: %s\n", InvOptMutex, MutexOpts), 
       create_argv(5, "./freq_test", "-i", "-d", "-S", "5")}, 
     
-    {4, 0, 4, 0x00, "freq_test: Mutually exclusive options (-i -d -f -l -S) "
-      "cannot be used together\n", 
+    {4, 0, 4, 0x00, rus_doll_fmt(3, "freq_test: %s\n", InvOptMutex, MutexOpts), 
       create_argv(4, "./freq_test", "-S", "5", "-i")}, 
     
-    {4, 0, 4, 0x00, "freq_test: Mutually exclusive options (-i -d -f -l -S) "
-      "cannot be used together\n", 
+    {4, 0, 4, 0x00, rus_doll_fmt(3, "freq_test: %s\n", InvOptMutex, MutexOpts),
       create_argv(4, "./freq_test","-S", "5", "-d")},  
 
     // Missing required arguments
-    {3, 0, 3, 0x00, "freq_test: option -D requires an argument in quotes: "
-      "\"arg\"\n", 
+    {3, 0, 3, 0x00, rus_doll_fmt(3, "freq_test: %s\n", OptReqsQt, "-D"), 
       create_argv(3, "./freq_test", "-D", "-R")},  
     
-    {3, 0, 3, 0x00, "freq_test: option -S requires an argument\n", 
+    {3, 0, 3, 0x00, rus_doll_fmt(3, "freq_test: %s\n", OptReqsArg, "-S"), 
       create_argv(3, "./freq_test", "-S", "-R")},  
 
     // Option -S requires -R
-    {4, 0, 4, 0x00, "freq_test: option -S SIZE (--struct=SIZE) requires -R "
-      "(--raw) option.\n", 
+    {4, 0, 4, 0x00, rus_doll_fmt(2, "freq_test: %s\n", OptSReqsArgR),
       create_argv(4, "./freq_test", "-S", "10", "-s")},  
     
-    {4, 10, 4, 0x208, "", 
+    {4, 10, 4, 0x208, NULL, 
       create_argv(4, "./freq_test", "-S", "10", "-R")},  
 
     // Valid multiple short options
-    {7, 0, 7, 0x3E, "", // 0000 0011 1110 
+    {7, 0, 7, 0x3E, NULL, // 0000 0011 1110 
       create_argv(7, "./freq_test", "-i", "-R", "-s", "-a", "-D", "\",\"")},  
-    {4, 0, 4, 0x98, "", 
+    {4, 0, 4, 0x98, NULL, 
       create_argv(5, "./freq_test", "-f", "-R", "-s")},
 
-    {0, 0, 0, 0, "", NULL}  
+    {0, 0, 0, 0, NULL, NULL}  
     };
 
     for (i = 0; cases[i].argc != 0; i++) {
@@ -446,23 +425,25 @@ void test_parse_opts_short_combined_single(int *total, int *pass, int *fail)
         fflush(stdout);
         if (test_parse_opts(cases[i].argc,cases[i].argv,cases[i].exp_optstate,
                      cases[i].exp_size, cases[i].exp_optind, cases[i].exp_msg))
-            local_pass++;
+            npass++;
         else
-            local_fail++;
-        local_total++;
+            nfail++;
+        ntotal++;
+        if (cases[i].exp_msg)
+            free(cases[i].exp_msg);
         free(cases[i].argv);
     }
 
     printf("\t\tTotal: %d, Passed: %d, Failed: %d\n", 
-            local_total, local_pass, local_fail);
-    *total += local_total;
-    *pass += local_pass;
-    *fail += local_fail;    
+            ntotal, npass, nfail);
+    *total += ntotal;
+    *pass += npass;
+    *fail += nfail;    
 }
 
 void test_parse_opts_short_combined_concat(int *total, int *pass, int *fail)
 {
-    int i, local_total, local_pass, local_fail;
+    int i, ntotal, npass, nfail;
     struct TestCase {
         int       argc;
         int       exp_size;
@@ -474,69 +455,63 @@ void test_parse_opts_short_combined_concat(int *total, int *pass, int *fail)
     
     printf("\n\tshort opts combined together\n"); 
 
-    local_total = local_pass = local_fail = 0;
+    ntotal = npass = nfail = 0;
 
     struct TestCase cases[] = {
     // Valid combinations
-    {2, 0, 2, 0x28, "", 
+    {2, 0, 2, 0x28, NULL, 
       create_argv(2, "./freq_test", "-iR")}, 
     
-    {3, 0, 3, 0x0C, "", 
+    {3, 0, 3, 0x0C, NULL, 
       create_argv(3, "./freq_test", "-RD", "\"delim\"")},  
     
-    {2, 0, 2, 0x112, "", 
+    {2, 0, 2, 0x112, NULL, 
       create_argv(2, "./freq_test", "-sal")}, 
     
-    {2, 0, 2, 0x88, "", 
+    {2, 0, 2, 0x88, NULL, 
       create_argv(2, "./freq_test", "-fR")}, 
     
-    {3, 10, 3, 0x208, "", 
+    {3, 10, 3, 0x208, NULL, 
       create_argv(3, "./freq_test", "-SR", "10")}, 
 
     // Invalid combinations (mutually exclusive)
-    {2, 0, 2, 0x00, "freq_test: Mutually exclusive options (-i -d -f -l -S) "
-      "cannot be used together\n", 
+    {2, 0, 2, 0x00, rus_doll_fmt(3, "freq_test: %s\n", InvOptMutex, MutexOpts), 
       create_argv(2, "./freq_test", "-id")}, 
     
-    {2, 0, 2, 0x00, "freq_test: Mutually exclusive options (-i -d -f -l -S) "
-      "cannot be used together\n", 
+    {2, 0, 2, 0x00, rus_doll_fmt(3, "freq_test: %s\n", InvOptMutex, MutexOpts), 
       create_argv(2, "./freq_test", "-fl")}, 
     
-    {3, 0, 3, 0x00, "freq_test: Mutually exclusive options (-i -d -f -l -S) "
-      "cannot be used together\n", 
+    {3, 0, 3, 0x00, rus_doll_fmt(3, "freq_test: %s\n", InvOptMutex, MutexOpts), 
       create_argv(3, "./freq_test", "-idS", "5")}, 
-    
-    {3, 0, 3, 0x00, "freq_test: Mutually exclusive options (-i -d -f -l -S) "
-      "cannot be used together\n", 
+   
+    // Invalid opt ordering (req arg opt should come last) 
+    {3, 0, 3, 0x00, rus_doll_fmt(3, "freq_test: %s\n", OptReqsArg, "-S"), 
       create_argv(3, "./freq_test", "-Si", "5")}, 
     
-    {3, 0, 3, 0x00, "freq_test: Mutually exclusive options (-i -d -f -l -S) "
-      "cannot be used together\n", 
+    {3, 0, 3, 0x00, rus_doll_fmt(3, "freq_test: %s\n", OptReqsArg, "-S"), 
       create_argv(3, "./freq_test","-Sd", "5")},  
 
     // Missing required arguments
-    {2, 0, 2, 0x00, "freq_test: option -D requires an argument in quotes: "
-      "\"arg\"\n", 
+    {2, 0, 2, 0x00, rus_doll_fmt(3, "freq_test: %s\n", OptReqsQt, "-D"), 
       create_argv(2, "./freq_test", "-DR")},  
     
-    {2, 0, 2, 0x00, "freq_test: option -S requires an argument\n", 
+    {2, 0, 2, 0x00, rus_doll_fmt(3, "freq_test: %s\n", OptReqsArg, "-S"), 
       create_argv(2, "./freq_test", "-SR")},  
 
     // Option -S requires -R
-    {3, 0, 3, 0x00, "freq_test: option -S SIZE (--struct=SIZE) requires -R "
-      "(--raw) option.\n", 
-      create_argv(3, "./freq_test", "-Ss", "10")},  
+    {3, 0, 3, 0x00, rus_doll_fmt(2, "freq_test: %s\n", OptSReqsArgR), 
+      create_argv(3, "./freq_test", "-sS", "10")},  
     
-    {3, 10, 3, 0x208, "", 
-      create_argv(3, "./freq_test", "-SR", "10")},  
+    {3, 10, 3, 0x208, NULL, 
+      create_argv(3, "./freq_test", "-RS", "10")},  
 
     // Valid multiple short options
-    {3, 0, 3, 0x3E, "", // 0000 0011 1110 
+    {3, 0, 3, 0x3E, NULL, // 0000 0011 1110 
       create_argv(3, "./freq_test", "-iRsaD", "\",\"")},  
-    {2, 0, 2, 0x98, "", 
+    {2, 0, 2, 0x98, NULL, 
       create_argv(2, "./freq_test", "-fRs")},
     
-    {0, 0, 0, 0, "", NULL} 
+    {0, 0, 0, 0, NULL, NULL} 
     };
 
     for (i = 0; cases[i].argc != 0; i++) {
@@ -546,24 +521,26 @@ void test_parse_opts_short_combined_concat(int *total, int *pass, int *fail)
         fflush(stdout);
         if (test_parse_opts(cases[i].argc,cases[i].argv,cases[i].exp_optstate,
                      cases[i].exp_size, cases[i].exp_optind, cases[i].exp_msg))
-            local_pass++;
+            npass++;
         else
-            local_fail++;
-        local_total++;
+            nfail++;
+        ntotal++;
+
+        if (cases[i].exp_msg)
+            free(cases[i].exp_msg);        
         free(cases[i].argv);
     }
 
     printf("\t\tTotal: %d, Passed: %d, Failed: %d\n", 
-            local_total, local_pass, local_fail);
-    *total += local_total;
-    *pass += local_pass;
-    *fail += local_fail;  
+            ntotal, npass, nfail);
+    *total += ntotal;
+    *pass += npass;
+    *fail += nfail;  
 }
 
 void test_parse_opts_long_single(int *total, int *pass, int *fail)
 {
-    int i, local_total, local_pass, local_fail;
-    char *exp_msg;
+    int i, ntotal, npass, nfail;
     struct TestCase {
         int       argc;
         int       exp_size;
@@ -573,9 +550,9 @@ void test_parse_opts_long_single(int *total, int *pass, int *fail)
         char      **argv;
     };
     
-    printf("\n\tlong opts singler\n"); 
+    printf("\n\tlong opts single\n"); 
 
-    local_total = local_pass = local_fail = 0;
+    ntotal = npass = nfail = 0;
 
     struct TestCase cases[] = {
     {2, 0, 0, 0x0, rus_doll_fmt(2, "freq_test: %s\n", UsageInfoStr), 
@@ -618,28 +595,23 @@ void test_parse_opts_long_single(int *total, int *pass, int *fail)
         fflush(stdout);
         if (test_parse_opts(cases[i].argc,cases[i].argv,cases[i].exp_optstate,
                      cases[i].exp_size, cases[i].exp_optind, cases[i].exp_msg))
-            local_pass++;
+            npass++;
         else
-            local_fail++;
-        local_total++;
+            nfail++;
+        ntotal++;
         free(cases[i].argv);
         if (cases[i].exp_msg)
             free(cases[i].exp_msg);
     }
 
     printf("\t\tTotal: %d, Passed: %d, Failed: %d\n", 
-            local_total, local_pass, local_fail);
-    *total += local_total;
-    *pass += local_pass;
-    *fail += local_fail; 
+            ntotal, npass, nfail);
+    *total += ntotal;
+    *pass += npass;
+    *fail += nfail; 
 }
  
 void test_parse_opts_long_combined_single(int *total, int *pass, int *fail)
-{
-
-}
- 
-void test_parse_opts_long_combined_concat(int *total, int *pass, int *fail)
 {
 
 }
@@ -669,6 +641,7 @@ int test_parse_opts(int argc, char **argv, unsigned exp_optstate,
         size = 0;
 
         opt_state = parse_opts(argc, argv, &delim, &size);
+
         if (delim)
             free(delim);
         assert(opt_state == exp_optstate);
@@ -734,7 +707,7 @@ void read_pipe_to_buf(char **buf, int pipefd[])
         memcpy( (*buf+total_read), temp_buf, nbytes);
         total_read += nbytes;
     }
-
+   
     (*buf)[total_read] = '\0'; // Null-terminate the buffer
     close(pipefd[0]);
 }
