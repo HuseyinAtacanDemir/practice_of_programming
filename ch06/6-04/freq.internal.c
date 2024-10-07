@@ -4,6 +4,7 @@
 #include <getopt.h>
 #include <string.h>
 #include <limits.h>
+#include <ctype.h>
 
 #include "eprintf.h"
 #include "hash.h"
@@ -18,11 +19,11 @@
 #define DEFAULT_DELIM     ""
 #define OPT_STR           "+:haD:RsidflS:"
 
-char *InvOptMutex   = "Mutually exclusive options (-i -d -f -l -S) "
-                      "cannot be used together";
+char *MutexOpts     = "(-i -d -f -l -S)";
+char *InvOptMutex   = "Mutually exclusive options %s cannot be used together";
 char *InvOptChar    = "invalid option -%c";
 char *InvOptStr     = "invalid option %s";
-char *InvOptFormat  = "invalid option format: %d";
+char *InvOptFormat  = "invalid option format: %s";
 char *OptReqsQt     = "option %s requires an argument in quotes: \"arg\"";
 char *OptReqsArg    = "option %s requires an argument";
 char *OptSReqsArgR  = "option -S SIZE (--struct=SIZE) "
@@ -89,6 +90,10 @@ unsigned parse_opts(int argc, char **argv, char **delim, int *size)
 								set_opt_bit(&opt_state, opt);
                 break;
             case 'S':
+                if (!optarg || !isdigit(((char *)optarg)[0])) {
+                    weprintf(OptReqsArg, "-S");
+                    exit(EXIT_FAILURE);
+                }
                 *size = eatoi((char *) optarg);
             case 'a':
             case 'R':
@@ -103,10 +108,11 @@ unsigned parse_opts(int argc, char **argv, char **delim, int *size)
                 weprintf(OptReqsArg, argv[optind-1]);
                 exit(EXIT_FAILURE);
             case '?':
-								if (optopt)		
+								if (optopt) {
                 		weprintf(InvOptChar, optopt);
-                else
+                } else {
                 		weprintf(InvOptStr, argv[optind-1]);
+                }
                 exit(EXIT_FAILURE);
         }
     }
@@ -114,7 +120,7 @@ unsigned parse_opts(int argc, char **argv, char **delim, int *size)
     type_opts = opt_state & TYPE_OPTS_MASK;
     // binary algebraic expr results in >0 if more than 1 bit is set
     if (type_opts & (type_opts - 1)) { 
-        weprintf(InvOptMutex);
+        weprintf(InvOptMutex, MutexOpts);
         exit(EXIT_FAILURE);
     }
 
@@ -132,8 +138,10 @@ unsigned parse_opts(int argc, char **argv, char **delim, int *size)
 void set_opt_bit(unsigned *opt_state, int opt)
 {
 		int i;
-    if (opt < 0 || opt > UCHAR_MAX) {
-        weprintf(InvOptFormat, opt);
+    char buf[20];
+    if (opt <= 0 || opt > UCHAR_MAX) {
+        sprintf(buf, "%d", opt);
+        weprintf(InvOptFormat, buf);
         exit(EXIT_FAILURE);
     }
 
@@ -142,7 +150,7 @@ void set_opt_bit(unsigned *opt_state, int opt)
 						break;
 
     if (i >= N_SUPPORTED_OPTS) {
-        weprintf(InvOptChar, (char) opt);
+        weprintf(InvOptChar, opt);
         exit(EXIT_FAILURE);
     }
 

@@ -5,6 +5,7 @@
 
 enum { HELP, AGGR, DELIM, RAW, SORT, INT, DOUBLE, FLOAT, LONG, STRUCT };
 
+extern char *MutexOpts;
 extern char *InvOptMutex;
 extern char *InvOptChar;
 extern char *InvOptStr;
