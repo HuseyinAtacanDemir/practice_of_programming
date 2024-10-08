@@ -74,7 +74,7 @@ unsigned parse_opts(int argc, char **argv, char **delim, int *size)
 
     // opterr: getopt.h global var, 0'ing it supresses getop.h errs, 
     //          see "man 3 getopt"
-    opt_state = opterr = 0;	
+    opt_state = opterr = *size = 0;	
     *delim = NULL;
     while ((opt = getopt_long(argc, argv, OPT_STR, LongOpts, NULL)) != -1) {
         switch (opt) {
@@ -99,9 +99,19 @@ unsigned parse_opts(int argc, char **argv, char **delim, int *size)
             case 'R':
             case 's':
             case 'i':
+                *size = sizeof(int);
+								set_opt_bit(&opt_state, opt);
+                break;
             case 'd':
+                *size = sizeof(double);
+								set_opt_bit(&opt_state, opt);
+                break;
             case 'f':
+                *size = sizeof(float);
+								set_opt_bit(&opt_state, opt);
+                break;
             case 'l':
+                *size = sizeof(long);
 								set_opt_bit(&opt_state, opt);
                 break;
             case ':': // optind: getopt.h, index of next arg, "man 3 getopt"
