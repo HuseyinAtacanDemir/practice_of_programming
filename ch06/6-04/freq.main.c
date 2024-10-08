@@ -10,6 +10,7 @@ int main(int argc, char **argv)
     char 			*delim;
     unsigned 	opt_state;
 
+    delim = NULL;
     opt_state = parse_opts(argc, argv, &delim, &struct_nbytes);
 
 		// optind: index of next opt in argv, see "man 3 getopt"
