@@ -77,6 +77,67 @@ void wefprintf(FILE *fin, char *fmt, ...)
     fprintf(fin, "\n");
 }
 
+/* easprintf: allocates memory and formats string */
+int easprintf(char **strp, const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+
+    va_list args_copy;
+    va_copy(args_copy, args);
+
+    // vsnprintf with NULL and 0 calculates required size
+    int size = vsnprintf(NULL, 0, fmt, args);
+    va_end(args);
+
+    if (size < 0) {
+        va_end(args_copy);
+        return -1;
+    }
+
+    // Allocate memory accounting for '\0'
+    *strp = emalloc(size + 1);
+    if (*strp == NULL) {
+        va_end(args_copy);
+        return -1;
+    }
+
+    int result = vsnprintf(*strp, size + 1, fmt, args_copy);
+    va_end(args_copy);
+
+    if (result < 0) {
+        free(*strp);
+        *strp = NULL;
+        return -1;
+    }
+
+    return result;
+}
+
+/* evasprintf: allocates memory and formats string, variadic */
+int evasprintf(char **strp, const char *fmt, va_list args) {
+
+    // vsnprintf with NULL and 0 calculates required size
+    int size = vsnprintf(NULL, 0, fmt, args);
+
+    if (size < 0)
+        return -1;
+
+    // Allocate memory accounting for '\0'
+    *strp = emalloc(size + 1);
+    if (*strp == NULL)
+        return -1;
+
+    int result = vsnprintf(*strp, size + 1, fmt, args);
+
+    if (result < 0) {
+        free(*strp);
+        *strp = NULL;
+        return -1;
+    }
+
+    return result;
+}
+
 /* estrdup: duplicate a string, report if error */ 
 char *estrdup(char *s)
 {

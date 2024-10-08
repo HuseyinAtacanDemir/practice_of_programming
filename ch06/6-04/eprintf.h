@@ -2,20 +2,24 @@
 #define EPRINTF_H
 
 #include <stdio.h>
+#include <stdarg.h>
 
 // eprintf.h: error wrapper functions
-extern void   eprintf   (char *, ...);
-extern void   weprintf  (char *, ...); 
+extern void   eprintf     (char *, ...);
+extern void   weprintf    (char *, ...); 
 
-extern void   efprintf  (FILE *, char *, ...);
-extern void   wefprintf (FILE *, char *, ...); 
+extern void   efprintf    (FILE *, char *, ...);
+extern void   wefprintf   (FILE *, char *, ...); 
 
-extern char   *estrdup  (char *); 
-extern char   *estrndup (char *, int);
+extern int    easprintf   (char **, const char *fmt, ...);
+extern int    evasprintf  (char **, const char *fmt, va_list);
 
-extern int    eatoi     (char *);
+extern char   *estrdup    (char *); 
+extern char   *estrndup   (char *, int);
 
-extern void   *emalloc  (int); 
-extern void   *erealloc (void *, int); 
+extern int    eatoi       (char *);
+
+extern void   *emalloc    (int); 
+extern void   *erealloc   (void *, int); 
 
 #endif
