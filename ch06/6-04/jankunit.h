@@ -3,9 +3,9 @@
 
 #include "jankunit.internal.h"
 
-void start_test           (const char *name);
-void start_test_suite     (const char *name);
-void start_test_program   (const char *name);
+void start_test           (const char *name_fmt, ...);
+void start_test_suite     (const char *name_fmt, ...);
+void start_test_program   (const char *name_fmt, ...);
 
 void end_test             (void);
 void end_test_suite       (void);

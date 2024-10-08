@@ -5,20 +5,20 @@
 #include <string.h>
 
 typedef struct {
-    const char *test_name;
+    char *test_name;
     int passed;
     int failed;
 } Test;
 
 typedef struct {
-    const char *subsection_name;
+    char *suite_name;
     int total_tests;
     int passed;
     int failed;
 } TestSuite;
 
 typedef struct {
-    const char *program_name;
+    char *program_name;
     int total_suites;
     int passed;
     int failed;
@@ -30,7 +30,9 @@ extern TestSuite *current_suite;
 extern Test *current_test;
 
 void print_with_indent  (const char *fmt, ...);
-void print_result       (const char *color, const char *fmt, int pass, int fail);
+void vprint_with_indent (const char *fmt, va_list args);
+void print_result       (const char *color, const char *fmt, ...);
+void vprint_result      (const char *color, const char *fmt, va_list args);
 
 #define PASS() \
     do { \
@@ -215,5 +217,20 @@ void print_result       (const char *color, const char *fmt, int pass, int fail)
             PASS(); \
         } \
     } while (0)
+
+#define TEST_PROGRAM(name_fmt, ...) \
+    for (int _prog_flag_ = (start_test_program((name_fmt), __VA_ARGS__), 1); \
+          _prog_flag_; \
+          _prog_flag_ = (end_test_program(), 0) )
+
+#define TEST_SUITE(name_fmt, ...) \
+    for (int _suite_flag_ = (start_test_suite((name_fmt), __VA_ARGS__), 1); \
+          _suite_flag_; \
+          _suite_flag_ = (end_test_suite(), 0) )
+
+#define TEST(name_fmt, ...) \
+    for (int _test_flag_ = (start_test((name_fmt), __VA_ARGS__), 1); \
+          _test_flag_; \
+          _test_flag_ = (end_test(), 0) )
 
 #endif

@@ -29,25 +29,47 @@ void print_with_indent(const char *fmt, ...)
     va_end(args);
 }
 
-// Helper to print result with color
-void print_result(const char *color, const char *fmt, int pass, int fail) 
+void vprint_with_indent(const char *fmt, va_list args)
 {
-    
-    printf("%s", color);
-    print_with_indent(fmt, pass, fail);
-    printf("%s", COLOR_RESET);
-
+    for (int i = 0; i < indent_level; i++)
+        printf("    ");
+    vprintf(fmt, args);
 }
 
-void start_test_program(const char *name) 
+// Helper to print result with color
+void print_result(const char *color, const char *fmt, ...) 
 {
+    va_list args;
+    va_start(args, fmt);
+
+    printf("%s", color);
+    vprint_with_indent(fmt, args);
+    printf("%s", COLOR_RESET);
+
+    va_end(args);
+}
+
+void vprint_result(const char *color, const char *fmt, va_list args)
+{
+    printf("%s", color);
+    vprint_with_indent(fmt, args);
+    printf("%s", COLOR_RESET);
+}
+
+void start_test_program(const char *name_fmt, ...) 
+{
+    va_list args;
+
     current_program = (TestProgram *) emalloc(sizeof(TestProgram));
-    current_program->program_name = name;
     current_program->total_suites = 0;
     current_program->passed = 0;
     current_program->failed = 0;
 
-    print_with_indent("Running tests for: %s\n", name);
+    va_start(args, name_fmt);
+    evasprintf(&(current_program->program_name), name_fmt, args);
+    va_end(args);
+
+    print_with_indent("Running tests for: %s\n", current_program->program_name);
     indent_level++;
 }
 
@@ -62,60 +84,86 @@ void end_test_program()
                       current_program->passed, current_program->failed);
     }
 
+    free(current_program->program_name);
     free(current_program);
     current_program = NULL;
 }
 
-void start_test_suite(const char *name) 
+void start_test_suite(const char *name_fmt, ...) 
 {
+    va_list args;
+
     current_suite = (TestSuite *) emalloc(sizeof(TestSuite));
-    current_suite->subsection_name = name;
     current_suite->total_tests = 0;
     current_suite->passed = 0;
     current_suite->failed = 0;
 
-    print_with_indent("test suite: %s\n", name);
+    va_start(args, name_fmt);
+    evasprintf(&(current_suite->suite_name), name_fmt, args);
+    va_end(args);
+
+    print_with_indent("test suite: %s\n", current_suite->suite_name);
     indent_level++;
 }
 
 void end_test_suite() 
 {
+    int is_suite_failed = 0;
     indent_level--;
     if (current_suite->failed == 0) {
         print_result(COLOR_GREEN, "Total: %d passed %d failed\n", 
                       current_suite->passed, current_suite->failed);
     } else {
+        is_suite_failed = 1;
         print_result(COLOR_RED, "Total: %d passed %d failed\n", 
                       current_suite->passed, current_suite->failed);
     }
 
+    free(current_suite->suite_name);
     free(current_suite);
     current_suite = NULL;
+
+    if (is_suite_failed)
+        FAIL();
+    else
+        PASS();
 }
 
-void start_test(const char *name) 
+void start_test(const char *name_fmt, ...) 
 {
+    va_list args;
+
     current_test = (Test *) emalloc(sizeof(Test));
-    current_test->test_name = name;
     current_test->passed = 0;
     current_test->failed = 0;
 
-    print_with_indent("test: %s\n", name);
+    va_start(args, name_fmt);
+    evasprintf(&(current_test->test_name), name_fmt, args);
+    va_end(args);
+
+    print_with_indent("test: %s\n", current_test->test_name);
     indent_level++;
 }
 
 void end_test() 
 {
+    int is_test_failed = 0;
+
     indent_level--;
     if (current_test->failed == 0) {
         print_result(COLOR_GREEN, "Total: %d passed %d failed\n", 
                       current_test->passed, current_test->failed);
     } else {
+        is_test_failed = 1;
         print_result(COLOR_RED, "Total: %d passed %d failed\n", 
                       current_test->passed, current_test->failed);
     }
-
+    free(current_test->test_name);
     free(current_test);
     current_test = NULL;
-}
 
+    if (is_test_failed)
+        FAIL();
+    else
+        PASS();
+}
