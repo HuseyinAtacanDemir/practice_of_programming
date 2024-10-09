@@ -1,4 +1,6 @@
 #include "jankunit.h"
+#include "jankunit.internal.h"
+
 #include "eprintf.h"
 
 #include <stdio.h>
@@ -61,9 +63,10 @@ void start_test_program(const char *name_fmt, ...)
     va_list args;
 
     current_program = (TestProgram *) emalloc(sizeof(TestProgram));
-    current_program->total_suites = 0;
+    current_program->total = 0;
     current_program->passed = 0;
     current_program->failed = 0;
+    current_program->failed_assert = 0;
 
     va_start(args, name_fmt);
     evasprintf(&(current_program->program_name), name_fmt, args);
@@ -77,11 +80,11 @@ void end_test_program()
 {
     indent_level--;
     if (current_program->failed == 0) {
-        print_result(COLOR_GREEN, "Total: %d passed %d failed\n", 
-                      current_program->passed, current_program->failed);
+        print_result(COLOR_GREEN, "Total: %d, %d passed %d failed\n", 
+          current_program->total, current_program->passed, current_program->failed);
     } else {
-        print_result(COLOR_RED, "Total: %d passed %d failed\n", 
-                      current_program->passed, current_program->failed);
+        print_result(COLOR_RED, "Total: %d, %d passed %d failed\n", 
+          current_program->total, current_program->passed, current_program->failed);
     }
 
     free(current_program->program_name);
@@ -94,9 +97,10 @@ void start_test_suite(const char *name_fmt, ...)
     va_list args;
 
     current_suite = (TestSuite *) emalloc(sizeof(TestSuite));
-    current_suite->total_tests = 0;
+    current_suite->total = 0;
     current_suite->passed = 0;
     current_suite->failed = 0;
+    current_suite->failed_assert = 0;
 
     va_start(args, name_fmt);
     evasprintf(&(current_suite->suite_name), name_fmt, args);
@@ -111,12 +115,12 @@ void end_test_suite()
     int is_suite_failed = 0;
     indent_level--;
     if (current_suite->failed == 0) {
-        print_result(COLOR_GREEN, "Total: %d passed %d failed\n", 
-                      current_suite->passed, current_suite->failed);
+        print_result(COLOR_GREEN, "Total: %d, %d passed %d failed\n", 
+          current_suite->total, current_suite->passed, current_suite->failed);
     } else {
         is_suite_failed = 1;
-        print_result(COLOR_RED, "Total: %d passed %d failed\n", 
-                      current_suite->passed, current_suite->failed);
+        print_result(COLOR_RED, "Total: %d, %d passed %d failed\n", 
+          current_suite->total, current_suite->passed, current_suite->failed);
     }
 
     free(current_suite->suite_name);
@@ -134,8 +138,10 @@ void start_test(const char *name_fmt, ...)
     va_list args;
 
     current_test = (Test *) emalloc(sizeof(Test));
+    current_test->total = 0;
     current_test->passed = 0;
     current_test->failed = 0;
+    current_test->failed_assert = 0;
 
     va_start(args, name_fmt);
     evasprintf(&(current_test->test_name), name_fmt, args);
@@ -151,13 +157,14 @@ void end_test()
 
     indent_level--;
     if (current_test->failed == 0) {
-        print_result(COLOR_GREEN, "Total: %d passed %d failed\n", 
-                      current_test->passed, current_test->failed);
+        print_result(COLOR_GREEN, "Total: %d, %d passed %d failed\n", 
+          current_test->total, current_test->passed, current_test->failed);
     } else {
         is_test_failed = 1;
-        print_result(COLOR_RED, "Total: %d passed %d failed\n", 
-                      current_test->passed, current_test->failed);
-    }
+        print_result(COLOR_RED, "Total: %d, %d passed %d failed\n", 
+          current_test->total, current_test->passed, current_test->failed);
+    }     
+
     free(current_test->test_name);
     free(current_test);
     current_test = NULL;

@@ -1,4 +1,18 @@
 #include "jankunit.h"
+#include "eprintf.h"
+
+#include <stdlib.h>
+
+char *InvPosNumErr = "Invalid Positive Numbers: %d %d\n";
+char *SumInfoOut = "a: %d, b: %d\n sum: %d\n";
+
+int some_fn(int a, int b)
+{
+    if (!a || !b)
+        eprintf(InvPosNumErr, a, b);
+    printf(SumInfoOut, a, b, (a+b));
+    exit(EXIT_SUCCESS);
+}
 
 int main(void) {
     TEST_PROGRAM("Jank Unit Test Library", ""){
@@ -16,13 +30,32 @@ int main(void) {
                 EXPECT_STREQ(str, str);
             }    
         }
+
         TEST_SUITE("Dumb Suite %d", 2) {
             int N = 10;
-            for (int i = 0; i < N; i++) {
-                TEST("is %d not equal %d", i, N+1){
+            int i = 0;
+            TEST("is %d not equal %d", i, N+1){
+                for ( ; i < N; i++) {
+                    ASSERT_NE(5, i);
                     EXPECT_NE(11, i);
                 }
             }
+
+            //TEST("is exit success"){
+                //int a, b;
+                //for (a = b = 0; a < 10; a++, b++) {
+                    //FORK(some_fn, a, b);
+                    //if (!a || !b) {
+                        //EXPECT_STREQ(ERR, InvPosNum, a, b);
+                        //EXPECT_STREQ(OUT, "");
+                        //EXPECT_EQ(EXIT_CODE, EXIT_FAILURE);
+                    //} else {
+                        //EXPECT_STREQ(ERR, "");
+                        //EXPECT_STREQ(OUT, SumInfoOut, a, b, (a+b));
+                        //EXPECT_EQ(EXIT_CODE, EXIT_SUCCESS);
+                    //}
+                //}
+            //}
         }
     }
     return 0;
