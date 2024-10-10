@@ -18,6 +18,12 @@ TestProgram *current_program = NULL;
 TestSuite *current_suite = NULL;
 Test *current_test = NULL;
 
+char *OUT = NULL;
+char *ERR = NULL;
+int EXIT_CODE = 0;
+int SIGNAL_CODE = 0;
+int STATUS = 0;
+
 // Helper function for printing with indentation
 void print_with_indent(const char *fmt, ...) 
 {
@@ -174,3 +180,18 @@ void end_test()
     else
         PASS();
 }
+
+
+//void test_forked_fn_with_shared_mem()
+//{
+//
+    //int shmem_size = 1024;
+    //void *shmem;
+//
+    //shmem = mmap(NULL, shmem_size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, 0, 0);
+    //if (shmem == MAP_FAILED)
+        //return NULL;
+//
+//}
+
+

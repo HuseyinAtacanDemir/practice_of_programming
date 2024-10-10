@@ -47,6 +47,12 @@ extern TestProgram  *current_program;
 extern TestSuite    *current_suite;
 extern Test         *current_test;
 
+extern char *OUT;
+extern char *ERR;
+extern int  STATUS;
+extern int  EXIT_CODE;
+extern int  SIGNAL_CODE;
+
 void print_with_indent  (const char *fmt, ...);
 void vprint_with_indent (const char *fmt, va_list args);
 void print_result       (const char *color, const char *fmt, ...);

@@ -1,3 +1,6 @@
+#ifndef JANKUNIT_ASSERT_H
+#define JANKUNIT_ASSERT_H
+
 #define PASS() \
     do { \
         if (current_test != NULL) { current_test->passed++; } \
@@ -281,6 +284,61 @@
             PASS(); \
         } \
     } while (0)
+/*
+create the pipes
+create the GLOBAL BUFS (OUT ERR)
+create the GLOBAL STATUS
+
+for the function being tested
+within the forked block:
+    run the assertions 
+        ( what if the forked code exits so no assertions are run?
+              In that case, the checks provded within the fork scope won't be run,
+              and the user won't be notified the true number of total test cases,
+              since the check macros (expect/assert_*) all update the counts of their
+              scope as they run.
+
+              should I create some logic for providing shmem vars prior to a fork
+              and then make all checks be made in the parent?
+
+        )
+
+is mocking print and exit calls the true path perhaps..?
+
+what if assertion fails inside the FORK scope? Does that clear the checks remaning
+in the parent after the fork cleanup? 
+
+No, after the fork cleanup, the tests that follow are
+immediate to the status/system wide side effects of the fn being run, so the assert_failed status
+wont be propagated to the parent, however total assert/expect count will be.
+
+
+*/
+
+#define FORK(fn, ...) \
+    void *_dup_ctx_ = duplicate_context();  \
+    int _pipe_out_[2], _pipe_err_[2]; \
+    pipe(_pipe_out_); \
+    pipe(_pipe_err_); \
+    int _pid_ = fork(); \
+    if(_pid_ == 0) {  \
+        redirect2pipe(_pipe_out_, STDOUT_FILENO); \
+        redirect2pipe(_pipe_err_, STDERR_FILENO); \
+        int RESULT = fn(__VA_ARGS__); \
+
+#define FORK_TESTS()  \
+        for (int _fork_flag_ = 1; _fork_flag_; _fork_flag_--)
+
+#define FORK_END  \
+    } \
+    close(pipe_out[1]); \
+    close(pipe_err[1]); \
+    read_pipe(&OUT, pipe_out);  \
+    read_pipe(&ERR, pipe_err);  \
+    close(pipe_out[0]); \
+    close(pipe_err[0]); \
+    wait(&STATUS);  \
+    
 
 #define TEST_PROGRAM(name_fmt, ...) \
     for (int _prog_flag_ = (start_test_program((name_fmt), __VA_ARGS__), 1); \
@@ -299,3 +357,4 @@
           _test_flag_ = (end_test(), 0),  \
           (current_suite ? current_suite->total++ : (current_program ? current_program->total++ : 0 )) )
 
+#endif
