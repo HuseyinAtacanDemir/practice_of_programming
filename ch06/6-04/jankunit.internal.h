@@ -29,18 +29,18 @@ typedef struct {
 } TestProgram;
 
 //TODO: move to a CTX based design
-//typedef struct {
-    //int         indent_level;
-    //TestProgram **progs;
-    //TestSuite   **suites;
-    //Test        **tests;
-//
-    //TestProgram *current_program;
-    //TestSuite   *current_suite;
-    //Test        *current_test;
-//} JankUnitContext;
-//
-//extern JankUnitContext *ctx;
+typedef struct {
+    int         indent_level;
+    TestProgram **progs;
+    TestSuite   **suites;
+    Test        **tests;
+
+    TestProgram *current_program;
+    TestSuite   *current_suite;
+    Test        *current_test;
+} JankUnitContext;
+
+extern JankUnitContext *ctx;
 
 extern int          ident_level;
 extern TestProgram  *current_program;

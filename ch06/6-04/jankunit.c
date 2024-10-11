@@ -13,16 +13,16 @@
 #define COLOR_RESET "\x1b[0m"
 
 // Global test state
-int indent_level = 0;
+JankUnitContext *ctx = NULL;
 TestProgram *current_program = NULL;
 TestSuite *current_suite = NULL;
 Test *current_test = NULL;
 
+int STATUS = 0;
 char *OUT = NULL;
 char *ERR = NULL;
-int EXIT_CODE = 0;
-int SIGNAL_CODE = 0;
-int STATUS = 0;
+int *EXIT_CODE = NULL;
+int *SIGNAL_CODE = NULL;
 
 // Helper function for printing with indentation
 void print_with_indent(const char *fmt, ...) 

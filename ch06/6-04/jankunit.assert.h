@@ -315,7 +315,7 @@ wont be propagated to the parent, however total assert/expect count will be.
 
 */
 
-#define FORK(fn, ...) \
+#define FORK(fn, result, ...) \
     void *_dup_ctx_ = duplicate_context();  \
     int _pipe_out_[2], _pipe_err_[2]; \
     pipe(_pipe_out_); \
@@ -324,21 +324,24 @@ wont be propagated to the parent, however total assert/expect count will be.
     if(_pid_ == 0) {  \
         redirect2pipe(_pipe_out_, STDOUT_FILENO); \
         redirect2pipe(_pipe_err_, STDERR_FILENO); \
-        int RESULT = fn(__VA_ARGS__); \
-
-#define FORK_TESTS()  \
+        result = fn(__VA_ARGS__); \
         for (int _fork_flag_ = 1; _fork_flag_; _fork_flag_--)
 
 #define FORK_END  \
     } \
+    sync_ctx(_dup_ctx_);  \
     close(pipe_out[1]); \
     close(pipe_err[1]); \
     read_pipe(&OUT, pipe_out);  \
     read_pipe(&ERR, pipe_err);  \
     close(pipe_out[0]); \
     close(pipe_err[0]); \
-    wait(&STATUS);  \
+    wait(&STATUS)
     
+
+#define FORK()  \
+    for ( pid_t _pid_ = -2; fork_setup(); (cleanup() && wait(&STATUS)))  \
+        for ( _pid_ = fork(); (_pid_ == 0 && redirect2pipe()); exit(0) )
 
 #define TEST_PROGRAM(name_fmt, ...) \
     for (int _prog_flag_ = (start_test_program((name_fmt), __VA_ARGS__), 1); \

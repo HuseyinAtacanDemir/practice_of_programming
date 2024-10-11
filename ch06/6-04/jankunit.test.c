@@ -115,9 +115,29 @@ int main(void) {
 // could be like:
 
             TEST("Proposed hypothetical FORK with utilities"){
-                
-
+                int N = 11;
+                for(int i = 0; i < N; i++){
+                    int a, b, result;
+                    FORK(fn, result, a, b){
+                        EXPECT_EQ(result, (a+b));
+                        EXPECT_OUT_EQ(SumInfoOut, a, b);
+                        EXPECT_ERR_EQ("");
+                        exit(EXIT_SUCCESS);
+                    } FORK_END;
+               
+                    ASSERT_EXIT_EQ(EXIT_SUCCESS);
+                    ASSERT_SIG_EQ(0);                
+                }
             }
+
+// Perhaps this whole thing should be scratched and we should move towards
+// a MOCKING related solution instead. I want this to be plug and play,
+// however, so that the USER won't need to alter anything in their code
+// to test their code. I want the USER to be able to just include
+// their relevant header in the test file and just call any function
+// without worrying about other things, but then again, managing shmem
+// and considering the implications of FORKING end up being other things
+// to worry about.
         }
     }
     return 0;
