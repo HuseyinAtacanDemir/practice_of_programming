@@ -6,13 +6,23 @@
 int main(void)
 {
 
-    int n_a = 2000000;
-    int n_b = 2000000;
+    int n_a = 4;
+    int n_b = 4;
 
     int *a = (int *) shmalloc(sizeof(int) * n_a);
+    //for (int i = 0; i < n_a; i++) {
+        //*(a+i) = i;
+    //}
+
+    for (int i = 1; i < 5; i++) {
+        n_a *= 2;
+        a = (int *) shrealloc(a, sizeof(int) * n_a);
+        //for (int j = n_a/2; j < n_a; j++) {
+           //*(a+j) = j; 
+        //}
+    }
 
     for (int i = 0; i < n_a; i++) {
-        *(a+i) = i;
         printf("%d ", *(a+i));
     }
     printf("\n");

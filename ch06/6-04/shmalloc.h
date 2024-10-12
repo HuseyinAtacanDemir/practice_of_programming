@@ -22,7 +22,9 @@ Chunk data is held alongside the allocated data.
 #include <stddef.h>
 
 extern void  *shmalloc   (size_t size);
-extern int   shfree      (void *mem);
+extern void  *shcalloc   (size_t size);
+extern void  *shrealloc  (void *ptr, size_t size);
+extern int   shfree      (void *ptr);
 extern int   shfree_all  (void);
 
 #endif

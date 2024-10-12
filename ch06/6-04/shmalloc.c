@@ -2,10 +2,10 @@
 
 #include <pthread.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <unistd.h>
-
 
 #define SUCCESS             0
 #define ERR_NOT_ALLOCD      1
@@ -16,11 +16,12 @@
 
 #define PAGE_SIZE   sysconf(_SC_PAGESIZE) 
 #define HEADER_SIZE sizeof(HEADER)
+
 #define FREE        'F' 
 #define USED        'U'
 #define RESTRICTED  'R'
 
-// HEADER's with s.is_free == RESTRICTED point to the actual mapped pages
+// HEADER's with is_free == RESTRICTED point to the actual mapped pages
 // returned from mmap, and their size is the actual size mapped by mmap.
 // All other HEADER*->size values contain the usable/shmallocable size
 typedef struct HEADER HEADER;
@@ -67,8 +68,31 @@ void *shmalloc(size_t size)
     return allocated_block;        
 }
 
-// shfree: free shared memory block pointed to by ptr, coalesce if neighboring
-//          blocks are FREE as well
+void *shcalloc(size_t size)
+{
+    void *allocated_block;
+    if((allocated_block = shmalloc(size)) == NULL)
+        return NULL;
+    return memset(allocated_block, 0, size);
+}
+
+void *shrealloc(void *ptr, size_t size)
+{
+    HEADER *h;
+    void *allocated_block;
+    
+    if((allocated_block = shmalloc(size)) == NULL)
+        return NULL;
+
+    h = (HEADER *) (((char *) ptr) - HEADER_SIZE);
+    memcpy(allocated_block, ptr, h->size);
+    shfree(ptr);
+
+    return allocated_block;    
+}
+
+// shfree: free shared memory block pointed to by ptr, 
+//         coalesce if neighboring blocks are FREE as well
 int shfree(void *ptr)
 {
     HEADER *h, *cur, *prev;
