@@ -12,7 +12,7 @@
 
 #include "eprintf.h"
 
-#define BUF_SIZE  1024
+#define BUFSIZE  1024
 
 // TEST RUNNERS
   // set_opt_bit
@@ -997,13 +997,15 @@ char *rus_doll_fmt(int n, ...)
 // endregion: helpers
 void test_set_opt_bit(va_list args)
 {
-    int size, exp_optind, exp_size;
+    int argc, size, exp_optind, exp_size;
     unsigned optstate, exp_optstate;
-    char *delim, *exp_delim;
+    char *delim, *exp_delim, **argv;
     va_list args;
 
     delim = NULL;
 
+    argc          = va_arg(args, int);
+    argv          = va_arg(args, char **);
     exp_optstate  = va_arg(args, unsigned);
     exp_optind    = va_arg(args, int);
     exp_size      = va_arg(args, int);
@@ -1021,13 +1023,15 @@ void test_set_opt_bit(va_list args)
 
 void test_parse_opts(va_list args)
 {
-    int size, exp_optind, exp_size;
+    int argc, size, exp_optind, exp_size;
     unsigned optstate, exp_optstate;
-    char *delim, *exp_delim;
+    char *delim, *exp_delim, **argv;
     va_list args;
 
     delim = NULL;
 
+    argc          = va_arg(args, int);
+    argv          = va_arg(args, char **);
     exp_optstate  = va_arg(args, unsigned);
     exp_optind    = va_arg(args, int);
     exp_size      = va_arg(args, int);
@@ -1110,10 +1114,10 @@ void read_pipe(char **buf, int pipefd[])
     *buf = NULL;
     total_read = buf_size = 0;
 
-    while ((nbytes = read(pipefd[0], temp_buf, BUF_SIZE)) > 0) {
+    while ((nbytes = read(pipefd[0], temp_buf, BUFSIZE)) > 0) {
         if (*buf == NULL) {
-            *buf = (char *) emalloc(sizeof(char) * BUF_SIZE);
-            buf_size = BUF_SIZE;
+            *buf = (char *) emalloc(sizeof(char) * BUFSIZE);
+            buf_size = BUFSIZE;
         } else if ( (total_read + nbytes) >= buf_size) {
             buf_size *= 2;
             *buf = erealloc(*buf, buf_size);
