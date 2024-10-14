@@ -80,7 +80,8 @@ void wefprintf(FILE *fin, char *fmt, ...)
 }
 
 /* easprintf: allocates memory and formats string */
-int easprintf(char **strp, const char *fmt, ...) {
+int easprintf(char **strp, const char *fmt, ...)
+{
     va_list args;
     va_start(args, fmt);
 
@@ -116,7 +117,8 @@ int easprintf(char **strp, const char *fmt, ...) {
 }
 
 /* evasprintf: allocates memory and formats string, variadic */
-int evasprintf(char **strp, const char *fmt, va_list args) {
+int evasprintf(char **strp, const char *fmt, va_list args)
+{
 
     // vsnprintf with NULL and 0 calculates required size
     int size = vsnprintf(NULL, 0, fmt, args);
@@ -141,7 +143,8 @@ int evasprintf(char **strp, const char *fmt, va_list args) {
 }
 
 /* easprintf: allocates shared memory and formats string */
-int eshasprintf(char **strp, const char *fmt, ...) {
+int eshasprintf(char **strp, const char *fmt, ...)
+{
     va_list args;
     va_start(args, fmt);
 
@@ -177,8 +180,8 @@ int eshasprintf(char **strp, const char *fmt, ...) {
 }
 
 /* eshvasprintf: allocates shared memory and formats string, variadic */
-int eshvasprintf(char **strp, const char *fmt, va_list args) {
-
+int eshvasprintf(char **strp, const char *fmt, va_list args)
+{
     // vsnprintf with NULL and 0 calculates required size
     int size = vsnprintf(NULL, 0, fmt, args);
 
@@ -201,28 +204,60 @@ int eshvasprintf(char **strp, const char *fmt, va_list args) {
     return result;
 }
 
-/* estrdup: duplicate a string, report if error */ 
-char *estrdup(char *s)
+/* estrdup: duplicate a string, 
+            returns pointer to the duplicate,
+            report if error */ 
+char *estrdup(char *str)
 {
     char *t;
     errno = 0;
-    t = (char *) malloc(strlen(s)+1); 
+    t = (char *) malloc(strlen(str)+1); 
     if(t == NULL)
-        eprintf("estrdup(\"%.20s\") failed:", s); 
-    strcpy(t, s);
+        eprintf("estrdup(\"%.20s\") failed:", str); 
+    strcpy(t, str);
     return t; 
 }
 
-/* estrdup: duplicate n chars of a string, report if error */ 
-char *estrndup(char *s, int n)
+/* estrndup:  duplicate n chars of a string, 
+              returns pointer to the null terminated duplicate, 
+              report if error */ 
+char *estrndup(char *str, int n)
 {
     char *t;
     errno = 0;
     t = (char *) malloc(n+1); 
     if(t == NULL)
-        eprintf("estrdup(\"%.20s\") failed:", s); 
-    strncpy(t, s, n);
+        eprintf("estrndup(\"%.20s\") failed:", str); 
+    strncpy(t, str, n);
     t[n] = '\0';
+    return t; 
+}
+
+/* eshstrdup: duplicate a string in shared memory, 
+              returns pointer to the duplicate,
+              report if error */ 
+char *eshstrdup(char *str)
+{
+    char *t;
+    errno = 0;
+    t = (char *) eshmalloc(strlen(str)+1); 
+    if(t == NULL)
+        eprintf("eshstrdup(\"%.20s\") failed:", str); 
+    strcpy(t, str);
+    return t; 
+}
+
+/* eshstrndup:  duplicate n chars of a string in shared memory, 
+                returns pointer to the null terminated duplicate,
+                report if error */ 
+char *eshstrndup(char *str, int n)
+{
+    char *t;
+    errno = 0;
+    t = (char *) eshmalloc(n); 
+    if(t == NULL)
+        eprintf("eshstrndup(\"%.20s\") failed:", str); 
+    strncpy(t, str, n);
     return t; 
 }
 
@@ -292,7 +327,7 @@ void *eshmalloc(size_t size)
 
 }
 
-/* shcalloc: shcalloc and report if error */
+/* eshcalloc: shcalloc and report if error */
 void eshcalloc(size_t count, size_t size)
 {
     void *q;

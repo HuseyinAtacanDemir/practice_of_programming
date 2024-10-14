@@ -20,6 +20,9 @@ extern int    eshvasprintf  (char **, const char *fmt, va_list);
 extern char   *estrdup      (char *); 
 extern char   *estrndup     (char *, int);
 
+extern char   *eshstrdup    (char *); 
+extern char   *eshstrndup   (char *, int);
+
 extern int    eatoi         (char *);
 
 extern void   *emalloc      (size_t); 
