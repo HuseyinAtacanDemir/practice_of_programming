@@ -4,13 +4,16 @@
 #include "jankunit.internal.h"
 #include "jankunit.assert.h"
 
-void start_test           (const char *name_fmt, ...);
-void start_test_suite     (const char *name_fmt, ...);
-void start_test_program   (const char *name_fmt, ...);
+extern JankUnitContext *GLOBAL_CTX;
 
-void end_test             (void);
-void end_test_suite       (void);
-void end_test_program     (void);
+extern void init_ctx            (void);  
+
+extern void start_test          (const char *name_fmt, ...);
+extern void start_test_suite    (const char *name_fmt, ...);
+extern void start_test_program  (const char *name_fmt, ...);
+
+extern void end_test            (void);
+extern void end_test_suite      (void);
+extern void end_test_program    (void);
 
 #endif
-
