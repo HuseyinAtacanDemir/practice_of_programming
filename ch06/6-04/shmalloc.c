@@ -68,12 +68,12 @@ void *shmalloc(size_t size)
     return allocated_block;        
 }
 
-void *shcalloc(size_t size)
+void *shcalloc(size_t count, size_t size)
 {
     void *allocated_block;
-    if((allocated_block = shmalloc(size)) == NULL)
+    if((allocated_block = shmalloc((size * count))) == NULL)
         return NULL;
-    return memset(allocated_block, 0, size);
+    return memset(allocated_block, 0, (size*count));
 }
 
 void *shrealloc(void *ptr, size_t size)
