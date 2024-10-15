@@ -15,6 +15,8 @@
 
 #define BUFSIZE 1024
 
+JankUnitContext *GLOBAL_CTX = NULL;
+
 void init_ctx(void)
 {
     JankUnitContext *ctx = (JankUnitContext *) malloc(sizeof(JankUnitContext));
@@ -41,7 +43,6 @@ void init_ctx(void)
     ctx->SIGNAL_CODE = -1;
 
     GLOBAL_CTX = ctx;
-    
 }
 
 void start_test_program(const char *name_fmt, ...) 
@@ -73,10 +74,14 @@ void end_test_program()
     current_program = GLOBAL_CTX->current_program;
     if (current_program->failed == 0) {
         print_result(COLOR_GREEN, "Total: %d, %d passed %d failed\n", 
-          current_program->total, current_program->passed, current_program->failed);
+                                              current_program->total, 
+                                              current_program->passed, 
+                                              current_program->failed);
     } else {
         print_result(COLOR_RED, "Total: %d, %d passed %d failed\n", 
-          current_program->total, current_program->passed, current_program->failed);
+                                            current_program->total, 
+                                            current_program->passed,  
+                                            current_program->failed);
     }
 
     free(current_program->program_name);
@@ -99,7 +104,7 @@ void start_test_suite(const char *name_fmt, ...)
     evasprintf(&(current_suite->suite_name), name_fmt, args);
     va_end(args);
 
-    print_with_indent("test suite: %s\n", current_suite->suite_name);
+    print_with_indent("Suite: %s\n", current_suite->suite_name);
     GLOBAL_CTX->current_suite = current_suite;
     (*GLOBAL_CTX->indent_level)++;
 }
@@ -148,7 +153,7 @@ void start_test(const char *name_fmt, ...)
     evasprintf(&(current_test->test_name), name_fmt, args);
     va_end(args);
 
-    print_with_indent("test: %s\n", current_test->test_name);
+    print_with_indent("%s\n", current_test->test_name);
 
     GLOBAL_CTX->current_test = current_test;
     (*GLOBAL_CTX->indent_level)++;
@@ -338,7 +343,7 @@ void configure_ctx_post_fork()
     TestProgram  *tp, *sh_tp;
     TestSuite    *ts, *sh_ts;
     Test         *t, *sh_t;
-    BUFS         *bufs;
+//    BUFS         *bufs;
     int          *indent_level, *sh_indent_level;
 
     read_pipes_in_parent();
@@ -362,11 +367,11 @@ void configure_ctx_post_fork()
         tp->failed_assert = sh_tp->failed_assert;
         if (sh_tp->program_name) {
             easprintf(&(tp->program_name), sh_tp->program_name);
-            shfree(tp->program_name);
+            eshfree(tp->program_name);
         } else {
             tp->program_name = NULL;
         }
-        shfree(sh_tp);
+        eshfree(sh_tp);
     }
     if ((sh_ts = GLOBAL_CTX->current_suite)) {
         ts = (TestSuite *) emalloc(sizeof(TestSuite));
@@ -376,11 +381,11 @@ void configure_ctx_post_fork()
         ts->failed_assert = sh_ts->failed_assert;
         if (sh_ts->suite_name) {
             easprintf(&(ts->suite_name), sh_ts->suite_name);
-            shfree(sh_ts->suite_name);
+            eshfree(sh_ts->suite_name);
         } else {
             ts->suite_name = NULL;
         }
-        shfree(sh_ts);
+        eshfree(sh_ts);
     }
     if ((sh_t = GLOBAL_CTX->current_test)) {
         t = (Test *) emalloc(sizeof(Test));
@@ -390,16 +395,16 @@ void configure_ctx_post_fork()
         t->failed_assert = sh_t->failed_assert;
         if (sh_t->test_name) {
             easprintf(&(t->test_name), sh_t->test_name);
-            shfree(sh_t->test_name);
+            eshfree(sh_t->test_name);
         } else {
             t->test_name = NULL;
         }
-        shfree(sh_t);
+        eshfree(sh_t);
     }
     if ((sh_indent_level = GLOBAL_CTX->indent_level)) {
         indent_level = (int *) emalloc(sizeof(int));
         *indent_level = *sh_indent_level;
-        shfree(sh_indent_level);
+        eshfree(sh_indent_level);
     } else {
         indent_level = (int *) emalloc(sizeof(int));
         *indent_level = 0;
@@ -414,13 +419,13 @@ void configure_ctx_post_fork()
     */
 
     if (GLOBAL_CTX->bufs->sizes[SYS][OUT] && GLOBAL_CTX->bufs->bufs[SYS][OUT]) {
-        printf(GLOBAL_CTX->bufs->bufs[SYS][OUT]);
+        printf("%s", GLOBAL_CTX->bufs->bufs[SYS][OUT]);
         fflush(stdout);
         free(GLOBAL_CTX->bufs->bufs[SYS][OUT]);
     }
 
     if (GLOBAL_CTX->bufs->sizes[SYS][ERR] && GLOBAL_CTX->bufs->bufs[SYS][ERR]) {
-        fprintf(stderr, GLOBAL_CTX->bufs->bufs[SYS][ERR]);
+        fprintf(stderr, "%s", GLOBAL_CTX->bufs->bufs[SYS][ERR]);
         exit(EXIT_FAILURE);
     }
 
@@ -435,9 +440,10 @@ void configure_ctx_post_fork()
     GLOBAL_CTX->flushed = -1;
     GLOBAL_CTX->in_fork = 0;
 
-    GLOBAL_CTX->EXIT_CODE = WIFEXITED(GLOBAL_CTX->STATUS) ? WEXITSTATUS(GLOBAL_CTX->STATUS) : -1;
-    GLOBAL_CTX->SIGNAL_CODE = WIFSIGNALED(GLOBAL_CTX->STATUS) ? WTERMSIG(GLOBAL_CTX->STATUS) : -1;
-
+    GLOBAL_CTX->EXIT_CODE = (WIFEXITED(GLOBAL_CTX->STATUS) ? 
+                              WEXITSTATUS(GLOBAL_CTX->STATUS) : -1);
+    GLOBAL_CTX->SIGNAL_CODE = (WIFSIGNALED(GLOBAL_CTX->STATUS) ? 
+                                WTERMSIG(GLOBAL_CTX->STATUS) : -1);
 }
 
 void dup2_usr_pipes()
