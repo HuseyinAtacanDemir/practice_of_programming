@@ -32,4 +32,6 @@ extern void   *erealloc     (void *, size_t);
 extern void   *eshmalloc    (size_t); 
 extern void   *eshcalloc    (size_t, size_t);
 extern void   *eshrealloc   (void *, size_t); 
+extern void   eshfree       (void *);
+
 #endif

@@ -328,7 +328,7 @@ void *eshmalloc(size_t size)
 }
 
 /* eshcalloc: shcalloc and report if error */
-void eshcalloc(size_t count, size_t size)
+void *eshcalloc(size_t count, size_t size)
 {
     void *q;
     errno = 0;
@@ -339,7 +339,7 @@ void eshcalloc(size_t count, size_t size)
 }
 
 /* eshrealloc: shrealloc and report if error */
-void eshrealloc(void *ptr, size_t size)
+void *eshrealloc(void *ptr, size_t size)
 {
     void *q;
     errno = 0;
@@ -347,4 +347,14 @@ void eshrealloc(void *ptr, size_t size)
     if(q == NULL)
         eprintf("shrealloc of %u bytes at %p failed:", size, ptr); 
     return q;
+}
+
+void eshfree(void *ptr)
+{
+    int result;
+    errno = 0;
+    result = shfree(ptr);
+
+    if (result)
+        eprintf("shfree of %p failed with err: %d:", ptr, result);
 }
