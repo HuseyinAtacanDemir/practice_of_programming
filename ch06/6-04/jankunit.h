@@ -1,8 +1,16 @@
 #ifndef JANKUNIT_H
 #define JANKUNIT_H
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include <string.h>
+#include <unistd.h>
+
 #include "jankunit.internal.h"
 #include "jankunit.assert.h"
+
+#include "eprintf.h"
 
 extern JankUnitContext *GLOBAL_CTX;
 

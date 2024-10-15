@@ -3,7 +3,7 @@
 
 #include <stdlib.h>
 
-char *InvPosNumErr = "Invalid Positive Numbers: %d %d\n";
+char *InvPosNumErr = "Invalid Positive Numbers: %d %d";
 char *SumInfoOut = "a: %d, b: %d\n sum: %d\n";
 
 int some_fn(int a, int b)
@@ -17,7 +17,7 @@ int some_fn(int a, int b)
 int main(void) 
 {
     init_ctx(); 
-    TEST_PROGRAM("Jank Unit Test Library", "")
+    TEST_PROGRAM("Jank Unit Test Library")
     {
         TEST_SUITE("Dumb Suite %s", "super dumb")
         {
@@ -44,28 +44,32 @@ int main(void)
             TEST("is %d not equal %d", i, N+1)
             {
                 for ( ; i < N; i++) {
-                    ASSERT_NEQ(5, i);
                     EXPECT_NEQ(11, i);
                 }
             }
-            //TEST("Proposed hypothetical FORK with utilities")
-            //{
-                //int N = 11;
-                //for(int i = 0; i < N; i++) {
-                    //int a, b, result;
-                    //FORK()
-                    //{
-                        //EXPECT_EQ(result, (a+b));
-                        //exit(EXIT_SUCCESS);
-                    //}
-               //
-                    //EXPECT_OUT_EQ(SumInfoOut, a, b);
-                    //EXPECT_ERR_EQ("");
-//
-                    //ASSERT_EXIT_EQ(EXIT_SUCCESS);
-                    //ASSERT_SIG_EQ(0);                
-                //}
-            //}
+            TEST("Proposed hypothetical FORK with utilities")
+            {
+                int N = 10;
+                for(int i = 0; i < N; i++) {
+                    int a, b, result;
+                    a = i;
+                    b = i+1;
+                    FORK() {
+                        result = some_fn(a, b);
+                        EXPECT_EQ(result, (a+b));
+                    }
+                    if (!a || !b) {
+                        EXPECT_OUT_EQ("");
+                        char *msg = NULL;
+                        easeprintf(&msg, InvPosNumErr, a, b); 
+                        EXPECT_ERR_EQ(msg);
+                        free(msg);
+                    } else {
+                        EXPECT_OUT_EQ(SumInfoOut, a, b, (a+b));
+                        EXPECT_ERR_EQ("");
+                    }
+                }
+            }
         }
     }
     return 0;

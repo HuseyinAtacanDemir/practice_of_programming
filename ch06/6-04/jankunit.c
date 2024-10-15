@@ -1,14 +1,6 @@
 #include "jankunit.h"
 #include "jankunit.internal.h"
 
-#include "eprintf.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <string.h>
-#include <unistd.h>
-
 #define COLOR_GREEN "\x1b[32m"
 #define COLOR_RED "\x1b[31m"
 #define COLOR_RESET "\x1b[0m"
@@ -36,7 +28,7 @@ void init_ctx(void)
     *(ctx->indent_level) = 0;
 
     // other
-    ctx->flushed = -1;
+    ctx->flushed = UNINITIALIZED;
     ctx->in_fork = 0;
     ctx->STATUS = -1;
     ctx->EXIT_CODE = -1;
@@ -241,6 +233,7 @@ void configure_ctx_pre_fork()
     sh_ts = NULL;
     sh_t = NULL;
     sh_indent_level = NULL;
+    bufs = NULL;
     
     /*  
         The following values, if they exist, 
@@ -317,13 +310,11 @@ void configure_ctx_pre_fork()
             bufs->sizes[i][j] = 0;
         }
 
-
     // init pipes of the GLOBAL CTX
     for (int i = USR; i <= SYS; i++)
         for (int j = OUT; j <= ERR; j++)
             if (pipe(GLOBAL_CTX->pipes[i][j]))
                 eprintf("failed pipe\n");
-
 
     GLOBAL_CTX->current_program = sh_tp;
     GLOBAL_CTX->current_suite = sh_ts;
@@ -333,7 +324,7 @@ void configure_ctx_pre_fork()
 
     GLOBAL_CTX->bufs = bufs;
 
-    GLOBAL_CTX->flushed = 0;
+    GLOBAL_CTX->flushed = UNFLUSHED;
     GLOBAL_CTX->in_fork = 1;
 }
 
@@ -367,7 +358,7 @@ void configure_ctx_post_fork()
         tp->failed_assert = sh_tp->failed_assert;
         if (sh_tp->program_name) {
             easprintf(&(tp->program_name), sh_tp->program_name);
-            eshfree(tp->program_name);
+            eshfree(sh_tp->program_name);
         } else {
             tp->program_name = NULL;
         }
@@ -418,13 +409,13 @@ void configure_ctx_post_fork()
         assertion and expectation macros
     */
 
-    if (GLOBAL_CTX->bufs->sizes[SYS][OUT] && GLOBAL_CTX->bufs->bufs[SYS][OUT]) {
+    if (GLOBAL_CTX->bufs && strlen(GLOBAL_CTX->bufs->bufs[SYS][OUT]) > 0) {
         printf("%s", GLOBAL_CTX->bufs->bufs[SYS][OUT]);
         fflush(stdout);
         free(GLOBAL_CTX->bufs->bufs[SYS][OUT]);
     }
 
-    if (GLOBAL_CTX->bufs->sizes[SYS][ERR] && GLOBAL_CTX->bufs->bufs[SYS][ERR]) {
+    if (GLOBAL_CTX->bufs && strlen(GLOBAL_CTX->bufs->bufs[SYS][ERR]) > 0) {
         fprintf(stderr, "%s", GLOBAL_CTX->bufs->bufs[SYS][ERR]);
         exit(EXIT_FAILURE);
     }
@@ -437,8 +428,8 @@ void configure_ctx_post_fork()
 
     GLOBAL_CTX->indent_level = indent_level;
 
-    GLOBAL_CTX->flushed = -1;
-    GLOBAL_CTX->in_fork = 0;
+    GLOBAL_CTX->flushed = UNINITIALIZED;
+    GLOBAL_CTX->in_fork = -1;
 
     GLOBAL_CTX->EXIT_CODE = (WIFEXITED(GLOBAL_CTX->STATUS) ? 
                               WEXITSTATUS(GLOBAL_CTX->STATUS) : -1);

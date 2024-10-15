@@ -7,38 +7,43 @@
 enum { USR, SYS };
 enum { OUT, ERR };
 enum { READ_END, WRITE_END };
-enum { FLUSHED, UNFLUSHED };
+enum { UNINITIALIZED, FLUSHED, UNFLUSHED };
 
-typedef struct {
+typedef struct Test Test;
+struct Test {
     char *test_name;
     int total;
     int passed;
     int failed;
     int failed_assert;
-} Test;
+};
 
-typedef struct {
+typedef struct TestSuite TestSuite;
+struct TestSuite {
     char *suite_name;
     int total;
     int passed;
     int failed;
     int failed_assert;
-} TestSuite;
+};
 
-typedef struct {
+typedef struct TestProgram TestProgram;
+struct TestProgram {
     char *program_name;
     int total;
     int passed;
     int failed;
     int failed_assert;
-} TestProgram;
+};
 
-typedef struct {
+typedef struct BUFS BUFS;
+struct BUFS {
     int sizes[2][2];
     char *bufs[2][2];
-} BUFS;
+};
 
-typedef struct{
+typedef struct JankUnitContext JankUnitContext;
+struct JankUnitContext {
     TestProgram *current_program;
     TestSuite   *current_suite;
     Test        *current_test;
@@ -54,8 +59,7 @@ typedef struct{
     int         STATUS;
     int         EXIT_CODE;
     int         SIGNAL_CODE;    
-    
-} JankUnitContext;
+};
 
 void print_with_indent  (const char *fmt, ...);
 void vprint_with_indent (const char *fmt, va_list args);
