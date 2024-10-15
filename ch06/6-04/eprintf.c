@@ -119,7 +119,6 @@ int easprintf(char **strp, const char *fmt, ...)
 /* evasprintf: allocates memory and formats string, variadic */
 int evasprintf(char **strp, const char *fmt, va_list args)
 {
-
     // vsnprintf with NULL and 0 calculates required size
     int size = vsnprintf(NULL, 0, fmt, args);
 
@@ -140,6 +139,37 @@ int evasprintf(char **strp, const char *fmt, va_list args)
     }
 
     return result;
+}
+
+/* easeprintf: allocates mem and formats string eprintf would have printed, 
+                reports if error */ 
+int easeprintf(char **strp, const char *fmt, ...)
+{
+    char *tmp;
+    int nprinted;
+    va_list args;
+
+    tmp = NULL;
+
+    va_start(args, fmt); 
+    vasprintf(&tmp, fmt, args);
+    va_end(args);
+    
+    if(getprogname() != NULL && fmt[0] != '\0' && fmt[strlen(fmt)-1] == ':') {
+        nprinted = easprintf(strp, "%s: %s %s \n", 
+                                    getprogname(), tmp, strerror(errno));
+        free(tmp);
+    } else if (getprogname() != NULL) {
+        nprinted = easprintf(strp, "%s: %s\n", getprogname(), tmp);
+        free(tmp);
+    } else if (fmt[0] != '\0' && fmt[strlen(fmt)-1] == ':') {
+        nprinted = easprintf(strp, "%s %s \n", tmp, strerror(errno));
+        free(tmp);
+    } else {
+        nprinted = easprintf(strp, "%s\n", tmp);
+        free(tmp);
+    }
+    return nprinted;
 }
 
 /* easprintf: allocates shared memory and formats string */
