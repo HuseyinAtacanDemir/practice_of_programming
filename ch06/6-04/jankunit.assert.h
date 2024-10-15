@@ -3,46 +3,46 @@
 
 #define PASS() \
     do { \
-        if (GLOBAL_CTX->current_test != NULL) { GLOBAL_CTX->current_test->passed++; } \
-        else if (GLOBAL_CTX->current_suite != NULL) { GLOBAL_CTX->current_suite->passed++; } \
-        else if (GLOBAL_CTX->current_program != NULL) { GLOBAL_CTX->current_program->passed++; } \
+        if      (GLOBAL_CTX->cur_block[TEST] != NULL) { GLOBAL_CTX->cur_block[TEST]->passed++; GLOBAL_CTX->cur_block[TEST]->total++; } \
+        else if (GLOBAL_CTX->cur_block[SUITE] != NULL) { GLOBAL_CTX->cur_block[SUITE]->passed++; GLOBAL_CTX->cur_block[SUITE]->total++; } \
+        else if (GLOBAL_CTX->cur_block[PROG] != NULL) { GLOBAL_CTX->cur_block[PROG]->passed++; GLOBAL_CTX->cur_block[PROG]->total++; } \
     } while (0)
 
 #define FAIL() \
-    do {  \
-        if (GLOBAL_CTX->current_test != NULL) { GLOBAL_CTX->current_test->failed++; } \
-        else if (GLOBAL_CTX->current_suite != NULL) { GLOBAL_CTX->current_suite->failed++; } \
-        else if (GLOBAL_CTX->current_program != NULL) { GLOBAL_CTX->current_program->failed++; } \
+    do { \
+        if      (GLOBAL_CTX->cur_block[TEST] != NULL) { GLOBAL_CTX->cur_block[TEST]->failed++; GLOBAL_CTX->cur_block[TEST]->total++; } \
+        else if (GLOBAL_CTX->cur_block[SUITE] != NULL) { GLOBAL_CTX->cur_block[SUITE]->failed++; GLOBAL_CTX->cur_block[SUITE]->total++; } \
+        else if (GLOBAL_CTX->cur_block[PROG] != NULL) { GLOBAL_CTX->cur_block[PROG]->failed++; GLOBAL_CTX->cur_block[PROG]->total++; } \
     } while (0)
 
 #define FAIL_ASSERT() \
     do {  \
-        if (GLOBAL_CTX->current_test != NULL) { \
-            GLOBAL_CTX->current_test->failed++; \
-            GLOBAL_CTX->current_test->failed_assert++; \
-        } else if (GLOBAL_CTX->current_suite != NULL) { \
-            GLOBAL_CTX->current_suite->failed++; \
-            GLOBAL_CTX->current_suite->failed_assert++; \
-        } else if (GLOBAL_CTX->current_program != NULL) { \
-            GLOBAL_CTX->current_program->failed++; \
-            GLOBAL_CTX->current_program->failed_assert++; \
+        if (GLOBAL_CTX->cur_block[TEST] != NULL) { \
+            GLOBAL_CTX->cur_block[TEST]->failed++; \
+            GLOBAL_CTX->cur_block[TEST]->failed_assert++; \
+            GLOBAL_CTX->cur_block[TEST]->total++;   \
+        } else if (GLOBAL_CTX->cur_block[SUITE] != NULL) { \
+            GLOBAL_CTX->cur_block[SUITE]->failed++; \
+            GLOBAL_CTX->cur_block[SUITE]->failed_assert++; \
+            GLOBAL_CTX->cur_block[SUITE]->total++;   \
+        } else if (GLOBAL_CTX->cur_block[PROG] != NULL) { \
+            GLOBAL_CTX->cur_block[PROG]->failed++; \
+            GLOBAL_CTX->cur_block[PROG]->failed_assert++; \
+            GLOBAL_CTX->cur_block[PROG]->total++;   \
         } \
     } while (0)
 
-#define INCREMENT_TOTAL_IN_PARENT() \
-    do {  \
-        if (GLOBAL_CTX->current_test != NULL) { GLOBAL_CTX->current_test->total++; } \
-        else if (GLOBAL_CTX->current_suite != NULL) { GLOBAL_CTX->current_suite->total++; }  \
-        else if (GLOBAL_CTX->current_program != NULL) { GLOBAL_CTX->current_program->total++; }  \
-    } while (0)
-
 #define CONTINUE_IF_FAILED_ASSERT_IN_SCOPE() \
-    if (GLOBAL_CTX->current_test != NULL && GLOBAL_CTX->current_test->failed_assert > 0)  \
+    if (GLOBAL_CTX->cur_block[TEST] != NULL && GLOBAL_CTX->cur_block[TEST]->failed_assert > 0 && (GLOBAL_CTX->cur_block[TEST]->total++, 1))  \
         continue; \
-    else if (GLOBAL_CTX->current_suite != NULL && GLOBAL_CTX->current_suite->failed_assert > 0) \
+    else if (GLOBAL_CTX->cur_block[SUITE] != NULL && GLOBAL_CTX->cur_block[SUITE]->failed_assert > 0 && (GLOBAL_CTX->cur_block[SUITE]->total++, 1)) \
         continue; \
-    else if (GLOBAL_CTX->current_program != NULL && GLOBAL_CTX->current_program->failed_assert > 0) \
+    else if (GLOBAL_CTX->cur_block[PROG] != NULL && GLOBAL_CTX->cur_block[PROG]->failed_assert > 0 && (GLOBAL_CTX->cur_block[PROG]->total++, 1)) \
         continue
+
+#define FLUSH_AND_REDIRECT_SYS_IF_IN_FORK_AND_USR_OUT_IS_UNFLUSHED()    \
+    flush_usr_pipes_and_dup2_sys_pipes(); \
+    GLOBAL_CTX->flushed = FLUSHED
 
 // Comparison macros
 #define EQ_COMMON   (_a_ == _b_)
@@ -55,11 +55,7 @@
 // General comparison macro
 #define COMPARE_COMMON(type, comp, val1, val2, fail_action, fail_message) \
     do {  \
-        if (GLOBAL_CTX->in_fork && GLOBAL_CTX->flushed == UNFLUSHED) {  \
-            flush_usr_pipes_and_dup2_sys_pipes(); \
-            GLOBAL_CTX->flushed = FLUSHED;  \
-        } \
-        INCREMENT_TOTAL_IN_PARENT();  \
+        FLUSH_AND_REDIRECT_SYS_IF_IN_FORK_AND_USR_OUT_IS_UNFLUSHED();   \
         CONTINUE_IF_FAILED_ASSERT_IN_SCOPE(); \
         type _a_ = (val1);  \
         type _b_ = (val2);  \
@@ -172,7 +168,7 @@
 // String equality comparison (handles NULL pointers)
 #define EXPECT_STREQ(str1, str2) \
     do { \
-        INCREMENT_TOTAL_IN_PARENT();  \
+        FLUSH_AND_REDIRECT_SYS_IF_IN_FORK_AND_USR_OUT_IS_UNFLUSHED();   \
         CONTINUE_IF_FAILED_ASSERT_IN_SCOPE(); \
         const char* s1 = (str1); \
         const char* s2 = (str2); \
@@ -186,11 +182,7 @@
 
 #define ASSERT_STREQ(str1, str2) \
     do { \
-        if (GLOBAL_CTX->in_fork && GLOBAL_CTX->flushed == UNFLUSHED) {  \
-            flush_usr_pipes_and_dup2_sys_pipes(); \
-            GLOBAL_CTX->flushed = FLUSHED;  \
-        } \
-        INCREMENT_TOTAL_IN_PARENT();  \
+        FLUSH_AND_REDIRECT_SYS_IF_IN_FORK_AND_USR_OUT_IS_UNFLUSHED();   \
         CONTINUE_IF_FAILED_ASSERT_IN_SCOPE(); \
         const char* s1 = (str1); \
         const char* s2 = (str2); \
@@ -204,10 +196,10 @@
 
 #define COMMON_FORK_OUTPUT_COMPARISON(comp, stream, ...) \
     do {  \
-    char *_buf_ = NULL; \
-    easprintf(&_buf_, __VA_ARGS__); \
-    comp(_buf_, (GLOBAL_CTX->bufs ? GLOBAL_CTX->bufs->bufs[USR][stream] : NULL)); \
-    free(_buf_);  \
+        char *_buf_ = NULL; \
+        easprintf(&_buf_, __VA_ARGS__); \
+        comp(_buf_, (GLOBAL_CTX->bufs ? GLOBAL_CTX->bufs->bufs[USR][stream] : NULL)); \
+        free(_buf_);  \
     } while (0)
 
 #define EXPECT_OUT_EQ(...) COMMON_FORK_OUTPUT_COMPARISON(EXPECT_STREQ, OUT, __VA_ARGS__)
@@ -215,14 +207,15 @@
 #define ASSERT_OUT_EQ(...) COMMON_FORK_OUTPUT_COMPARISON(ASSERT_STREQ, OUT, __VA_ARGS__)
 #define ASSERT_ERR_EQ(...) COMMON_FORK_OUTPUT_COMPARISON(ASSERT_STREQ, ERR, __VA_ARGS__)
 
+#define EXPECT_EXIT_CODE_EQ(code)   EXPECT_EQ(code, GLOBAL_CTX->EXIT_CODE)
+#define EXPECT_SIGNAL_CODE_EQ(code) EXPECT_EQ(code, GLOBAL_CTX->SIGNAL_CODE)
+#define ASSERT_EXIT_CODE_EQ(code)   ASSERT_EQ(code, GLOBAL_CTX->EXIT_CODE)
+#define ASSERT_SIGNAL_CODE_EQ(code) ASSERT_EQ(code, GLOBAL_CTX->SIGNAL_CODE)
+
 // Boolean assertions
 #define EXPECT_TRUE(expr) \
     do { \
-        if (GLOBAL_CTX->in_fork && GLOBAL_CTX->flushed == UNFLUSHED) {  \
-            flush_usr_pipes_and_dup2_sys_pipes(); \
-            GLOBAL_CTX->flushed = FLUSHED;  \
-        } \
-        INCREMENT_TOTAL_IN_PARENT();  \
+        FLUSH_AND_REDIRECT_SYS_IF_IN_FORK_AND_USR_OUT_IS_UNFLUSHED();   \
         CONTINUE_IF_FAILED_ASSERT_IN_SCOPE(); \
         if (!(expr)) { \
             print_with_indent("Expected TRUE, but got FALSE, (%s). %s:%d\n", #expr, __FILE__, __LINE__); \
@@ -234,11 +227,7 @@
 
 #define ASSERT_TRUE(expr) \
     do { \
-        if (GLOBAL_CTX->in_fork && GLOBAL_CTX->flushed == UNFLUSHED) {  \
-            flush_usr_pipes_and_dup2_sys_pipes(); \
-            GLOBAL_CTX->flushed = FLUSHED;  \
-        } \
-        INCREMENT_TOTAL_IN_PARENT();  \
+        FLUSH_AND_REDIRECT_SYS_IF_IN_FORK_AND_USR_OUT_IS_UNFLUSHED();   \
         CONTINUE_IF_FAILED_ASSERT_IN_SCOPE(); \
         if (!(expr)) { \
             print_with_indent("ASSERT failed: Expected TRUE, but got FALSE, (%s). %s:%d\n", #expr, __FILE__, __LINE__); \
@@ -250,11 +239,7 @@
 
 #define EXPECT_FALSE(expr) \
     do { \
-        if (GLOBAL_CTX->in_fork && GLOBAL_CTX->flushed == UNFLUSHED) {  \
-            flush_usr_pipes_and_dup2_sys_pipes(); \
-            GLOBAL_CTX->flushed = FLUSHED;  \
-        } \
-        INCREMENT_TOTAL_IN_PARENT();  \
+        FLUSH_AND_REDIRECT_SYS_IF_IN_FORK_AND_USR_OUT_IS_UNFLUSHED();   \
         CONTINUE_IF_FAILED_ASSERT_IN_SCOPE(); \
         if ((expr)) { \
             print_with_indent("Expected FALSE, but got TRUE, (%s). %s:%d\n", #expr, __FILE__, __LINE__); \
@@ -266,11 +251,7 @@
 
 #define ASSERT_FALSE(expr) \
     do { \
-        if (GLOBAL_CTX->in_fork && GLOBAL_CTX->flushed == UNFLUSHED) {  \
-            flush_usr_pipes_and_dup2_sys_pipes(); \
-            GLOBAL_CTX->flushed = FLUSHED;  \
-        } \
-        INCREMENT_TOTAL_IN_PARENT();  \
+        FLUSH_AND_REDIRECT_SYS_IF_IN_FORK_AND_USR_OUT_IS_UNFLUSHED();   \
         CONTINUE_IF_FAILED_ASSERT_IN_SCOPE(); \
         if ((expr)) { \
             print_with_indent("ASSERT failed: Expected FALSE, but got TRUE, (%s). %s:%d\n", #expr, __FILE__, __LINE__); \
@@ -307,33 +288,29 @@ in the parent after the fork cleanup?
 No, after the fork cleanup, the tests that follow are
 immediate to the status/system wide side effects of the fn being run, so the assert_failed status
 wont be propagated to the parent, however total assert/expect count will be.
-
-
 */
     
 #define FORK()  \
     for (pid_t _pid_ = (configure_ctx_pre_fork(), -2);   \
             _pid_ == -2;    \
-            GLOBAL_CTX->in_fork = (_pid_ > 0 && (configure_ctx_post_fork(), 1)) )   \
+            _pid_ = ((_pid_ > 0 && (configure_ctx_post_fork(), 1)), _pid_) )   \
         for (_pid_ = fork(); \
-                _pid_ == 0 && (dup2_usr_pipes(), 1);    \
-                exit_with_flush() )
+                _pid_ == 0 && (dup2_usr_pipes(), 1) && (atexit(&close_all_pipes), 1) && (handle_all_catchable_signals(), 1);    \
+                exit(EXIT_SUCCESS) )
 
 #define TEST_PROGRAM(...) \
-    for (int _prog_flag_ = (start_test_program(__VA_ARGS__), 1); \
-          _prog_flag_; \
-          _prog_flag_ = (end_test_program(), 0) )
+    for (int _prog_flag_ = (start_test_block(PROG, __VA_ARGS__), 1); \
+            _prog_flag_; \
+            _prog_flag_ = (end_test_block(PROG, 0), 0) )
 
 #define TEST_SUITE(...) \
-    for (int _suite_flag_ = (start_test_suite(__VA_ARGS__), 1); \
-          _suite_flag_; \
-          _suite_flag_ = (end_test_suite(), 0), \
-          (GLOBAL_CTX->current_program ? GLOBAL_CTX->current_program->total++ : 0) )
+    for (int _suite_flag_ = (start_test_block(SUITE, __VA_ARGS__), 1); \
+            _suite_flag_; \
+            _suite_flag_ = (end_test_block(SUITE, 1), 0) )
 
 #define TEST(...) \
-    for (int _test_flag_ = (start_test(__VA_ARGS__), 1); \
-          _test_flag_; \
-          _test_flag_ = (end_test(), 0),  \
-          (GLOBAL_CTX->current_suite ? GLOBAL_CTX->current_suite->total++ : (GLOBAL_CTX->current_program ? GLOBAL_CTX->current_program->total++ : 0 )) )
+    for (int _test_flag_ = (start_test_block(TEST, __VA_ARGS__), 1); \
+            _test_flag_; \
+            _test_flag_ = (end_test_block(TEST, 1), 0) )
 
 #endif

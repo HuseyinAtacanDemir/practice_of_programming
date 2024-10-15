@@ -8,28 +8,12 @@ enum { USR, SYS };
 enum { OUT, ERR };
 enum { READ_END, WRITE_END };
 enum { UNINITIALIZED, FLUSHED, UNFLUSHED };
+enum { PROG, SUITE, TEST };
 
-typedef struct Test Test;
-struct Test {
-    char *test_name;
-    int total;
-    int passed;
-    int failed;
-    int failed_assert;
-};
-
-typedef struct TestSuite TestSuite;
-struct TestSuite {
-    char *suite_name;
-    int total;
-    int passed;
-    int failed;
-    int failed_assert;
-};
-
-typedef struct TestProgram TestProgram;
-struct TestProgram {
-    char *program_name;
+typedef struct TestBlock TestBlock;
+struct TestBlock {
+    char *name;
+    int type;
     int total;
     int passed;
     int failed;
@@ -44,15 +28,12 @@ struct BUFS {
 
 typedef struct JankUnitContext JankUnitContext;
 struct JankUnitContext {
-    TestProgram *current_program;
-    TestSuite   *current_suite;
-    Test        *current_test;
-    
+    TestBlock   *cur_block[3];
     BUFS        *bufs;
     
     int         pipes[2][2][2];
 
-    int         *indent_level;
+    int         *indent;
     
     int         flushed;
     int         in_fork;
@@ -68,10 +49,16 @@ void vprint_result      (const char *color, const char *fmt, va_list args);
 
 void configure_ctx_pre_fork             (void);
 void configure_ctx_post_fork            (void);
+
 void dup2_usr_pipes                     (void);
 void flush_usr_pipes_and_dup2_sys_pipes (void);
-void exit_with_flush                    (void);
+void flush_and_close_all_pipes          (void);
+void close_all_pipes                    (void);
+
 void read_pipes_in_parent               (void);
 void read_pipes_to_bufs                 (void);
+
+void handle_all_catchable_signals       (void);
+void handle_signal                      (int);
 
 #endif

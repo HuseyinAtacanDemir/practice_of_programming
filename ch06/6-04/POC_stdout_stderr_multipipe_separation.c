@@ -43,7 +43,7 @@ enum
     UNFLUSHED
 };
 typedef struct {
-    char *test_name;
+    char *name;
     int total;
     int passed;
     int failed;
@@ -51,7 +51,7 @@ typedef struct {
 } Test;
 
 typedef struct {
-    char *suite_name;
+    char *name;
     int total;
     int passed;
     int failed;
@@ -59,7 +59,7 @@ typedef struct {
 } TestSuite;
 
 typedef struct {
-    char *program_name;
+    char *name;
     int total;
     int passed;
     int failed;
@@ -73,15 +73,15 @@ typedef struct
 } BUFS;
 
 typedef struct{
-    TestProgram *current_program;
-    TestSuite   *current_suite;
-    Test        *current_test;
+    TestProgram *cur_prog;
+    TestSuite   *cur_suite;
+    Test        *cur_test;
     
     BUFS        *bufs;
     
     int         pipes[2][2][2];
 
-    int         *indent_level;
+    int         *indent;
     
     int         flushed;
     int         in_fork;
@@ -126,17 +126,17 @@ JankUnitContext *init_ctx_with_cur_test()
     JankUnitContext *ctx = (JankUnitContext *) malloc(sizeof(JankUnitContext));
 
     // uninitialized for this POC test case
-    ctx->current_program = NULL;
-    ctx->current_suite   = NULL;
+    ctx->cur_prog = NULL;
+    ctx->cur_suite   = NULL;
        
     // current test init
-    ctx->current_test = (Test *) emalloc(sizeof(Test));
-    ctx->current_test->total = 0;
-    ctx->current_test->passed = 0;
-    ctx->current_test->failed = 0;
-    ctx->current_test->failed_assert = 0;
-    easprintf(&(ctx->current_test->test_name), "Dummy Test");
-    print_with_indent("test: %s\n", ctx->current_test->test_name);
+    ctx->cur_test = (Test *) emalloc(sizeof(Test));
+    ctx->cur_test->total = 0;
+    ctx->cur_test->passed = 0;
+    ctx->cur_test->failed = 0;
+    ctx->cur_test->failed_assert = 0;
+    easprintf(&(ctx->cur_test->name), "Dummy Test");
+    print_with_indent("test: %s\n", ctx->cur_test->name);
 
     //bufsuninitialized
     ctx->bufs = NULL;
@@ -144,9 +144,9 @@ JankUnitContext *init_ctx_with_cur_test()
     // no op for ctx->pipes
 
     // indent level init
-    ctx->indent_level = (int *) emalloc(sizeof(int));
-    *(ctx->indent_level) = 0;
-    *(ctx->indent_level)++;
+    ctx->indent = (int *) emalloc(sizeof(int));
+    *(ctx->indent) = 0;
+    *(ctx->indent)++;
 
     // other
     ctx->flushed = -1;
@@ -166,72 +166,72 @@ void configure_ctx_pre_fork()
     TestSuite    *ts, *sh_ts;
     Test         *t, *sh_t;
     BUFS         *bufs;
-    int          *indent_level, *sh_indent_level;
+    int          *indent, *sh_indent;
 
     sh_tp = NULL;
     sh_ts = NULL;
     sh_t = NULL;
-    sh_indent_level = NULL;
+    sh_indent = NULL;
     
     /*  
         The following values, if they exist, 
         should be made to use shared memory
         before a fork() call:
-            TestProgram *current_program
-            TestSuite   *current_suite
-            Test        *current_test
-            int         *indent_level
+            TestProgram *cur_prog
+            TestSuite   *cur_suite
+            Test        *cur_test
+            int         *indent
 
     */
-    if ((tp = GLOBAL_CTX->current_program)) {
+    if ((tp = GLOBAL_CTX->cur_prog)) {
         sh_tp = (TestProgram *) eshmalloc(sizeof(TestProgram));
         sh_tp->total         = tp->total;
         sh_tp->passed        = tp->passed;
         sh_tp->failed        = tp->failed;
         sh_tp->failed_assert = tp->failed_assert;
-        if (tp->program_name) {
-            eshasprintf(&(sh_tp->program_name), tp->program_name);
-            free(tp->program_name);
+        if (tp->name) {
+            eshasprintf(&(sh_tp->name), tp->name);
+            free(tp->name);
         } else {
-            sh_tp->program_name = NULL;
+            sh_tp->name = NULL;
         }
         free(tp);
     }
-    if ((ts = GLOBAL_CTX->current_suite)) {
+    if ((ts = GLOBAL_CTX->cur_suite)) {
         sh_ts = (TestSuite *) eshmalloc(sizeof(TestSuite));
         sh_ts->total         = ts->total;
         sh_ts->passed        = ts->passed;
         sh_ts->failed        = ts->failed;
         sh_ts->failed_assert = ts->failed_assert;
-        if (ts->suite_name) {
-            eshasprintf(&(sh_ts->suite_name), ts->suite_name);
-            free(ts->suite_name);
+        if (ts->name) {
+            eshasprintf(&(sh_ts->name), ts->name);
+            free(ts->name);
         } else {
-            sh_ts->suite_name = NULL;
+            sh_ts->name = NULL;
         }
         free(ts);
     }
-    if ((t = GLOBAL_CTX->current_test)) {
+    if ((t = GLOBAL_CTX->cur_test)) {
         sh_t = (Test *) eshmalloc(sizeof(Test));
         sh_t->total         = t->total;
         sh_t->passed        = t->passed;
         sh_t->failed        = t->failed;
         sh_t->failed_assert = t->failed_assert;
-        if (t->test_name) {
-            eshasprintf(&(sh_t->test_name), t->test_name);
-            free(t->test_name);
+        if (t->name) {
+            eshasprintf(&(sh_t->name), t->name);
+            free(t->name);
         } else {
-            sh_t->test_name = NULL;
+            sh_t->name = NULL;
         }
         free(t);
     }
-    if ((indent_level = GLOBAL_CTX->indent_level)) {
-        sh_indent_level = (int *) eshmalloc(sizeof(int));
-        *sh_indent_level = *indent_level;
-        free(indent_level);
+    if ((indent = GLOBAL_CTX->indent)) {
+        sh_indent = (int *) eshmalloc(sizeof(int));
+        *sh_indent = *indent;
+        free(indent);
     } else {
-        sh_indent_level = (int *) eshmalloc(sizeof(int));
-        *sh_indent_level = 0;
+        sh_indent = (int *) eshmalloc(sizeof(int));
+        *sh_indent = 0;
     }
     /*
         BUFS will be assumed NULL and 
@@ -256,11 +256,11 @@ void configure_ctx_pre_fork()
                 eprintf("failed pipe\n");
 
 
-    GLOBAL_CTX->current_program = sh_tp;
-    GLOBAL_CTX->current_suite = sh_ts;
-    GLOBAL_CTX->current_test = sh_t;
+    GLOBAL_CTX->cur_prog = sh_tp;
+    GLOBAL_CTX->cur_suite = sh_ts;
+    GLOBAL_CTX->cur_test = sh_t;
 
-    GLOBAL_CTX->indent_level = sh_indent_level;
+    GLOBAL_CTX->indent = sh_indent;
 
     GLOBAL_CTX->bufs = bufs;
 
@@ -275,7 +275,7 @@ void configure_ctx_post_fork()
     TestSuite    *ts, *sh_ts;
     Test         *t, *sh_t;
     BUFS         *bufs;
-    int          *indent_level, *sh_indent_level;
+    int          *indent, *sh_indent;
 
     read_pipes_in_parent();
     wait(&(GLOBAL_CTX->STATUS));
@@ -284,61 +284,61 @@ void configure_ctx_post_fork()
         The following values, if they exist, 
         should be made to use shared memory
         before a fork() call:
-            TestProgram *current_program
-            TestSuite   *current_suite
-            Test        *current_test
-            int         *indent_level
+            TestProgram *cur_prog
+            TestSuite   *cur_suite
+            Test        *cur_test
+            int         *indent
 
     */
-    if ((sh_tp = GLOBAL_CTX->current_program)) {
+    if ((sh_tp = GLOBAL_CTX->cur_prog)) {
         tp = (TestProgram *) emalloc(sizeof(TestProgram));
         tp->total         = sh_tp->total;
         tp->passed        = sh_tp->passed;
         tp->failed        = sh_tp->failed;
         tp->failed_assert = sh_tp->failed_assert;
-        if (sh_tp->program_name) {
-            easprintf(&(tp->program_name), sh_tp->program_name);
-            shfree(tp->program_name);
+        if (sh_tp->name) {
+            easprintf(&(tp->name), sh_tp->name);
+            shfree(tp->name);
         } else {
-            tp->program_name = NULL;
+            tp->name = NULL;
         }
         shfree(sh_tp);
     }
-    if ((sh_ts = GLOBAL_CTX->current_suite)) {
+    if ((sh_ts = GLOBAL_CTX->cur_suite)) {
         ts = (TestSuite *) emalloc(sizeof(TestSuite));
         ts->total         = sh_ts->total;
         ts->passed        = sh_ts->passed;
         ts->failed        = sh_ts->failed;
         ts->failed_assert = sh_ts->failed_assert;
-        if (sh_ts->suite_name) {
-            easprintf(&(ts->suite_name), sh_ts->suite_name);
-            shfree(sh_ts->suite_name);
+        if (sh_ts->name) {
+            easprintf(&(ts->name), sh_ts->name);
+            shfree(sh_ts->name);
         } else {
-            ts->suite_name = NULL;
+            ts->name = NULL;
         }
         shfree(sh_ts);
     }
-    if ((sh_t = GLOBAL_CTX->current_test)) {
+    if ((sh_t = GLOBAL_CTX->cur_test)) {
         t = (Test *) emalloc(sizeof(Test));
         t->total         = sh_t->total;
         t->passed        = sh_t->passed;
         t->failed        = sh_t->failed;
         t->failed_assert = sh_t->failed_assert;
-        if (sh_t->test_name) {
-            easprintf(&(t->test_name), sh_t->test_name);
-            shfree(sh_t->test_name);
+        if (sh_t->name) {
+            easprintf(&(t->name), sh_t->name);
+            shfree(sh_t->name);
         } else {
-            t->test_name = NULL;
+            t->name = NULL;
         }
         shfree(sh_t);
     }
-    if ((sh_indent_level = GLOBAL_CTX->indent_level)) {
-        indent_level = (int *) emalloc(sizeof(int));
-        *indent_level = *sh_indent_level;
-        shfree(sh_indent_level);
+    if ((sh_indent = GLOBAL_CTX->indent)) {
+        indent = (int *) emalloc(sizeof(int));
+        *indent = *sh_indent;
+        shfree(sh_indent);
     } else {
-        indent_level = (int *) emalloc(sizeof(int));
-        *indent_level = 0;
+        indent = (int *) emalloc(sizeof(int));
+        *indent = 0;
     }
     /*
         During cleanup, sys buffers will be printed,
@@ -362,11 +362,11 @@ void configure_ctx_post_fork()
 
     // init pipes of the GLOBAL CTX
 
-    GLOBAL_CTX->current_program = tp;
-    GLOBAL_CTX->current_suite = ts;
-    GLOBAL_CTX->current_test = t;
+    GLOBAL_CTX->cur_prog = tp;
+    GLOBAL_CTX->cur_suite = ts;
+    GLOBAL_CTX->cur_test = t;
 
-    GLOBAL_CTX->indent_level = indent_level;
+    GLOBAL_CTX->indent = indent;
 
     GLOBAL_CTX->flushed = -1;
     GLOBAL_CTX->in_fork = 0;

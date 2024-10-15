@@ -1,5 +1,7 @@
 #include "jankunit.h"
 #include "jankunit.internal.h"
+#include <errno.h>
+#include <signal.h>
 
 #define COLOR_GREEN "\x1b[32m"
 #define COLOR_RED "\x1b[31m"
@@ -11,170 +13,96 @@ JankUnitContext *GLOBAL_CTX = NULL;
 
 void init_ctx(void)
 {
-    JankUnitContext *ctx = (JankUnitContext *) malloc(sizeof(JankUnitContext));
+    GLOBAL_CTX = (JankUnitContext *) malloc(sizeof(JankUnitContext));
 
-    // uninitialized for this POC test case
-    ctx->current_program = NULL;
-    ctx->current_suite   = NULL;
-    ctx->current_test = NULL;
+    for (int i = PROG; i <= TEST; i++)
+        GLOBAL_CTX->cur_block[i] = NULL;
 
-    //bufsuninitialized
-    ctx->bufs = NULL;
+    //bufs uninitialized
+    GLOBAL_CTX->bufs = NULL;
     
-    // no op for ctx->pipes
-
+    // init pipes as closed
+    for (int i = USR; i <= SYS; i++)
+        for (int j = OUT; j <= ERR; j++)
+            for (int k = READ_END; k <= WRITE_END; k++)    
+                GLOBAL_CTX->pipes[i][j][k] = -1;
+                
     // indent level init
-    ctx->indent_level = (int *) emalloc(sizeof(int));
-    *(ctx->indent_level) = 0;
+    GLOBAL_CTX->indent = (int *) emalloc(sizeof(int));
+    *(GLOBAL_CTX->indent) = 0;
 
     // other
-    ctx->flushed = UNINITIALIZED;
-    ctx->in_fork = 0;
-    ctx->STATUS = -1;
-    ctx->EXIT_CODE = -1;
-    ctx->SIGNAL_CODE = -1;
-
-    GLOBAL_CTX = ctx;
+    GLOBAL_CTX->flushed = UNINITIALIZED;
+    GLOBAL_CTX->in_fork = 0;
+    GLOBAL_CTX->STATUS = -1;
+    GLOBAL_CTX->EXIT_CODE = -1;
+    GLOBAL_CTX->SIGNAL_CODE = -1;
 }
 
-void start_test_program(const char *name_fmt, ...) 
+void start_test_block(int block_type, const char *name_fmt, ...)
 {
-    TestProgram *current_program;
     va_list args;
 
-    current_program = (TestProgram *) emalloc(sizeof(TestProgram));
-    current_program->total = 0;
-    current_program->passed = 0;
-    current_program->failed = 0;
-    current_program->failed_assert = 0;
+    if(GLOBAL_CTX == NULL)
+        eprintf("No test context was found! :");
+    else if (GLOBAL_CTX->cur_block[block_type])
+        eprintf("There is already a test in context! :");
 
+    GLOBAL_CTX->cur_block[block_type] = (TestBlock *) emalloc(sizeof(TestBlock));
+    
     va_start(args, name_fmt);
-    evasprintf(&(current_program->program_name), name_fmt, args);
+    evasprintf(&(GLOBAL_CTX->cur_block[block_type]->name), name_fmt, args);
     va_end(args);
 
-    print_with_indent("Running tests for: %s\n", current_program->program_name);
-    GLOBAL_CTX->current_program = current_program;
-    (*GLOBAL_CTX->indent_level)++;
-}
-
-void end_test_program() 
-{
-    TestProgram *current_program;
-
-    (*GLOBAL_CTX->indent_level)--;
-
-    current_program = GLOBAL_CTX->current_program;
-    if (current_program->failed == 0) {
-        print_result(COLOR_GREEN, "Total: %d, %d passed %d failed\n", 
-                                              current_program->total, 
-                                              current_program->passed, 
-                                              current_program->failed);
-    } else {
-        print_result(COLOR_RED, "Total: %d, %d passed %d failed\n", 
-                                            current_program->total, 
-                                            current_program->passed,  
-                                            current_program->failed);
-    }
-
-    free(current_program->program_name);
-    free(current_program);
-    GLOBAL_CTX->current_program = NULL;
-}
-
-void start_test_suite(const char *name_fmt, ...) 
-{
-    TestSuite *current_suite;
-    va_list args;
-
-    current_suite = (TestSuite *) emalloc(sizeof(TestSuite));
-    current_suite->total = 0;
-    current_suite->passed = 0;
-    current_suite->failed = 0;
-    current_suite->failed_assert = 0;
+    GLOBAL_CTX->cur_block[block_type]->type = block_type;
+    GLOBAL_CTX->cur_block[block_type]->total = 0;
+    GLOBAL_CTX->cur_block[block_type]->passed = 0;
+    GLOBAL_CTX->cur_block[block_type]->failed = 0;
+    GLOBAL_CTX->cur_block[block_type]->failed_assert = 0;
 
     va_start(args, name_fmt);
-    evasprintf(&(current_suite->suite_name), name_fmt, args);
+    evasprintf(&(GLOBAL_CTX->cur_block[block_type]->name), name_fmt, args);
     va_end(args);
 
-    print_with_indent("Suite: %s\n", current_suite->suite_name);
-    GLOBAL_CTX->current_suite = current_suite;
-    (*GLOBAL_CTX->indent_level)++;
+    print_with_indent("%s\n", GLOBAL_CTX->cur_block[block_type]->name);
+
+    (*GLOBAL_CTX->indent)++;
 }
 
-void end_test_suite() 
+void end_test_block(int block_type, int should_propagate)
 {
-    TestSuite *current_suite;
-    int is_suite_failed;
-
-    (*GLOBAL_CTX->indent_level)--;
-    is_suite_failed = 0;
-
-    current_suite = GLOBAL_CTX->current_suite;
-    if (current_suite->failed == 0) {
-        print_result(COLOR_GREEN, "Total: %d, %d passed %d failed\n", 
-          current_suite->total, current_suite->passed, current_suite->failed);
-    } else {
-        is_suite_failed = 1;
-        print_result(COLOR_RED, "Total: %d, %d passed %d failed\n", 
-          current_suite->total, current_suite->passed, current_suite->failed);
-    }
-
-    free(current_suite->suite_name);
-    free(current_suite);
-    GLOBAL_CTX->current_suite = NULL;
-
-    // propagate suit failure or success to program layer above
-    if (is_suite_failed)
-        FAIL();
-    else
-        PASS();
-}
-
-void start_test(const char *name_fmt, ...) 
-{
-    Test *current_test;
-    va_list args;
-
-    current_test = (Test *) emalloc(sizeof(Test));
-    current_test->total = 0;
-    current_test->passed = 0;
-    current_test->failed = 0;
-    current_test->failed_assert = 0;
-
-    va_start(args, name_fmt);
-    evasprintf(&(current_test->test_name), name_fmt, args);
-    va_end(args);
-
-    print_with_indent("%s\n", current_test->test_name);
-
-    GLOBAL_CTX->current_test = current_test;
-    (*GLOBAL_CTX->indent_level)++;
-}
-
-void end_test() 
-{
-    Test *current_test;
     int is_test_failed;
 
-    (*GLOBAL_CTX->indent_level)--;
+    if(GLOBAL_CTX == NULL)
+        eprintf("No test context was found! :");
+    else if (GLOBAL_CTX->cur_block[block_type] == NULL)
+        eprintf("No test in context was found! :");
+    else if (GLOBAL_CTX->cur_block[block_type]->name)
+        eprintf("No test name in context was found! :");
+    
     is_test_failed = 0;
-
-    current_test = GLOBAL_CTX->current_test;
-    if (current_test->failed == 0) {
+    
+    (*GLOBAL_CTX->indent)--;
+    if (GLOBAL_CTX->cur_block[block_type]->failed == 0) {
         print_result(COLOR_GREEN, "Total: %d, %d passed %d failed\n", 
-          current_test->total, current_test->passed, current_test->failed);
+                            GLOBAL_CTX->cur_block[block_type]->total, 
+                            GLOBAL_CTX->cur_block[block_type]->passed, 
+                            GLOBAL_CTX->cur_block[block_type]->failed);
     } else {
         is_test_failed = 1;
         print_result(COLOR_RED, "Total: %d, %d passed %d failed\n", 
-          current_test->total, current_test->passed, current_test->failed);
+                            GLOBAL_CTX->cur_block[block_type]->total, 
+                            GLOBAL_CTX->cur_block[block_type]->passed, 
+                            GLOBAL_CTX->cur_block[block_type]->failed);
     }     
 
-    free(current_test->test_name);
-    free(current_test);
-    GLOBAL_CTX->current_test = NULL;
+    free(GLOBAL_CTX->cur_block[block_type]->name);
+    GLOBAL_CTX->cur_block[block_type]->name = NULL;
+    free(GLOBAL_CTX->cur_block[block_type]);
+    GLOBAL_CTX->cur_block[block_type] = NULL;
 
     // propagate test success or failure to suite layer above
-    if (is_test_failed)
+    if (should_propagate && is_test_failed)
         FAIL();
     else
         PASS();
@@ -184,18 +112,18 @@ void end_test()
 void print_with_indent(const char *fmt, ...) 
 {
     va_list args;
-    va_start(args, fmt);
 
-    for (int i = 0; i < *GLOBAL_CTX->indent_level; i++)
+    for (int i = 0; i < *GLOBAL_CTX->indent; i++)
         printf("    ");  // Four spaces per level
 
+    va_start(args, fmt);
     vprintf(fmt, args);
     va_end(args);
 }
 
 void vprint_with_indent(const char *fmt, va_list args)
 {
-    for (int i = 0; i < *GLOBAL_CTX->indent_level; i++)
+    for (int i = 0; i < *GLOBAL_CTX->indent; i++)
         printf("    ");
     vprintf(fmt, args);
 }
@@ -204,13 +132,14 @@ void vprint_with_indent(const char *fmt, va_list args)
 void print_result(const char *color, const char *fmt, ...) 
 {
     va_list args;
-    va_start(args, fmt);
-
+    
     printf("%s", color);
+    
+    va_start(args, fmt);
     vprint_with_indent(fmt, args);
-    printf("%s", COLOR_RESET);
-
     va_end(args);
+
+    printf("%s", COLOR_RESET);
 }
 
 void vprint_result(const char *color, const char *fmt, va_list args)
@@ -223,77 +152,51 @@ void vprint_result(const char *color, const char *fmt, va_list args)
 // This will be called right before a FORK block
 void configure_ctx_pre_fork()
 {
-    TestProgram  *tp, *sh_tp;
-    TestSuite    *ts, *sh_ts;
-    Test         *t, *sh_t;
-    BUFS         *bufs;
-    int          *indent_level, *sh_indent_level;
+    TestBlock   *sh_block;
+    int         *sh_indent;
 
-    sh_tp = NULL;
-    sh_ts = NULL;
-    sh_t = NULL;
-    sh_indent_level = NULL;
-    bufs = NULL;
+    sh_block = NULL;
+    sh_indent = NULL;
     
     /*  
         The following values, if they exist, 
         should be made to use shared memory
         before a fork() call:
-            TestProgram *current_program
-            TestSuite   *current_suite
-            Test        *current_test
-            int         *indent_level
+            GLOBAL_CTX->cur_block[PROG]
+            GLOBAL_CTX->cur_block[SUITE]
+            GLOBAL_CTX->cur_block[TEST]
 
     */
-    if ((tp = GLOBAL_CTX->current_program)) {
-        sh_tp = (TestProgram *) eshmalloc(sizeof(TestProgram));
-        sh_tp->total         = tp->total;
-        sh_tp->passed        = tp->passed;
-        sh_tp->failed        = tp->failed;
-        sh_tp->failed_assert = tp->failed_assert;
-        if (tp->program_name) {
-            eshasprintf(&(sh_tp->program_name), tp->program_name);
-            free(tp->program_name);
-        } else {
-            sh_tp->program_name = NULL;
+    for (int i = PROG; i <= TEST; i++) {
+        if (GLOBAL_CTX->cur_block[i]) {
+            sh_block = (TestBlock *) eshmalloc(sizeof(TestBlock));
+            sh_block->type          = GLOBAL_CTX->cur_block[i]->type;
+            sh_block->total         = GLOBAL_CTX->cur_block[i]->total;
+            sh_block->passed        = GLOBAL_CTX->cur_block[i]->passed;
+            sh_block->failed        = GLOBAL_CTX->cur_block[i]->failed;
+            sh_block->failed_assert = GLOBAL_CTX->cur_block[i]->failed_assert;
+
+            if (GLOBAL_CTX->cur_block[i]->name) {
+                eshasprintf(&(sh_block->name), GLOBAL_CTX->cur_block[i]->name);
+                free(GLOBAL_CTX->cur_block[i]->name);
+            } else {
+                eprintf("Block with no name in context! :");   
+            }
+            free(GLOBAL_CTX->cur_block[i]);
+            GLOBAL_CTX->cur_block[i] = sh_block;
+            sh_block = NULL;
         }
-        free(tp);
     }
-    if ((ts = GLOBAL_CTX->current_suite)) {
-        sh_ts = (TestSuite *) eshmalloc(sizeof(TestSuite));
-        sh_ts->total         = ts->total;
-        sh_ts->passed        = ts->passed;
-        sh_ts->failed        = ts->failed;
-        sh_ts->failed_assert = ts->failed_assert;
-        if (ts->suite_name) {
-            eshasprintf(&(sh_ts->suite_name), ts->suite_name);
-            free(ts->suite_name);
-        } else {
-            sh_ts->suite_name = NULL;
-        }
-        free(ts);
-    }
-    if ((t = GLOBAL_CTX->current_test)) {
-        sh_t = (Test *) eshmalloc(sizeof(Test));
-        sh_t->total         = t->total;
-        sh_t->passed        = t->passed;
-        sh_t->failed        = t->failed;
-        sh_t->failed_assert = t->failed_assert;
-        if (t->test_name) {
-            eshasprintf(&(sh_t->test_name), t->test_name);
-            free(t->test_name);
-        } else {
-            sh_t->test_name = NULL;
-        }
-        free(t);
-    }
-    if ((indent_level = GLOBAL_CTX->indent_level)) {
-        sh_indent_level = (int *) eshmalloc(sizeof(int));
-        *sh_indent_level = *indent_level;
-        free(indent_level);
+    
+    if (GLOBAL_CTX->indent) {
+        sh_indent = (int *) eshmalloc(sizeof(int));
+        *sh_indent = *GLOBAL_CTX->indent;
+        
+        free(GLOBAL_CTX->indent);
+        GLOBAL_CTX->indent = sh_indent;
+        sh_indent = NULL;
     } else {
-        sh_indent_level = (int *) eshmalloc(sizeof(int));
-        *sh_indent_level = 0;
+        eprintf("No indent information in context! :");
     }
     /*
         BUFS will be assumed NULL and 
@@ -303,102 +206,86 @@ void configure_ctx_pre_fork()
         Parent only ever needs initialized BUFS
         to copy pipes in from eventual children
     */
-    bufs = (BUFS *) emalloc(sizeof(BUFS));
+    GLOBAL_CTX->bufs = (BUFS *) emalloc(sizeof(BUFS));
     for (int i = USR; i <= SYS; i++)
         for (int j = OUT; j <= ERR; j++) {
-            bufs->bufs[i][j] = NULL;
-            bufs->sizes[i][j] = 0;
+            GLOBAL_CTX->bufs->bufs[i][j] = NULL;
+            GLOBAL_CTX->bufs->sizes[i][j] = 0;
         }
 
     // init pipes of the GLOBAL CTX
-    for (int i = USR; i <= SYS; i++)
-        for (int j = OUT; j <= ERR; j++)
+    for (int i = USR; i <= SYS; i++) {
+        for (int j = OUT; j <= ERR; j++) {
+            for (int k = READ_END; k <= WRITE_END; k++) {
+                if (GLOBAL_CTX->pipes[i][j][k] != -1)
+                    eprintf("Attempt to open already open pipe! :");
+            }
             if (pipe(GLOBAL_CTX->pipes[i][j]))
-                eprintf("failed pipe\n");
-
-    GLOBAL_CTX->current_program = sh_tp;
-    GLOBAL_CTX->current_suite = sh_ts;
-    GLOBAL_CTX->current_test = sh_t;
-
-    GLOBAL_CTX->indent_level = sh_indent_level;
-
-    GLOBAL_CTX->bufs = bufs;
-
+                eprintf("Pipe failed! :");
+        }
+    }
+                
     GLOBAL_CTX->flushed = UNFLUSHED;
     GLOBAL_CTX->in_fork = 1;
+    GLOBAL_CTX->STATUS = -1;
+    GLOBAL_CTX->EXIT_CODE = -1;
+    GLOBAL_CTX->SIGNAL_CODE = -1;
 }
 
 // This will be called outside of the FORK block
 void configure_ctx_post_fork()
 {
-    TestProgram  *tp, *sh_tp;
-    TestSuite    *ts, *sh_ts;
-    Test         *t, *sh_t;
-//    BUFS         *bufs;
-    int          *indent_level, *sh_indent_level;
+    TestBlock   *block;
+    int         *indent;
+
+    block = NULL;
+    indent = NULL;
 
     read_pipes_in_parent();
     wait(&(GLOBAL_CTX->STATUS));
     
     /*  
         The following values, if they exist, 
-        should be made to use shared memory
-        before a fork() call:
-            TestProgram *current_program
-            TestSuite   *current_suite
-            Test        *current_test
-            int         *indent_level
+        should be made to use private memory
+        before a fork() call, and their shared
+        memory isntances should be shfreed:
+            GLOBAL_CTX->cur_block[PROG]
+            GLOBAL_CTX->cur_block[SUITE]
+            GLOBAL_CTX->cur_block[TEST]
 
     */
-    if ((sh_tp = GLOBAL_CTX->current_program)) {
-        tp = (TestProgram *) emalloc(sizeof(TestProgram));
-        tp->total         = sh_tp->total;
-        tp->passed        = sh_tp->passed;
-        tp->failed        = sh_tp->failed;
-        tp->failed_assert = sh_tp->failed_assert;
-        if (sh_tp->program_name) {
-            easprintf(&(tp->program_name), sh_tp->program_name);
-            eshfree(sh_tp->program_name);
-        } else {
-            tp->program_name = NULL;
+    for (int i = PROG; i <= TEST; i++) {
+        if (GLOBAL_CTX->cur_block[i]) {
+            block = (TestBlock *) emalloc(sizeof(TestBlock));
+            block->type          = GLOBAL_CTX->cur_block[i]->type;
+            block->total         = GLOBAL_CTX->cur_block[i]->total;
+            block->passed        = GLOBAL_CTX->cur_block[i]->passed;
+            block->failed        = GLOBAL_CTX->cur_block[i]->failed;
+            block->failed_assert = GLOBAL_CTX->cur_block[i]->failed_assert;
+
+            if (GLOBAL_CTX->cur_block[i]->name) {
+                easprintf(&(block->name), GLOBAL_CTX->cur_block[i]->name);
+                eshfree(GLOBAL_CTX->cur_block[i]->name);
+                GLOBAL_CTX->cur_block[i]->name = block->name;
+            } else {
+                eprintf("Block with no name in context! :");
+            }
+            eshfree(GLOBAL_CTX->cur_block[i]);
+            GLOBAL_CTX->cur_block[i] = block;
+            block = NULL;
         }
-        eshfree(sh_tp);
     }
-    if ((sh_ts = GLOBAL_CTX->current_suite)) {
-        ts = (TestSuite *) emalloc(sizeof(TestSuite));
-        ts->total         = sh_ts->total;
-        ts->passed        = sh_ts->passed;
-        ts->failed        = sh_ts->failed;
-        ts->failed_assert = sh_ts->failed_assert;
-        if (sh_ts->suite_name) {
-            easprintf(&(ts->suite_name), sh_ts->suite_name);
-            eshfree(sh_ts->suite_name);
-        } else {
-            ts->suite_name = NULL;
-        }
-        eshfree(sh_ts);
-    }
-    if ((sh_t = GLOBAL_CTX->current_test)) {
-        t = (Test *) emalloc(sizeof(Test));
-        t->total         = sh_t->total;
-        t->passed        = sh_t->passed;
-        t->failed        = sh_t->failed;
-        t->failed_assert = sh_t->failed_assert;
-        if (sh_t->test_name) {
-            easprintf(&(t->test_name), sh_t->test_name);
-            eshfree(sh_t->test_name);
-        } else {
-            t->test_name = NULL;
-        }
-        eshfree(sh_t);
-    }
-    if ((sh_indent_level = GLOBAL_CTX->indent_level)) {
-        indent_level = (int *) emalloc(sizeof(int));
-        *indent_level = *sh_indent_level;
-        eshfree(sh_indent_level);
+    
+    
+    if (GLOBAL_CTX->indent) {
+        indent = (int *) emalloc(sizeof(int));
+        *indent = *GLOBAL_CTX->indent;
+        
+        eshfree(GLOBAL_CTX->indent);
+        GLOBAL_CTX->indent = indent;
+        indent = NULL;
     } else {
-        indent_level = (int *) emalloc(sizeof(int));
-        *indent_level = 0;
+        eprintf("No indent information in context! :");
     }
     /*
         During cleanup, sys buffers will be printed,
@@ -409,25 +296,20 @@ void configure_ctx_post_fork()
         assertion and expectation macros
     */
 
-    if (GLOBAL_CTX->bufs && strlen(GLOBAL_CTX->bufs->bufs[SYS][OUT]) > 0) {
+    if (GLOBAL_CTX->bufs && GLOBAL_CTX->bufs->bufs[SYS][OUT] 
+      && strlen(GLOBAL_CTX->bufs->bufs[SYS][OUT]) > 0) {
         printf("%s", GLOBAL_CTX->bufs->bufs[SYS][OUT]);
         fflush(stdout);
         free(GLOBAL_CTX->bufs->bufs[SYS][OUT]);
     }
 
-    if (GLOBAL_CTX->bufs && strlen(GLOBAL_CTX->bufs->bufs[SYS][ERR]) > 0) {
+    if (GLOBAL_CTX->bufs && GLOBAL_CTX->bufs->bufs[SYS][ERR] 
+      && strlen(GLOBAL_CTX->bufs->bufs[SYS][ERR]) > 0) {
         fprintf(stderr, "%s", GLOBAL_CTX->bufs->bufs[SYS][ERR]);
         exit(EXIT_FAILURE);
     }
 
     // init pipes of the GLOBAL CTX
-
-    GLOBAL_CTX->current_program = tp;
-    GLOBAL_CTX->current_suite = ts;
-    GLOBAL_CTX->current_test = t;
-
-    GLOBAL_CTX->indent_level = indent_level;
-
     GLOBAL_CTX->flushed = UNINITIALIZED;
     GLOBAL_CTX->in_fork = -1;
 
@@ -440,8 +322,12 @@ void configure_ctx_post_fork()
 void dup2_usr_pipes()
 {
     for (int i = USR; i <= SYS; i++)
-        for (int j = OUT; j <= ERR; j++)
-            close(GLOBAL_CTX->pipes[i][j][READ_END]);
+        for (int j = OUT; j <= ERR; j++) {
+            if (GLOBAL_CTX->pipes[i][j][READ_END] != -1) {
+                close(GLOBAL_CTX->pipes[i][j][READ_END]);
+                GLOBAL_CTX->pipes[i][j][READ_END] = -1;
+            }
+        }
 
     dup2(GLOBAL_CTX->pipes[USR][OUT][WRITE_END], STDOUT_FILENO);
     dup2(GLOBAL_CTX->pipes[USR][ERR][WRITE_END], STDERR_FILENO);
@@ -451,19 +337,35 @@ void flush_usr_pipes_and_dup2_sys_pipes()
 {
     fflush(stdout);
     
-    close(GLOBAL_CTX->pipes[USR][OUT][WRITE_END]);
-    close(GLOBAL_CTX->pipes[USR][ERR][WRITE_END]);
+    if (GLOBAL_CTX->pipes[USR][OUT][WRITE_END] != -1) {
+        close(GLOBAL_CTX->pipes[USR][OUT][WRITE_END]);
+        GLOBAL_CTX->pipes[USR][OUT][WRITE_END] = -1;
+    }
+    if (GLOBAL_CTX->pipes[USR][ERR][WRITE_END] != -1) {
+        close(GLOBAL_CTX->pipes[USR][ERR][WRITE_END]);
+        GLOBAL_CTX->pipes[USR][ERR][WRITE_END] = -1;
+    }
 
     dup2(GLOBAL_CTX->pipes[SYS][OUT][WRITE_END], STDOUT_FILENO);
     dup2(GLOBAL_CTX->pipes[SYS][ERR][WRITE_END], STDERR_FILENO);
 }
 
-void exit_with_flush()
+//TODO: make sure this is registered as at exit
+void flush_and_close_all_pipes()
 {
     fflush(stdout);
-    close(GLOBAL_CTX->pipes[SYS][OUT][WRITE_END]);
-    close(GLOBAL_CTX->pipes[SYS][ERR][WRITE_END]);
-    exit(EXIT_SUCCESS);
+    close_all_pipes();
+}
+
+void close_all_pipes() 
+{
+    for (int i = USR; i <= SYS; i++)
+        for (int j = OUT; j <= ERR; j++)
+            for (int k = READ_END; k <= WRITE_END; k++)
+                if (GLOBAL_CTX && GLOBAL_CTX->pipes[i][j][k] != -1) {
+                    close(GLOBAL_CTX->pipes[i][j][k]);
+                    GLOBAL_CTX->pipes[i][j][k] = -1;
+                }
 }
 
 void read_pipes_in_parent()
@@ -471,14 +373,20 @@ void read_pipes_in_parent()
     // close write ends of all pipes in parent
     for (int i = USR; i <= SYS; i++)
         for (int j = OUT; j <= ERR; j++)
-            close(GLOBAL_CTX->pipes[i][j][WRITE_END]);
+            if (GLOBAL_CTX->pipes[i][j][WRITE_END] != -1) {
+                close(GLOBAL_CTX->pipes[i][j][WRITE_END]);
+                GLOBAL_CTX->pipes[i][j][WRITE_END] = -1;
+            }
 
     read_pipes_to_bufs();
 
     // after reading, close read ends of all pipes in parent
     for (int i = USR; i <= SYS; i++)
         for (int j = OUT; j <= ERR; j++)
-            close(GLOBAL_CTX->pipes[i][j][READ_END]);
+            if (GLOBAL_CTX->pipes[i][j][READ_END] != -1) {
+                close(GLOBAL_CTX->pipes[i][j][READ_END]);
+                GLOBAL_CTX->pipes[i][j][READ_END] = -1;
+            }
 }
 
 void read_pipes_to_bufs()
@@ -519,4 +427,55 @@ void read_pipes_to_bufs()
             if (GLOBAL_CTX->bufs->bufs[i][j] != NULL)
                 GLOBAL_CTX->bufs->bufs[i][j][ntot[i][j]] = '\0';
 
+}
+
+void handle_signal(int sig)
+{
+    char *msg;
+    int len = 0;
+    int err_no = errno;
+
+    if (sig == SIGSEGV)
+        msg = "\nSIGSEGV in child\n";
+    else if (sig == SIGBUS)
+        msg = "\nSIGBUS in child\n";
+    else
+        msg = "\nSome signale in child\n";
+
+    for (char *p = msg, len = 0; *p != '\0'; p++, len++)
+      ;
+
+    //  write a message detailing the signal 
+    //  and close all open pipes
+    write(STDOUT_FILENO, msg, len+1);
+    close_all_pipes();
+
+    //after closing pipes, restore default sig handler
+    struct sigaction sa_dfl;
+    sa_dfl.sa_handler = SIG_DFL;
+    sigemptyset(&sa_dfl.sa_mask);
+    sa_dfl.sa_flags = 0;
+
+    // reset the errno and raise the signal again 
+    // for the default handler to handle
+    errno = err_no;
+    raise(sig);
+}
+
+void handle_all_catchable_signals()
+{
+    sigset_t set;
+
+    struct sigaction sa_custom;
+    sa_custom.sa_handler = handle_signal;
+    sigemptyset(&sa_custom.sa_mask);
+    sa_custom.sa_flags = SA_RESTART;
+
+    //256 because, well, are there more signals??
+    for (int i = 0; i < 256; i++) {
+        sigemptyset(&set);
+        if (sigismember(&set, i) && i != SIGKILL && i != SIGSTOP) {
+            sigaction(i, &sa_custom, NULL);
+        }
+    }
 }
