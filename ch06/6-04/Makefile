@@ -13,7 +13,7 @@ INCLUDES = -I.
 MAIN_SRCS = freq.main.c freq.internal.c eprintf.c hash.c list.c
 
 # Source files for unit tests (including test-specific sources)
-TEST_SRCS = freq.test.c freq.internal.c eprintf.c hash.c list.c
+TEST_SRCS = freq.test.c freq.internal.c eprintf.c jankunit.c shmalloc.c hash.c list.c
 
 # Object files for the normal build
 MAIN_OBJS = $(MAIN_SRCS:.c=.o)
