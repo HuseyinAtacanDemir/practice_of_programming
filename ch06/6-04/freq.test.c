@@ -4,15 +4,11 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
-#include <assert.h>
-#include <unistd.h>
-#include <sys/wait.h>
 #include <limits.h>
 #include <ctype.h>
 
+#include "jankunit.h"
 #include "eprintf.h"
-
-#define BUFSIZE  1024
 
 // TEST RUNNERS
   // set_opt_bit
@@ -29,35 +25,21 @@
     void test_parse_opts_short_long_mixed       (int *, int *, int *); 
     void test_parse_opts_delim                  (int *, int *, int *);
 
-// TEST_LOGIC
-  int test_set_opt_bit (int opt, unsigned old_optstate, 
-                        unsigned exp_optstate, char *exp_msg);
-  int test_parse_opts  (int argc, char **argv, unsigned exp_optstate, 
-                        int exp_size, int exp_optind, 
-                        char *exp_msg);
-
 // HELPERS
-  void  create_pipe                 (int pipefd[]);
-  void  read_pipe_to_buf            (char **buf, int pipefd[]);
   char  **create_argv               (int argc, ...);
   char  *concat_str_arr             (char **arr, const char *delim);
   char  *rus_doll_fmt               (int n, ...);
-  int   get_test_termination_result (int status, char *buf, 
-                                      char *exp_msg);
 
 int main(void)
 {
     int total, pass, fail;
 
     total = pass = fail = 0;
-    printf("FREQ UNIT TEST SUITE\n");
 
-    printf("\nSET_OPT_BIT:\n");
     test_set_opt_bit_all_chars(&total, &pass, &fail);
     test_set_opt_bit_boundaries(&total, &pass, &fail);
     test_set_opt_bit_nonzero_optstates(&total, &pass, &fail);
 
-    printf("\nPARSE_OPTS:\n");
     test_parse_opts_short_single(&total, &pass, &fail);
     test_parse_opts_short_combined_single(&total, &pass, &fail);
     test_parse_opts_short_combined_concat(&total, &pass, &fail);
@@ -66,8 +48,6 @@ int main(void)
     test_parse_opts_short_long_mixed(&total, &pass, &fail);
     test_parse_opts_delim(&total, &pass, &fail);
  
-    printf("\nTotal: %d, Passed: %d, Failed: %d\n", total, pass, fail);
-    
     return 0;
 }
 
@@ -761,153 +741,6 @@ void test_parse_opts_delim(int *total, int *pass, int *fail)
 }
 // endregion: parse_opts
 
-// region: test runners
-
-int test_set_opt_bit(int opt, unsigned old_optstate, 
-                      unsigned exp_optstate, char *exp_msg)
-{
-    pid_t pid;
-    int status, pipefd[2], pass;
-    unsigned opt_state;
-    char *buf;
-
-    buf = NULL;
-    if (exp_msg == NULL)
-        exp_msg = "";
-
-    assert(pipe(pipefd) == 0);
-
-    pid = fork();
-    assert(pid >= 0);
-
-    if (pid == 0) { // child process, redirect stderr to pipe
-        create_pipe(pipefd);
-
-        opt_state = old_optstate;
-        set_opt_bit(&opt_state, opt);
-
-        assert(opt_state == exp_optstate);
-        exit(EXIT_SUCCESS);
-    }
-
-    close(pipefd[1]); // close write end of the pipe
-    wait(&status);
-    read_pipe_to_buf(&buf, pipefd);
-
-    pass = get_test_termination_result(status, buf, exp_msg);
-
-    if (buf)
-        free(buf);
-
-    return pass;
-}
-
-int test_parse_opts(int argc, char **argv, unsigned exp_optstate, 
-                    int exp_size, int exp_optind, /*char *exp_delim,*/ char *exp_msg)
-{
-    pid_t pid;
-    int status, pass, size, pipefd[2];
-    unsigned opt_state;
-    char *delim, *buf;
-
-    delim = buf = NULL;
-    size = 0;
-    
-    if (exp_msg == NULL)
-        exp_msg = "";
-
-    assert(pipe(pipefd) == 0);
-
-    pid = fork();
-    assert(pid >= 0);
-
-    if (pid == 0) {
-        create_pipe(pipefd);
-
-        opt_state = parse_opts(argc, argv, &delim, &size);
-
-        assert(opt_state == exp_optstate);
-        assert(size == exp_size);
-        assert(optind == exp_optind);
-//        assert(strcmp(delim, exp_delim) == 0);
-
-        if (delim)
-            free(delim);
-
-        exit(EXIT_SUCCESS);
-    }
-
-    close(pipefd[1]);
-    wait(&status);
-    read_pipe_to_buf(&buf, pipefd);
-
-    pass = get_test_termination_result(status, buf, exp_msg);
-
-    if (buf)
-        free(buf);
-
-    return pass;
-}
-
-
-int get_test_termination_result(int status, char *buf, char *exp_msg)
-{
-    int pass;
-
-    if (WIFEXITED(status))
-        // EXIT_FAILURE or EXIT_SUCCESS
-        if (WEXITSTATUS(status) == 1 || WEXITSTATUS(status) == 0)
-            pass = (strcmp(exp_msg, buf) == 0);
-        else
-            pass = 0;
-    else if (WIFSIGNALED(status))
-        pass = 0;
-    else
-        pass = 1;
-
-    if (pass)
-        printf("Pass\n");
-    else if (exp_msg)
-        printf("Failed: EXIT_CODE: %d, SIGNAL: %d, Expected: %s Actual: %s\n", 
-                WEXITSTATUS(status), WTERMSIG(status), exp_msg, buf);
-    else
-        printf("Failed: EXIT_CODE: %d, SIGNAL: %d: %s\n", 
-                WEXITSTATUS(status), WTERMSIG(status), buf);
-
-    return pass > 0 ? 1 : 0;;
-}
-
-// endregion: test runners
-
-// region: helpers
-void create_pipe(int pipefd[])
-{
-    close(pipefd[0]);               // Close read end of the pipe
-    dup2(pipefd[1], STDERR_FILENO); // Redirect stderr to pipe write end
-    close(pipefd[1]);               // Close write end after dup2
-}
-
-void read_pipe_to_buf(char **buf, int pipefd[])
-{
-    int nbytes, total_read, buf_size;
-    char temp_buf[1024];  // Temporary buffer for reading chunks
-
-    total_read  = 0;
-    buf_size    = 1024;
-    *buf        = emalloc(buf_size);
-
-    // Read pipe in chunks, dynamically resize buffer if needed
-    while ((nbytes = read(pipefd[0], temp_buf, sizeof(temp_buf))) > 0) {
-        if ( (total_read + nbytes) >= buf_size) {
-            buf_size *= 2;
-            *buf = erealloc(*buf, buf_size);
-        }
-        memcpy( (*buf+total_read), temp_buf, nbytes);
-        total_read += nbytes;
-    }
-    close(pipefd[0]); 
-    (*buf)[total_read] = '\0'; // Null-terminate the buffer
-}
 
 char **create_argv(int argc, ...)
 {
@@ -994,150 +827,3 @@ char *rus_doll_fmt(int n, ...)
     return str;
 }
 
-// endregion: helpers
-void test_set_opt_bit(va_list args)
-{
-    int argc, size, exp_optind, exp_size;
-    unsigned optstate, exp_optstate;
-    char *delim, *exp_delim, **argv;
-    va_list args;
-
-    delim = NULL;
-
-    argc          = va_arg(args, int);
-    argv          = va_arg(args, char **);
-    exp_optstate  = va_arg(args, unsigned);
-    exp_optind    = va_arg(args, int);
-    exp_size      = va_arg(args, int);
-    exp_delim     = va_arg(args, char *);
-
-    optstate = parse_opts(argc, argv, &delim, &size);
-
-    ASSERT_EQ     (exp_optstate,  optstate);
-    ASSERT_EQ     (exp_optind,    optind);
-    ASSERT_EQ     (exp_size,      size);
-    ASSERT_STREQ  (exp_delim,     delim);
-
-    exit(EXIT_SUCCESS);
-}
-
-void test_parse_opts(va_list args)
-{
-    int argc, size, exp_optind, exp_size;
-    unsigned optstate, exp_optstate;
-    char *delim, *exp_delim, **argv;
-    va_list args;
-
-    delim = NULL;
-
-    argc          = va_arg(args, int);
-    argv          = va_arg(args, char **);
-    exp_optstate  = va_arg(args, unsigned);
-    exp_optind    = va_arg(args, int);
-    exp_size      = va_arg(args, int);
-    exp_delim     = va_arg(args, char *);
-
-    optstate = parse_opts(argc, argv, &delim, &size);
-
-    ASSERT_EQ     (exp_optstate,  optstate);
-    ASSERT_EQ     (exp_optind,    optind);
-    ASSERT_EQ     (exp_size,      size);
-    ASSERT_STREQ  (exp_delim,     delim);
-
-    exit(EXIT_SUCCESS);
-}
-
-int test(char *name, int exp_exit_code, char *exp_out, char *exp_err,
-          void (*run)(va_list), ...)
-{
-    pid_t pid;
-    va_list args;
-    char *buf_out, *buf_err;
-    int result, status, pipe_out[2], pipe_err[2];
-
-    buf_out = buf_err = NULL;
-
-    printf("\t\t%s:\n", name ? name : "NO NAME TEST");
-
-    ASSERT_EQ(pipe(pipe_out), 0);
-    ASSERT_EQ(pipe(pipe_err), 0);    
-
-    pid = fork();
-    ASSERT_GTE(pid, 0);
-
-    if (pid == 0) {
-        redirect2pipe(pipe_out, STDOUT_FILENO);
-        redirect2pipe(pipe_err, STDERR_FILENO);
-
-        va_start(args, run);
-        (*run)(args);
-        va_end(args);
-        
-        exit(EXIT_SUCCESS);
-    }
-
-    // close write end of pipes in parent
-    close(pipe_out[1]);
-    close(pipe_err[1]);
-    // read pipes into corresponding buffers, allocate
-    read_pipe(&buf_out, pipe_out);
-    read_pipe(&buf_err, pipe_err);
-    // close read end of pipes
-    close(pipe_out[0]);
-    close(pipe_err[0]);
-
-    // wait only after reading pipes to prevent deadlocks
-    wait(&status);
-
-    result = get_result(status, exp_exit_code, buf_out, buf_err, exp_out, exp_err);
-
-    if (buf_out)
-        free(buf_out);
-    if (buf_err)
-        free(buf_err);
-
-    return result;
-}
-
-void redirect2pipe(int pipefd[], int file_no)
-{
-    close(pipefd[0]); // close read end of pipe
-    dup2(pipefd[1], file_no); // redirect file to pipe
-    close(pipefd[1]); // close write end of pipe
-}
-
-void read_pipe(char **buf, int pipefd[])
-{
-    int nbytes, total_read, buf_size;
-    char temp_buf[BUFSIZE];
-
-    *buf = NULL;
-    total_read = buf_size = 0;
-
-    while ((nbytes = read(pipefd[0], temp_buf, BUFSIZE)) > 0) {
-        if (*buf == NULL) {
-            *buf = (char *) emalloc(sizeof(char) * BUFSIZE);
-            buf_size = BUFSIZE;
-        } else if ( (total_read + nbytes) >= buf_size) {
-            buf_size *= 2;
-            *buf = erealloc(*buf, buf_size);
-        }
-        memcpy( (*buf+total_read), temp_buf, nbytes);
-        total_read += nbytes;
-    }
-    if (*buf)
-        (*buf)[total_read] = '\0';
-}
-
-int get_result(int status, int exp_exit_code, char *out, char *err, char *exp_out, char *exp_err)
-{
-    EXPECT_STREQ(exp_out, out);
-    EXPECT_STREQ(exp_err, err);
-    
-    ASSERT_EQ(WIFSIGNALED(status), 0);
-    EXPECT_EQ(WTERMSIG(status), 0);
-
-    ASSERT_EQ(WIFEXITED(status), 1);
-    EXPECT_EQ(exp_exit_code, WEXITSTATUS(status));
-   
-}
