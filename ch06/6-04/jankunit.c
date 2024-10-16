@@ -32,11 +32,11 @@ void init_ctx(void)
     *(GLOBAL_CTX->indent) = 0;
 
     // other
-    GLOBAL_CTX->flushed = UNINITIALIZED;
-    GLOBAL_CTX->in_fork = 0;
-    GLOBAL_CTX->STATUS = -1;
-    GLOBAL_CTX->EXIT_CODE = -1;
-    GLOBAL_CTX->SIGNAL_CODE = -1;
+    GLOBAL_CTX->flushed = UNFLUSHED;
+    GLOBAL_CTX->is_forked = 0;
+    GLOBAL_CTX->STATUS = 0;
+    GLOBAL_CTX->EXIT_CODE = NOT_EXITED;
+    GLOBAL_CTX->SIGNAL_CODE = NOT_SIGNALED;
 }
 
 void start_test_block(int block_type, const char *name_fmt, ...)
@@ -77,7 +77,7 @@ void end_test_block(int block_type, int should_propagate)
         eprintf("No test context was found! :");
     else if (GLOBAL_CTX->cur_block[block_type] == NULL)
         eprintf("No test in context was found! :");
-    else if (GLOBAL_CTX->cur_block[block_type]->name)
+    else if (GLOBAL_CTX->cur_block[block_type]->name == NULL)
         eprintf("No test name in context was found! :");
     
     is_test_failed = 0;
@@ -226,10 +226,10 @@ void configure_ctx_pre_fork()
     }
                 
     GLOBAL_CTX->flushed = UNFLUSHED;
-    GLOBAL_CTX->in_fork = 1;
-    GLOBAL_CTX->STATUS = -1;
-    GLOBAL_CTX->EXIT_CODE = -1;
-    GLOBAL_CTX->SIGNAL_CODE = -1;
+    GLOBAL_CTX->is_forked = 1;
+    GLOBAL_CTX->STATUS = 0;
+    GLOBAL_CTX->EXIT_CODE = NOT_EXITED;
+    GLOBAL_CTX->SIGNAL_CODE = NOT_SIGNALED;
 }
 
 // This will be called outside of the FORK block
@@ -280,7 +280,7 @@ void configure_ctx_post_fork()
     if (GLOBAL_CTX->indent) {
         indent = (int *) emalloc(sizeof(int));
         *indent = *GLOBAL_CTX->indent;
-        
+
         eshfree(GLOBAL_CTX->indent);
         GLOBAL_CTX->indent = indent;
         indent = NULL;
@@ -310,13 +310,13 @@ void configure_ctx_post_fork()
     }
 
     // init pipes of the GLOBAL CTX
-    GLOBAL_CTX->flushed = UNINITIALIZED;
-    GLOBAL_CTX->in_fork = -1;
+    GLOBAL_CTX->flushed = UNFLUSHED;
+    GLOBAL_CTX->is_forked = 0;
 
     GLOBAL_CTX->EXIT_CODE = (WIFEXITED(GLOBAL_CTX->STATUS) ? 
-                              WEXITSTATUS(GLOBAL_CTX->STATUS) : -1);
+                              WEXITSTATUS(GLOBAL_CTX->STATUS) : NOT_EXITED);
     GLOBAL_CTX->SIGNAL_CODE = (WIFSIGNALED(GLOBAL_CTX->STATUS) ? 
-                                WTERMSIG(GLOBAL_CTX->STATUS) : -1);
+                                WTERMSIG(GLOBAL_CTX->STATUS) : NOT_SIGNALED);
 }
 
 void dup2_usr_pipes()

@@ -7,8 +7,9 @@
 enum { USR, SYS };
 enum { OUT, ERR };
 enum { READ_END, WRITE_END };
-enum { UNINITIALIZED, FLUSHED, UNFLUSHED };
+enum { FLUSHED, UNFLUSHED };
 enum { PROG, SUITE, TEST };
+enum { NOT_EXITED = -1, NOT_SIGNALED = -2 };
 
 typedef struct TestBlock TestBlock;
 struct TestBlock {
@@ -36,7 +37,7 @@ struct JankUnitContext {
     int         *indent;
     
     int         flushed;
-    int         in_fork;
+    int         is_forked;
     int         STATUS;
     int         EXIT_CODE;
     int         SIGNAL_CODE;    

@@ -1,5 +1,6 @@
 #include "jankunit.h"
 #include "eprintf.h"
+#include "shmalloc.h"
 
 #include <stdlib.h>
 
@@ -19,6 +20,10 @@ int side_effect_fn(int num, int *num_p)
     if (num == 5) {
         *num_p = 1;
         exit(*num_p);
+    } else if (num == 9) {
+        int *p = NULL;
+        //segv
+        int asd = *p;
     } else {
         *num_p = num;
     }
@@ -28,8 +33,8 @@ int side_effect_fn(int num, int *num_p)
 int main(void) 
 {
     init_ctx(); 
-    TEST_PROGRAM("Jank Unit Test Library") {
-        /*
+    TEST_PROGRAM("Test the Jank Unit Test Library") {
+        
         TEST_SUITE("Dumb Suite %s", "super dumb") {
             int start, end;
             TEST("is x equal y from %d to %d", (start = 0), (end = 10)) {
@@ -44,9 +49,9 @@ int main(void)
                 EXPECT_STREQ(str, str);
             }
         }
-        */
+        
         TEST_SUITE("Dumb Suite %d", 2) {
-            /*
+            
             int i, N;
             TEST("is %d not equal %d", (i = 0), ((N=10) + 1)) {
                 for ( ; i < N; i++)
@@ -76,7 +81,7 @@ int main(void)
                     }
                 }
             }
-            */
+            
             TEST("side_effect_fn should alter variable correctly") {
                 int N = 10;
                 int *sh_int = (int *) eshmalloc(sizeof(int));
@@ -89,14 +94,19 @@ int main(void)
                     }
                     if (i == 5) {
                         EXPECT_EXIT_CODE_EQ(*sh_int);
+                        EXPECT_SIGNAL_CODE_EQ(NOT_SIGNALED);
                         EXPECT_EQ(*sh_int, 1);
+                    } else if (i == 9) {
+                        EXPECT_SIGNAL_CODE_EQ(SIGSEGV);
                     } else {
-                        EXPECT_EXIT_CODE_EQ(0);
+                        EXPECT_EXIT_CODE_EQ(EXIT_SUCCESS);
+                        EXPECT_SIGNAL_CODE_EQ(NOT_SIGNALED);
                         EXPECT_EQ(*sh_int, i);
                     }
                 }
                 eshfree(sh_int);
                 sh_int = NULL;
+                shfree_all();
             }
         }
     }

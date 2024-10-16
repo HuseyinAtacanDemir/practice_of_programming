@@ -293,7 +293,7 @@ wont be propagated to the parent, however total assert/expect count will be.
 #define FORK()  \
     for (pid_t _pid_ = (configure_ctx_pre_fork(), -2);   \
             _pid_ == -2;    \
-            _pid_ = ((_pid_ > 0 && (configure_ctx_post_fork(), 1)), _pid_) )   \
+            GLOBAL_CTX->is_forked = (_pid_ > 0 && (configure_ctx_post_fork(), 1)) )   \
         for (_pid_ = fork(); \
                 _pid_ == 0 && (dup2_usr_pipes(), 1) && (atexit(&close_all_pipes), 1) && (handle_all_catchable_signals(), 1);    \
                 exit(EXIT_SUCCESS) )
