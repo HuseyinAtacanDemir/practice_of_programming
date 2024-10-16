@@ -34,10 +34,15 @@ int main(void)
               for (i = 0; i < (UCHAR_MAX+1); i++) {
                   opt_idx = valid_opt(i);
                   if (opt_idx >= 0)
-                      EXPECT_EQ((1<<opt_idx), set_opt_flag(0, i));
+                      EXPECT_EQ((1<<opt_idx), set_opt_flag(0x0, i));
                   else
-                      EXPECT_EQ(0, set_opt_flag(0x0, i));
+                      EXPECT_EQ(0x0, set_opt_flag(0x0, i));
               }
+          }
+          TEST("test boundaries") {
+              int cases[] = { INT_MAX, INT_MIN, UCHAR_MAX+1, CHAR_MIN-1, 0 };
+              for (int i = 0; cases[i] != 0; i++)
+                  EXPECT_EQ(0x0, set_opt_flag(0x0, cases[i]));
           }
       }
       TEST_SUITE("SUITE: parse_opts unit tests") {
@@ -59,64 +64,6 @@ int main(void)
     return 0;
 }
 
-//// region: set_opt_bit
-//void test_set_opt_bit_all_chars()
-//{
-//    unsigned exp_optstate;
-//    char *exp_msg, buf[5];
-//
-//    printf("\n\twhole char set individually\n");
-//
-//    ntotal = npass = nfail = 0;
-//    n =  UCHAR_MAX + 1;
-//    exp_msg = NULL;
-//    for (opt = 0; opt < n; opt++) {
-//        printf("\t\tShort Opt: %c \\x%X: ", (isprint(opt) ? opt : '?'), opt);
-//        fflush(stdout);
-//
-//        exp_optstate = 0x1;
-//        switch(opt) {
-//            case 'S':
-//                exp_optstate <<= 1;
-//            case 'l':
-//                exp_optstate <<= 1;
-//            case 'f':
-//                exp_optstate <<= 1;
-//            case 'd':
-//                exp_optstate <<= 1; 
-//            case 'i':
-//                exp_optstate <<= 1;
-//            case 's':
-//                exp_optstate <<= 1; 
-//            case 'R':
-//                exp_optstate <<= 1;
-//            case 'D':
-//                exp_optstate <<= 1;
-//            case 'a': 
-//                exp_optstate <<= 1;
-//            case 'h':
-//                break;
-//            default:
-//                exp_optstate = 0x0;
-//                if (opt) {
-//                  sprintf(buf, "-%c", opt);
-//                  exp_msg = rus_doll_fmt(3, "freq_test: %s\n", InvOptStr, buf);
-//                } else {
-//                  sprintf(buf, "%d", opt);
-//                  exp_msg = rus_doll_fmt(3, "freq_test: %s\n", InvOptFormat, buf);
-//                }
-//        }
-//         
-//        if(test_set_opt_bit(opt, 0x0, exp_optstate, exp_msg))
-//
-//        if (exp_msg != NULL) {
-//            free(exp_msg);
-//            exp_msg = NULL;
-//        }
-//    }
-//
-//}
-//
 //void test_set_opt_bit_boundaries()
 //{
 //    int i, ntotal, npass, nfail;
