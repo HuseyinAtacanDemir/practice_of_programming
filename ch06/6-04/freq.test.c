@@ -44,15 +44,21 @@ int main(void)
               for (int i = 0; cases[i] != 0; i++)
                   EXPECT_EQ(0x0, set_opt_flag(0x0, cases[i]));
           }
+          TEST("test non zero initial flags") {
+              int i, opt_idx, flags;
+              for (i = flags = 0; i < (UCHAR_MAX+1); i++) {
+                  opt_idx = valid_opt(i);
+                  if (opt_idx >= 0)
+                      EXPECT_EQ((flags |= (1<<opt_idx)), set_opt_flag(flags, i));
+                  else
+                      EXPECT_EQ(flags, set_opt_flag(flags, i));
+              }
+          }
       }
       TEST_SUITE("SUITE: parse_opts unit tests") {
       }
     } 
 
-//    test_set_opt_bit_all_chars();
-//    test_set_opt_bit_boundaries();
-//    test_set_opt_bit_nonzero_optstates();
-//
 //    test_parse_opts_short_single();
 //    test_parse_opts_short_combined_single();
 //    test_parse_opts_short_combined_concat();
@@ -64,73 +70,6 @@ int main(void)
     return 0;
 }
 
-//void test_set_opt_bit_boundaries()
-//{
-//    int i, ntotal, npass, nfail;
-//    char exp_msg[128];
-//    unsigned exp_optstate, opt_state;
-//
-//    printf("\n\topt boundaries\n"); 
-//
-//    ntotal = npass = nfail = 0;
-//    exp_optstate = opt_state = 0x0;
-//
-//    int test_cases[] = { INT_MAX, INT_MIN, UCHAR_MAX+1, CHAR_MIN-1 };
-//
-//    for (i = 0; i < (sizeof(test_cases)/sizeof(int)); i++) {
-//        printf("\t\tOpt: %d: ", test_cases[i]);
-//        fflush(stdout);
-//        sprintf(exp_msg, "freq_test: invalid option format: %d\n", 
-//                test_cases[i]);
-//        if (test_set_opt_bit(test_cases[i], opt_state, exp_optstate, exp_msg))
-//        ntotal++;
-//    }
-//}
-//
-//void test_set_opt_bit_nonzero_optstates()
-//{
-//    int i, ntotal, npass, nfail;
-//    struct TestCase {
-//        unsigned  old_optstate;
-//        unsigned  new_optstate;
-//        int       opt;
-//        char      *exp_msg;
-//    };
-//
-//    printf("\n\tnonzero optstates\n"); 
-//
-//    ntotal = npass = nfail = 0;
-//    struct TestCase cases[] = {
-//        { 0x04, (0x04 | (1 << HELP)),   'h', NULL},
-//        { 0x05, (0x05 | (1 << AGGR)),   'a', NULL},
-//        { 0x06, (0x06 | (1 << DELIM)),  'D', NULL},
-//        { 0x07, (0x07 | (1 << RAW)),    'R', NULL},
-//        { 0x08, (0x08 | (1 << SORT)),   's', NULL},
-//        { 0x09, (0x09 | (1 << INT)),    'i', NULL},
-//        { 0x0A, (0x0A | (1 << DOUBLE)), 'd', NULL},
-//        { 0x0B, (0x0B | (1 << FLOAT)),  'f', NULL},
-//        { 0x0C, (0x0C | (1 << LONG)),   'l', NULL},
-//        { 0x0D, (0x0D | (1 << STRUCT)), 'S', NULL},
-//        { 0x0E, 0x0E,                   'x', 
-//                          rus_doll_fmt(3, "freq_test: %s\n", InvOptStr, "-x")},
-//        { 0, 0, 0, NULL }
-//    };
-//
-//    for (i = 0; i < cases[i].old_optstate != 0; i++) {
-//        printf("\t\tOld_optstate: %u, Expected_optstate: %u, Opt: %d: ", 
-//                cases[i].old_optstate, cases[i].new_optstate, cases[i].opt);
-//        fflush(stdout);
-//        if (test_set_opt_bit(cases[i].opt, cases[i].old_optstate, 
-//                        cases[i].new_optstate, cases[i].exp_msg))
-//        ntotal++;
-//        if (cases[i].exp_msg)
-//            free(cases[i].exp_msg);
-//    }
-//
-//}
-//
-//// endregion: set_opt_bit
-//
 //// region: parse_opts
 //void test_parse_opts_short_single()
 //{
