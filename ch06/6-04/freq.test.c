@@ -800,14 +800,14 @@ char *rus_doll_fmt(int n, ...)
     if (n <= 0)
         return NULL;
 
-    va_start(args, n);
     argv = (char **) emalloc(n * sizeof(char *));
+
+    va_start(args, n);
     for (len = i = 0; i < n; i++) {
         argv[i] = va_arg(args, char *);
         len += strlen(argv[i]);
     }
     va_end(args);
-
 
     str = (char *) emalloc((len * sizeof(char *)) + 1); // accounting for '\0'
     nxt = (char *) emalloc((len * sizeof(char *)) + 1); // accounting for '\0'
