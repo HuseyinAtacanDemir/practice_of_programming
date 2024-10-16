@@ -7,58 +7,56 @@
 #include <errno.h>
 #include <limits.h>
 
+static void vfprint_msg         (FILE *fout, char *fmt, va_list args);
+static int  evasprintf_common   (char **strp, const char *fmt,  
+                                  void *(*alloc_fn)(size_t), 
+                                  void (*free_fn)(void *), va_list args);
+
+static void vfprint_msg(FILE *fout, char *fmt, va_list args)
+{
+    fflush(fout); 
+    if(getprogname() != NULL)
+        fprintf(fout, "%s: ", getprogname());
+
+    vfprintf(fout, fmt, args); 
+
+    if (fmt[0] != '\0' && fmt[strlen(fmt)-1] == ':') 
+        fprintf(fout, " %s ", strerror(errno));
+    fprintf(fout, "\n");
+}
+
 /* eprintf: print error message and exit */ 
 void eprintf(char *fmt, ...)
 {
-    va_list args;
-
     fflush(stdout); 
-    if(getprogname() != NULL)
-        fprintf(stderr, "%s: ", getprogname());
 
+    va_list args;
     va_start(args, fmt); 
-    vfprintf(stderr, fmt, args); 
+    vfprint_msg(stderr, fmt, args); 
     va_end(args);
 
-    if (fmt[0] != '\0' && fmt[strlen(fmt)-1] == ':') 
-        fprintf(stderr, " %s ", strerror(errno));
-    fprintf(stderr, "\n");
-    exit(EXIT_FAILURE); /* conventional value forfailed execution */ 
+    exit(EXIT_FAILURE);
 }
 
 /* weprintf: print warning message */ 
 void weprintf(char *fmt, ...)
 {
     va_list args;
-    
-    if(getprogname() != NULL)
-        fprintf(stderr, "%s: ", getprogname());
-
     va_start(args, fmt); 
-    vfprintf(stderr, fmt, args); 
+    vfprint_msg(stderr, fmt, args); 
     va_end(args);
-
-    if (fmt[0] != '\0' && fmt[strlen(fmt)-1] == ':') 
-        fprintf(stderr, " %s ", strerror(errno));
-    fprintf(stderr, "\n");
 }
 
 /* efprintf: print error message to file and exit */
 void efprintf(FILE *fin, char *fmt, ...)
 {
-    va_list args;
-    
-    fflush(fin);
-    if(getprogname() != NULL)
-        fprintf(fin, "%s: ", getprogname());
+    fflush(stdout); 
 
+    va_list args;
     va_start(args, fmt); 
-    vfprintf(fin, fmt, args); 
+    vfprint_msg(fin, fmt, args); 
     va_end(args);
 
-    if (fmt[0] != '\0' && fmt[strlen(fmt)-1] == ':') 
-        fprintf(fin, " %s ", strerror(errno));
-    fprintf(fin, "\n");
     exit(EXIT_FAILURE); /* conventional value forfailed execution */ 
 }
 
@@ -66,74 +64,59 @@ void efprintf(FILE *fin, char *fmt, ...)
 void wefprintf(FILE *fin, char *fmt, ...)
 {
     va_list args;
-    
-    if(getprogname() != NULL)
-        fprintf(fin, "%s: ", getprogname());
-
     va_start(args, fmt); 
-    vfprintf(fin, fmt, args); 
+    vfprint_msg(fin, fmt, args); 
     va_end(args);
-
-    if (fmt[0] != '\0' && fmt[strlen(fmt)-1] == ':') 
-        fprintf(fin, " %s ", strerror(errno));
-    fprintf(fin, "\n");
 }
 
-/* easprintf: allocates memory and formats string */
-int easprintf(char **strp, const char *fmt, ...)
+/* easeprintf: allocates memory and formats string eprintf would have printed, 
+                returns number of chars eprintf would have printed,
+                reports if error */ 
+int easeprintf(char **strp, const char *fmt, ...)
 {
-    va_list args;
-    va_start(args, fmt);
+    char *p = NULL;
+    int n = 0;
 
+    va_list args;
+    va_start(args, fmt); 
+    evasprintf(&p, fmt, args);
+    va_end(args);
+    
+    // TODO: do I free the return of strerror? Should I even use strerror?
+    if(getprogname() != NULL && fmt[0] != '\0' && fmt[strlen(fmt)-1] == ':')
+        n = easprintf(strp, "%s: %s %s\n", getprogname(), p, strerror(errno));
+    else if (getprogname() != NULL)
+        n = easprintf(strp, "%s: %s\n", getprogname(), p);
+    else if (fmt[0] != '\0' && fmt[strlen(fmt)-1] == ':')
+        n = easprintf(strp, "%s %s\n", p, strerror(errno));
+    else
+        n = easprintf(strp, "%s\n", p);
+    
+    free(p);
+    p = NULL;
+    return n;
+}
+
+static int evasprintf_common(char **strp, const char *fmt,  
+            void *(*alloc_fn)(size_t), void (*free_fn)(void *), va_list args)
+{
     va_list args_copy;
     va_copy(args_copy, args);
-
     // vsnprintf with NULL and 0 calculates required size
-    int size = vsnprintf(NULL, 0, fmt, args);
-    va_end(args);
-
-    if (size < 0) {
-        va_end(args_copy);
-        return -1;
-    }
-
-    // Allocate memory accounting for '\0'
-    *strp = emalloc(size + 1);
-    if (*strp == NULL) {
-        va_end(args_copy);
-        return -1;
-    }
-
-    int result = vsnprintf(*strp, size + 1, fmt, args_copy);
-    va_end(args_copy);
-
-    if (result < 0) {
-        free(*strp);
-        *strp = NULL;
-        return -1;
-    }
-
-    return result;
-}
-
-/* evasprintf: allocates memory and formats string, variadic */
-int evasprintf(char **strp, const char *fmt, va_list args)
-{
-    // vsnprintf with NULL and 0 calculates required size
-    int size = vsnprintf(NULL, 0, fmt, args);
+    int size = vsnprintf(NULL, 0, fmt, args_copy);
 
     if (size < 0)
         return -1;
 
     // Allocate memory accounting for '\0'
-    *strp = emalloc(size + 1);
+    *strp = (char *) alloc_fn(size + 1);
     if (*strp == NULL)
         return -1;
 
     int result = vsnprintf(*strp, size + 1, fmt, args);
 
     if (result < 0) {
-        free(*strp);
+        free_fn(*strp);
         *strp = NULL;
         return -1;
     }
@@ -141,35 +124,21 @@ int evasprintf(char **strp, const char *fmt, va_list args)
     return result;
 }
 
-/* easeprintf: allocates mem and formats string eprintf would have printed, 
-                reports if error */ 
-int easeprintf(char **strp, const char *fmt, ...)
+/* easprintf: allocates memory and formats string, reports if err */
+int easprintf(char **strp, const char *fmt, ...)
 {
-    char *tmp;
-    int nprinted;
     va_list args;
-
-    tmp = NULL;
-
-    va_start(args, fmt); 
-    vasprintf(&tmp, fmt, args);
+    va_start(args, fmt);
+    int result = evasprintf(strp, fmt, args);
     va_end(args);
-    
-    if(getprogname() != NULL && fmt[0] != '\0' && fmt[strlen(fmt)-1] == ':') {
-        nprinted = easprintf(strp, "%s: %s %s \n", 
-                                    getprogname(), tmp, strerror(errno));
-        free(tmp);
-    } else if (getprogname() != NULL) {
-        nprinted = easprintf(strp, "%s: %s\n", getprogname(), tmp);
-        free(tmp);
-    } else if (fmt[0] != '\0' && fmt[strlen(fmt)-1] == ':') {
-        nprinted = easprintf(strp, "%s %s \n", tmp, strerror(errno));
-        free(tmp);
-    } else {
-        nprinted = easprintf(strp, "%s\n", tmp);
-        free(tmp);
-    }
-    return nprinted;
+
+    return result;
+}
+
+/* evasprintf: allocates memory and formats string, variadic, reports if err */
+int evasprintf(char **strp, const char *fmt, va_list args)
+{
+    return evasprintf_common(strp, fmt, emalloc, free, args);
 }
 
 /* easprintf: allocates shared memory and formats string */
@@ -177,34 +146,8 @@ int eshasprintf(char **strp, const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-
-    va_list args_copy;
-    va_copy(args_copy, args);
-
-    // vsnprintf with NULL and 0 calculates required size
-    int size = vsnprintf(NULL, 0, fmt, args);
+    int result = eshvasprintf(strp, fmt, args);
     va_end(args);
-
-    if (size < 0) {
-        va_end(args_copy);
-        return -1;
-    }
-
-    // Allocate memory accounting for '\0'
-    *strp = eshmalloc(size + 1);
-    if (*strp == NULL) {
-        va_end(args_copy);
-        return -1;
-    }
-
-    int result = vsnprintf(*strp, size + 1, fmt, args_copy);
-    va_end(args_copy);
-
-    if (result < 0) {
-        shfree(*strp);
-        *strp = NULL;
-        return -1;
-    }
 
     return result;
 }
@@ -212,26 +155,7 @@ int eshasprintf(char **strp, const char *fmt, ...)
 /* eshvasprintf: allocates shared memory and formats string, variadic */
 int eshvasprintf(char **strp, const char *fmt, va_list args)
 {
-    // vsnprintf with NULL and 0 calculates required size
-    int size = vsnprintf(NULL, 0, fmt, args);
-
-    if (size < 0)
-        return -1;
-
-    // Allocate memory accounting for '\0'
-    *strp = eshmalloc(size + 1);
-    if (*strp == NULL)
-        return -1;
-
-    int result = vsnprintf(*strp, size + 1, fmt, args);
-
-    if (result < 0) {
-        shfree(*strp);
-        *strp = NULL;
-        return -1;
-    }
-
-    return result;
+    return evasprintf_common(strp, fmt, eshmalloc, eshfree, args);
 }
 
 /* estrdup: duplicate a string, 
@@ -239,11 +163,8 @@ int eshvasprintf(char **strp, const char *fmt, va_list args)
             report if error */ 
 char *estrdup(char *str)
 {
-    char *t;
     errno = 0;
-    t = (char *) malloc(strlen(str)+1); 
-    if(t == NULL)
-        eprintf("estrdup(\"%.20s\") failed:", str); 
+    char *t = (char *) emalloc(strlen(str)+1); 
     strcpy(t, str);
     return t; 
 }
@@ -253,11 +174,8 @@ char *estrdup(char *str)
               report if error */ 
 char *estrndup(char *str, int n)
 {
-    char *t;
     errno = 0;
-    t = (char *) malloc(n+1); 
-    if(t == NULL)
-        eprintf("estrndup(\"%.20s\") failed:", str); 
+    char *t = (char *) emalloc(n+1); 
     strncpy(t, str, n);
     t[n] = '\0';
     return t; 
@@ -268,11 +186,8 @@ char *estrndup(char *str, int n)
               report if error */ 
 char *eshstrdup(char *str)
 {
-    char *t;
     errno = 0;
-    t = (char *) eshmalloc(strlen(str)+1); 
-    if(t == NULL)
-        eprintf("eshstrdup(\"%.20s\") failed:", str); 
+    char *t = (char *) eshmalloc(strlen(str)+1); 
     strcpy(t, str);
     return t; 
 }
@@ -282,32 +197,23 @@ char *eshstrdup(char *str)
                 report if error */ 
 char *eshstrndup(char *str, int n)
 {
-    char *t;
     errno = 0;
-    t = (char *) eshmalloc(n); 
-    if(t == NULL)
-        eprintf("eshstrndup(\"%.20s\") failed:", str); 
+    char *t = (char *) eshmalloc(n+1); 
     strncpy(t, str, n);
+    t[n] = '\0';
     return t; 
 }
 
 /* eatoi: convert a string to integer, report if error  */
-int eatoi(char *s)
+int eatoi(char *str)
 {
-    char *t;
-    long result;
+    char **endptr = NULL;
 
-    errno = 0;
-    result = strtol(s, &t, 10);
+    long result = strtol(str, endptr, 10);
 
-    if (errno)
-        eprintf("Error: cannot convert %s to int:", s);
-
-    if (*t != '\0')
-        eprintf("Error: invalid int format: %s", s);
-
-    if (result > INT_MAX || result < INT_MIN)
-        eprintf("Error: integer overflow converting %s", s);
+    //  See man 3 strtol
+    if (!(*str && **endptr == '\0'))
+        eprintf("cannot convert %s to an integer", str);
 
     return (int) result;
 }
@@ -315,9 +221,8 @@ int eatoi(char *s)
 /* emalloc: malloc and report if error */ 
 void *emalloc(size_t size)
 {
-    void *p;
     errno = 0;
-    p = malloc(size); 
+    void *p = malloc(size); 
     if(p == NULL)
         eprintf("malloc of %u bytes failed:", size); 
     return p;
@@ -326,9 +231,8 @@ void *emalloc(size_t size)
 /* ecalloc: calloc and report if error */ 
 void *ecalloc(size_t count, size_t size)
 {
-    void *p;
     errno = 0;
-    p = calloc(count, size); 
+    void *p = calloc(count, size); 
     if(p == NULL)
         eprintf("calloc of %u bytes failed:", (count * size)); 
     return p;
@@ -337,9 +241,8 @@ void *ecalloc(size_t count, size_t size)
 /* erealloc: realloc and report if error */ 
 void *erealloc(void *ptr, size_t size)
 {
-    void *q;
     errno = 0;
-    q = realloc(ptr, size); 
+    void *q = realloc(ptr, size); 
     if(q == NULL)
         eprintf("realloc of %u bytes at %p failed:", size, ptr); 
     return q;
@@ -348,9 +251,8 @@ void *erealloc(void *ptr, size_t size)
 /* eshmalloc: shmalloc and report if error */
 void *eshmalloc(size_t size)
 {
-    void *p;
     errno = 0;
-    p = shmalloc(size); 
+    void *p = shmalloc(size); 
     if(p == NULL)
         eprintf("shmalloc of %u bytes failed:", size); 
     return p;
@@ -360,9 +262,8 @@ void *eshmalloc(size_t size)
 /* eshcalloc: shcalloc and report if error */
 void *eshcalloc(size_t count, size_t size)
 {
-    void *q;
     errno = 0;
-    q = shcalloc(count, size); 
+    void *q = shcalloc(count, size); 
     if(q == NULL)
         eprintf("shcalloc of %u bytes failed:", (count * size)); 
     return q;
@@ -371,9 +272,8 @@ void *eshcalloc(size_t count, size_t size)
 /* eshrealloc: shrealloc and report if error */
 void *eshrealloc(void *ptr, size_t size)
 {
-    void *q;
     errno = 0;
-    q = shrealloc(ptr, size); 
+    void *q = shrealloc(ptr, size); 
     if(q == NULL)
         eprintf("shrealloc of %u bytes at %p failed:", size, ptr); 
     return q;
@@ -381,9 +281,8 @@ void *eshrealloc(void *ptr, size_t size)
 
 void eshfree(void *ptr)
 {
-    int result;
     errno = 0;
-    result = shfree(ptr);
+    int result = shfree(ptr);
 
     if (result)
         eprintf("shfree of %p failed with err: %d:", ptr, result);
