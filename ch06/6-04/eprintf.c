@@ -12,6 +12,9 @@ static int  evasprintf_common   (char **strp, const char *fmt,
                                   void *(*alloc_fn)(size_t), 
                                   void (*free_fn)(void *), va_list args);
 
+/* vfprint_msg: helper routine that prints an error/warning message with:
+                1) progname if it exists, 
+                2) errno info if fmt's last char is ':'*/
 static void vfprint_msg(FILE *fout, char *fmt, va_list args)
 {
     fflush(fout); 
@@ -69,7 +72,8 @@ void wefprintf(FILE *fin, char *fmt, ...)
     va_end(args);
 }
 
-/* easeprintf: allocates memory and formats string eprintf would have printed, 
+/* easeprintf: allocates mem and formats str that way w|e|f|printf would have 
+                printed it given the same arguments, 
                 returns number of chars eprintf would have printed,
                 reports if error */ 
 int easeprintf(char **strp, const char *fmt, ...)

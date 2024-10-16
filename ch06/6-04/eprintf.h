@@ -11,8 +11,9 @@ extern void   weprintf      (char *, ...);
 extern void   efprintf      (FILE *, char *, ...);
 extern void   wefprintf     (FILE *, char *, ...); 
 
-extern int    easprintf     (char **, const char *fmt, ...);
 extern int    easeprintf    (char **, const char *fmt, ...);
+
+extern int    easprintf     (char **, const char *fmt, ...);
 extern int    evasprintf    (char **, const char *fmt, va_list);
 
 extern int    eshasprintf   (char **, const char *fmt, ...);
