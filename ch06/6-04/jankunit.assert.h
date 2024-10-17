@@ -295,7 +295,7 @@ wont be propagated to the parent, however total assert/expect count will be.
             _pid_ == -2;    \
             GLOBAL_CTX->is_forked = (_pid_ > 0 && (configure_ctx_post_fork(), 0)) )   \
         for (_pid_ = fork(); \
-                _pid_ == 0 && (dup2_usr_pipes(), 1) && (atexit(&close_all_pipes), 1) && (handle_all_catchable_signals(), 1);    \
+                _pid_ == 0 && (dup2_usr_pipes(), 1) && (atexit(close_all_pipes), 1) && (handle_all_catchable_signals(), 1);    \
                 exit(EXIT_SUCCESS) )
 
 #define TEST_PROGRAM(...) \
