@@ -47,9 +47,9 @@ const struct option LongOpts[] = {
     {0, 0, 0, 0}
 };
 
-void freq(char *filename, int flags, char *delim, int size)
+void freq(FILE *fin, int flags, char *delim, int size)
 {
-		if (filename == NULL)
+		if (fin == NULL)
 				return;
     return ;
 }
@@ -58,47 +58,34 @@ int parse_opts(int argc, char **argv, char **delim, int *size)
 {
     int opt, type_opts, flags;
     
-    *delim = DEFAULT_DELIM;
-    *size = DEFAULT_SIZE;	
-    flags = 0;
+    *delim  = DEFAULT_DELIM;
+    *size   = DEFAULT_SIZE;	
+    flags   = 0x0;
     
-    // opterr: getopt.h global var, 0'ing it supresses getop.h errs, 
-    //          see "man 3 getopt"
+    // opterr: getopt.h, 0'ing it supresses getop.h errs, see "man 3 getopt"
     opterr = 0; 
     while ((opt = getopt_long(argc, argv, OPT_STR, LongOpts, NULL)) != -1) {
-        switch (opt) {
-            case 'h':
-								usage_exit();
-            case 'D':
-                *delim = estrdup(optarg);
-                break;
-            case 'S':
-                *size = eatoi((char *) optarg);
-                break;
-            case 'i':
-                *size = sizeof(int);
-                break;
-            case 'd':
-                *size = sizeof(double);
-                break;
-            case 'f':
-                *size = sizeof(float);
-                break;
-            case 'l':
-                *size = sizeof(long);
-                break;
-            case ':': // optind: getopt.h, index of next arg, "man 3 getopt"
-                eprintf(OptReqsArg, argv[optind-1]);
-            case '?':
-								if (optopt)
-                		eprintf(InvOptChar, optopt);
-                else 
-                		eprintf(InvOptStr, argv[optind-1]);
-            default: // impossible case
-                assert(0);
-                break; 
-        }
 				flags = set_opt_flag(flags, opt);
+        switch (opt) {
+            // cases 'h' ':' and '?' exit the program
+            case 'h': usage_exit(); // EXIT_SUCCESS
+            case 'a': break;
+            case 'D': *delim = estrdup(optarg); break;
+            case 'R': break;
+            case 's': break;
+            case 'i': *size = sizeof(int);  break;
+            case 'd': *size = sizeof(double); break;
+            case 'f': *size = sizeof(float);  break;
+            case 'l': *size = sizeof(long); break;
+            case 'S': *size = eatoi(optarg); break;
+
+            // optind: getopt.h, index of next arg, "man 3 getopt"
+            case ':': eprintf(OptReqsArg, argv[optind-1]);
+            case '?': optopt ? eprintf(InvOptChar, optopt)
+                              : eprintf(InvOptStr, argv[optind-1]);
+            // impossible case
+            default: assert(0);
+        }
     }
     
     type_opts = flags & TYPE_OPTS_MASK;
