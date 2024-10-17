@@ -100,6 +100,6 @@ clean:
 	rm -f $(MAIN_OBJS) $(TEST_OBJS) $(MAIN_TARGET) $(TEST_TARGET)
 	rm -f $(MAIN_SRCS:.c=.expanded.c) $(TEST_SRCS:.c=.expanded.c)
 	rm -f $(MAIN_SRCS:.c=.expanded.o) $(TEST_SRCS:.c=.expanded.o)
-
+	rm -r *.dSYM/
 .PHONY: all debug edebug eutest release itest utest clean
 
