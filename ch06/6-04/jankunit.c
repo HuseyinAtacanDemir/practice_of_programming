@@ -408,20 +408,20 @@ void read_pipes_to_bufs()
         for (int i = USR; i <= SYS; i++)
             for (int j = OUT; j <= ERR; j++) {
                 if (nread[i][j] > 0) {
-                char **cur_buf = &(GLOBAL_CTX->bufs->bufs[i][j]);
-                int  *cur_size = &(GLOBAL_CTX->bufs->sizes[i][j]);
-        
-                if (*cur_buf == NULL) {
-                    *cur_buf = (char *) emalloc(sizeof(char) * BUFSIZE);
-                    *cur_size = BUFSIZE;
-                } else if ((nread[i][j] + ntot[i][j]) > *cur_size) {
-                    *cur_buf = (char *) erealloc(cur_buf, (*cur_size * 2));    
-                    *cur_size *= 2;
+                    char **cur_buf = &(GLOBAL_CTX->bufs->bufs[i][j]);
+                    int  *cur_size = &(GLOBAL_CTX->bufs->sizes[i][j]);
+            
+                    if (*cur_buf == NULL) {
+                        *cur_buf = (char *) emalloc(sizeof(char) * BUFSIZE);
+                        *cur_size = BUFSIZE;
+                    } else if ((nread[i][j] + ntot[i][j]) > *cur_size) {
+                        *cur_buf = (char *) erealloc(cur_buf, (*cur_size * 2));    
+                        *cur_size *= 2;
+                    }
+                    memcpy((*cur_buf + ntot[i][j]), temp_bufs[i][j], nread[i][j]);
+                    ntot[i][j] += nread[i][j];
                 }
-                memcpy((*cur_buf + ntot[i][j]), temp_bufs[i][j], nread[i][j]);
-                ntot[i][j] += nread[i][j];
             }    
-    }
     }
     // NULL terminate bufs that exist
     for (int i = USR; i <= SYS; i++)
@@ -475,8 +475,8 @@ void handle_all_catchable_signals()
 
     //256 because, well, are there more signals??
     for (int i = 0; i < 256; i++) {
-        sigemptyset(&set);
-        if (sigismember(&set, i) && i != SIGKILL && i != SIGSTOP) {
+        sigfillset(&set);
+        if (sigismember(&set, i) && i != SIGKILL && i != SIGSTOP && i != SIGTRAP) {
             sigaction(i, &sa_custom, NULL);
         }
     }
