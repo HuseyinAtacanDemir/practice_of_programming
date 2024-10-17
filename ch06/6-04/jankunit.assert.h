@@ -41,8 +41,12 @@
         continue
 
 #define FLUSH_AND_REDIRECT_SYS_IF_IN_FORK_AND_USR_OUT_IS_UNFLUSHED()    \
-    flush_usr_pipes_and_dup2_sys_pipes(); \
-    GLOBAL_CTX->flushed = FLUSHED
+    do {  \
+        if (GLOBAL_CTX->is_forked && GLOBAL_CTX->flushed == UNFLUSHED) {  \
+            flush_usr_pipes_and_dup2_sys_pipes(); \
+            GLOBAL_CTX->flushed = FLUSHED;  \
+        } \
+    } while(0)
 
 // Comparison macros
 #define EQ_COMMON   (_a_ == _b_)
