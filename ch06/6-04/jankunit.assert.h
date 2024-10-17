@@ -198,7 +198,7 @@
     do {  \
         char *_buf_ = NULL; \
         easprintf(&_buf_, __VA_ARGS__); \
-        comp(_buf_, (GLOBAL_CTX->bufs ? GLOBAL_CTX->bufs->bufs[USR][stream] : NULL)); \
+        comp(_buf_, ((GLOBAL_CTX->bufs && GLOBAL_CTX->bufs->bufs[USR][stream]) ? GLOBAL_CTX->bufs->bufs[USR][stream] : "")); \
         free(_buf_);  \
     } while (0)
 
