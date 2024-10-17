@@ -91,8 +91,8 @@ release: $(MAIN_TARGET)
 utest: $(TEST_TARGET)
 	./$(TEST_TARGET)
 
-itest: all
-	./test.sh
+itest: $(MAIN_TARGET)
+	./test.sh $(MAIN_TARGET)
 
 
 clean:
