@@ -211,12 +211,12 @@ char *eshstrndup(char *str, int n)
 /* eatoi: convert a string to integer, report if error  */
 int eatoi(char *str)
 {
-    char **endptr = NULL;
+    char *endptr = NULL;
 
-    long result = strtol(str, endptr, 10);
+    long result = strtol(str, &endptr, 10);
 
     //  See man 3 strtol
-    if (!(*str && **endptr == '\0'))
+    if (!(*str && *endptr == '\0'))
         eprintf("cannot convert %s to an integer", str);
 
     return (int) result;
