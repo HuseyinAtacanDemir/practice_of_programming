@@ -11,55 +11,128 @@
 #include "eprintf.h"
 
 // HELPERS
-  int   valid_option      (int opt);        
-  //char  **create_argv     (int argc, ...);
+  int   get_opt_idx       (int opt);        
+  char  **create_argv     (int argc, ...);
   //char  *concat_str_arr   (char **arr, const char *delim);
   //char  *rus_doll_fmt     (int n, ...);
 
-int valid_opt(int opt)
+int get_opt_idx(int opt)
 {
     for (int i = 0; LongOpts[i].name != NULL; i++)
         if (LongOpts[i].val == opt)
             return i;
     return -1;
 }
+char **create_argv(int argc, ...)
+{
+   int i;
+   char **argv;
+   va_list args;
+
+   argv = (char **) emalloc(sizeof(char *) * (argc+1));
+
+   va_start(args, argc);
+   for (i = 0; i < argc; i++)
+       argv[i] = va_arg(args, char *);
+   va_end(args);
+   
+   argv[argc] = NULL;
+   return argv;
+}
 
 int main(void)
 {
     init_ctx();
     TEST_PROGRAM("FREQ INTERNAL UNIT TESTS") {
-      TEST_SUITE("SUITE: set_opt_flag unit tests") {
-          TEST("test all chars") {
-              int i, opt_idx;
-              for (i = 0; i < (UCHAR_MAX+1); i++) {
-                  opt_idx = valid_opt(i);
-                  if (opt_idx >= 0)
-                      EXPECT_EQ((1<<opt_idx), set_opt_flag(0x0, i));
-                  else
-                      EXPECT_EQ(0x0, set_opt_flag(0x0, i));
-              }
-          }
-          TEST("test boundaries") {
-              int cases[] = { INT_MAX, INT_MIN, UCHAR_MAX+1, CHAR_MIN-1, 0 };
-              for (int i = 0; cases[i] != 0; i++)
-                  EXPECT_EQ(0x0, set_opt_flag(0x0, cases[i]));
-          }
-          TEST("test non zero initial flags") {
-              int i, opt_idx, flags;
-              for (i = flags = 0; i < (UCHAR_MAX+1); i++) {
-                  opt_idx = valid_opt(i);
-                  if (opt_idx >= 0)
-                      EXPECT_EQ((flags |= (1<<opt_idx)), set_opt_flag(flags, i));
-                  else
-                      EXPECT_EQ(flags, set_opt_flag(flags, i));
-              }
-          }
-      }
-      TEST_SUITE("SUITE: parse_opts unit tests") {
-      }
+        TEST_SUITE("SUITE: set_opt_flag unit tests") {
+            TEST("test all chars") {
+                int i, opt_idx;
+                for (i = 0; i < (UCHAR_MAX+1); i++) {
+                    opt_idx = get_opt_idx(i);
+                    if (opt_idx >= 0)
+                        EXPECT_EQ((1<<opt_idx), set_opt_flag(0x0, i));
+                    else
+                        EXPECT_EQ(0x0, set_opt_flag(0x0, i));
+                }
+            }
+            TEST("test boundaries") {
+                int cases[] = { INT_MAX, INT_MIN, UCHAR_MAX+1, CHAR_MIN-1, 0 };
+                for (int i = 0; cases[i] != 0; i++)
+                    EXPECT_EQ(0x0, set_opt_flag(0x0, cases[i]));
+            }
+            TEST("test non zero initial flags") {
+                int i, opt_idx, flags;
+                for (i = flags = 0; i < (UCHAR_MAX+1); i++) {
+                    opt_idx = get_opt_idx(i);
+                    if (opt_idx >= 0)
+                        EXPECT_EQ((flags |= (1<<opt_idx)), set_opt_flag(flags, i));
+                    else
+                        EXPECT_EQ(flags, set_opt_flag(flags, i));
+                }
+            }
+        }
+        TEST_SUITE("SUITE: parse_opts unit tests") {
+            TEST("single short opts") {
+                for (int i = 0; i < UCHAR_MAX + 1; i++) {
+                    int opt_idx = get_opt_idx(i);
+                    
+                    FORK() {
+                        char opt[3] = { '-', i, '\0' };
+                        
+                        int argc    = 2;
+                        char **argv = create_argv(argc, "./freq_test", opt);
+                        char *delim = DEFAULT_DELIM;
+                        int size    = DEFAULT_SIZE;
+                        
+                        int flags = parse_opts(argc, argv, &delim, &size);
+
+                        // getopt.h: int optind, see "man 3 getopt"
+                        EXPECT_EQ(optind, ((i != '\0') ? argc : argc-1));
+                        EXPECT_EQ_PTR(delim, DEFAULT_DELIM);
+
+                        if      (opt_idx == INT)    EXPECT_EQ(size, sizeof(int));
+                        else if (opt_idx == DOUBLE) EXPECT_EQ(size, sizeof(double));
+                        else if (opt_idx == FLOAT)  EXPECT_EQ(size, sizeof(float));
+                        else if (opt_idx == LONG)   EXPECT_EQ(size, sizeof(long));
+                        else                        EXPECT_EQ(size, DEFAULT_SIZE);
+                        
+                        if (i != '\0' && i != '-')  EXPECT_EQ(flags, (1<<opt_idx));
+                        else                        EXPECT_EQ(flags, 0x0);                        
+                    }
+
+                    EXPECT_OUT_EQ("");
+                    EXPECT_SIGNAL_CODE_EQ(NOT_SIGNALED);
+                    
+                    char  *exp_err = NULL;
+                    int   exp_exit = EXIT_FAILURE;  
+                    
+                    if (i == 'h') {
+                        easeprintf(&exp_err, UsageInfoStr);
+                        exp_exit = EXIT_SUCCESS;  
+                    } 
+                    else if (i == '%')
+                        easeprintf(&exp_err, InvOptStr, "-%%");
+                    else if (i == '-' || i == '\0')
+                        exp_exit = EXIT_SUCCESS;
+                    else if (opt_idx >= 0 && LongOpts[opt_idx].has_arg == required_argument)
+                        easeprintf(&exp_err, OptReqsArg, i);
+                    else if (opt_idx >= 0)
+                        exp_exit = EXIT_SUCCESS;
+                    else
+                        easeprintf(&exp_err, InvOptChar, i);
+                    
+                    EXPECT_ERR_EQ((exp_err ? exp_err : ""));
+                    EXPECT_EXIT_CODE_EQ(exp_exit);
+
+                    if (exp_err) {
+                        free(exp_err);
+                        exp_err = NULL;
+                    }
+                }
+            }
+        }
     } 
 
-//    test_parse_opts_short_single();
 //    test_parse_opts_short_combined_single();
 //    test_parse_opts_short_combined_concat();
 //    test_parse_opts_long_single();
@@ -71,83 +144,6 @@ int main(void)
 }
 
 //// region: parse_opts
-//void test_parse_opts_short_single()
-//{
-//    int i, npass, nfail, exp_optind;
-//    unsigned exp_optstate;
-//    char opt[4], *exp_msg, *cmd_str, **argv;
-//    
-//    printf("\n\tsingle short opts\n"); 
-//
-//    npass = nfail = 0;
-//
-//    for (i = 0; i <= UCHAR_MAX; i++) {
-//        exp_optind = 2;
-//        exp_optstate = 0x1;
-//        exp_msg = NULL;
-//
-//        sprintf(opt, "-%c", i);
-//        switch(i) {
-//            case 'S':
-//                exp_optstate <<= STRUCT;
-//                exp_msg = rus_doll_fmt(3, "freq_test: %s\n", OptReqsArg, opt);
-//                break;
-//            case 'l':
-//                exp_optstate <<= LONG;
-//                break;
-//            case 'f':
-//                exp_optstate <<= FLOAT;
-//                break;
-//            case 'd':
-//                exp_optstate <<= DOUBLE;
-//                break;
-//            case 'i':
-//                exp_optstate <<= INT;
-//                break;
-//            case 's':
-//                exp_optstate <<= SORT;
-//                break;
-//            case 'R':
-//                exp_optstate <<= RAW;
-//                break;
-//            case 'D':
-//                exp_optstate <<= DELIM;
-//                exp_msg = rus_doll_fmt(3, "freq_test: %s\n", OptReqsArg, opt);
-//                break;
-//            case 'a':
-//                exp_optstate <<= AGGR;
-//                break;
-//            case 'h':
-//                exp_msg = rus_doll_fmt(2, "freq_test: %s\n", UsageInfoStr);
-//                break;
-//            case '-':
-//                exp_optstate = 0;
-//                break;
-//            case '\0':
-//                exp_optind = 1;
-//                exp_optstate = 0;
-//                break;
-//            default:
-//                exp_msg = rus_doll_fmt(3, "freq_test: %s\n", InvOptStr, opt);
-//                exp_optstate = 0x0;
-//        }
-//
-//        argv = create_argv(2, "./freq_test:", opt);
-//        cmd_str = concat_str_arr(argv, " ");
-//
-//        printf("\t\tcmd: \"%s\", exp_optstate: %u: ", cmd_str, exp_optstate);
-//        fflush(stdout);
-//        
-//        if(test_parse_opts(2, argv, exp_optstate, 0, exp_optind, exp_msg))
-//        
-//        free(cmd_str);
-//        free(argv);
-//        if (exp_msg)
-//            free(exp_msg);
-//    }
-//    
-//}
-//
 //void test_parse_opts_short_combined_single()
 //{
 //    int i, npass, nfail;
@@ -566,22 +562,7 @@ int main(void)
 //}
 //// endregion: parse_opts
 //
-//char **create_argv(int argc, ...)
-//{
-//    int i;
-//    char **argv;
-//    va_list args;
-//
-//    argv = (char **) emalloc(sizeof(char *) * (argc+1));
-//
-//    va_start(args, argc);
-//    for (i = 0; i < argc; i++)
-//        argv[i] = va_arg(args, char *);
-//    va_end(args);
-//    
-//    argv[argc] = NULL;
-//    return argv;
-//}
+
 //
 //char *concat_str_arr(char **arr, const char *delim)
 //{
