@@ -407,6 +407,7 @@ void read_pipes_to_bufs()
     ) {
         for (int i = USR; i <= SYS; i++)
             for (int j = OUT; j <= ERR; j++) {
+                if (nread[i][j] > 0) {
                 char **cur_buf = &(GLOBAL_CTX->bufs->bufs[i][j]);
                 int  *cur_size = &(GLOBAL_CTX->bufs->sizes[i][j]);
         
@@ -420,6 +421,7 @@ void read_pipes_to_bufs()
                 memcpy((*cur_buf + ntot[i][j]), temp_bufs[i][j], nread[i][j]);
                 ntot[i][j] += nread[i][j];
             }    
+    }
     }
     // NULL terminate bufs that exist
     for (int i = USR; i <= SYS; i++)
