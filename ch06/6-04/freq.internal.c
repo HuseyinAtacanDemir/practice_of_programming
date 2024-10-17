@@ -15,7 +15,7 @@ char *MutexOpts     = "(-i -d -f -l -S)";
 char *InvOptMutex   = "Mutually exclusive options %s cannot be used together";
 char *InvOptChar    = "invalid option -%c";
 char *InvOptStr     = "invalid option %s";
-char *OptReqsArg    = "option %s requires an argument";
+char *OptReqsArg    = "option -%c requires an argument";
 char *OptReqsOpt    = "option %s requires the option %s";
 
 char *UsageInfoStr = 
@@ -65,7 +65,7 @@ int parse_opts(int argc, char **argv, char **delim, int *size)
     // opterr: getopt.h, 0'ing it supresses getop.h errs, see "man 3 getopt"
     opterr = 0; 
     while ((opt = getopt_long(argc, argv, OPT_STR, LongOpts, NULL)) != -1) {
-				flags = set_opt_flag(flags, opt);
+		flags = set_opt_flag(flags, opt);
         switch (opt) {
             // cases 'h' ':' and '?' exit the program
             case 'h': usage_exit(); // EXIT_SUCCESS
@@ -80,7 +80,7 @@ int parse_opts(int argc, char **argv, char **delim, int *size)
             case 'S': *size = eatoi(optarg); break;
 
             // optind: getopt.h, index of next arg, "man 3 getopt"
-            case ':': eprintf(OptReqsArg, argv[optind-1]);
+            case ':': eprintf(OptReqsArg, optopt);
             case '?': optopt ? eprintf(InvOptChar, optopt)
                               : eprintf(InvOptStr, argv[optind-1]);
             // impossible case
