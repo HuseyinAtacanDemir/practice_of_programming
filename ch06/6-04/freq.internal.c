@@ -15,6 +15,7 @@ char *MutexOpts     = "(-i -d -f -l -S)";
 char *InvOptMutex   = "Mutually exclusive options %s cannot be used together";
 char *InvOptChar    = "invalid option -%c";
 char *InvOptStr     = "invalid option %s";
+char *CantConvert   = "cannot convert %s to integer";
 char *OptReqsArg    = "option -%c requires an argument";
 char *OptReqsOpt    = "option %s requires the option %s";
 
@@ -34,17 +35,17 @@ char *UsageInfoStr =
 
 // struct option: defined in getopt.h, see man 3 getopt 
 const struct option LongOpts[] = {
-    {"help",      no_argument,       0, 'h'},
-    {"aggregate", no_argument,       0, 'a'},
-    {"delim",     required_argument, 0, 'D'},
-    {"raw",       no_argument,       0, 'R'},
-    {"sort",      no_argument,       0, 's'},
-    {"int",       no_argument,       0, 'i'},
-    {"double",    no_argument,       0, 'd'},
-    {"float",     no_argument,       0, 'f'},
-    {"long",      no_argument,       0, 'l'},
-    {"struct",    required_argument, 0, 'S'},
-    {0, 0, 0, 0}
+    {"help",      no_argument,        0,  'h'},
+    {"aggregate", no_argument,        0,  'a'},
+    {"delim",     required_argument,  0,  'D'},
+    {"raw",       no_argument,        0,  'R'},
+    {"sort",      no_argument,        0,  's'},
+    {"int",       no_argument,        0,  'i'},
+    {"double",    no_argument,        0,  'd'},
+    {"float",     no_argument,        0,  'f'},
+    {"long",      no_argument,        0,  'l'},
+    {"struct",    required_argument,  0,  'S'},
+    {NULL,        0,                  0,  0}
 };
 
 void freq(FILE *fin, int flags, char *delim, int size)
@@ -104,7 +105,8 @@ int parse_opts(int argc, char **argv, char **delim, int *size)
                   In case of invalid options, return the original flags */
 int set_opt_flag(int flags, int opt)
 {
-		for (int i = 0; i < N_SUPPORTED_OPTS; i++)
+    int i;
+		for (i = 0; i < N_SUPPORTED_OPTS; i++)
 				if (LongOpts[i].val == opt)
 				    return ( flags | (1 << i) );
      return flags;
@@ -114,4 +116,20 @@ void usage_exit(void)
 {
     weprintf(UsageInfoStr);
     exit(EXIT_SUCCESS);
+}
+
+/* eatoi: convert a string to integer, report if error  */
+int eatoi(char *str)
+{
+    char *endptr;
+    long result;
+
+    endptr = NULL;
+    result = strtol(str, &endptr, 10);
+
+    //  See man 3 strtol
+    if (!(*str && *endptr == '\0'))
+        eprintf(CantConvert, str);
+
+    return (int) result;
 }

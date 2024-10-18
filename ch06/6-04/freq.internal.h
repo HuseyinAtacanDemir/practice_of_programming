@@ -8,5 +8,5 @@ extern void freq          (FILE *fin, int flags, char *delim, int size);
 extern void usage_exit    (void);
 extern int  parse_opts    (int argc, char **argv, char **delim, int *size);
 extern int  set_opt_flag  (int flags, int opt);
-
+extern int  eatoi         (char *str);
 #endif

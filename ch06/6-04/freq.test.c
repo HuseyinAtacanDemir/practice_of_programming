@@ -13,32 +13,9 @@
 // HELPERS
   int   get_opt_idx       (int opt);        
   char  **create_argv     (int argc, ...);
+  int   is_mutex_opts     (char opt1, char opt2);
   //char  *concat_str_arr   (char **arr, const char *delim);
   //char  *rus_doll_fmt     (int n, ...);
-
-int get_opt_idx(int opt)
-{
-    for (int i = 0; LongOpts[i].name != NULL; i++)
-        if (LongOpts[i].val == opt)
-            return i;
-    return -1;
-}
-char **create_argv(int argc, ...)
-{
-   int i;
-   char **argv;
-   va_list args;
-
-   argv = (char **) emalloc(sizeof(char *) * (argc+1));
-
-   va_start(args, argc);
-   for (i = 0; i < argc; i++)
-       argv[i] = va_arg(args, char *);
-   va_end(args);
-   
-   argv[argc] = NULL;
-   return argv;
-}
 
 int main(void)
 {
@@ -72,12 +49,33 @@ int main(void)
             }
         }
         TEST_SUITE("SUITE: parse_opts unit tests") {
+            TEST("test boundary no args") {
+                FORK() {
+                    int   argc = 1;
+                    char  **argv = create_argv(argc, "./freq_test");
+
+                    char  *delim = NULL;
+                    int   size = 0;
+
+                    int result = parse_opts(argc, argv, &delim, &size);
+
+                    EXPECT_EQ_PTR(delim, DEFAULT_DELIM);
+                    EXPECT_EQ(size, DEFAULT_SIZE);
+                    EXPECT_EQ(result, 0x0);
+                    EXPECT_EQ(optind, argc);
+                } 
+                EXPECT_EXIT_CODE_EQ(EXIT_SUCCESS);
+                EXPECT_SIGNAL_CODE_EQ(NOT_SIGNALED);
+                EXPECT_OUT_EQ("");
+                EXPECT_ERR_EQ("");
+            }
             TEST("test single short invalid opts") {
                 for (int i = 0; i < UCHAR_MAX + 1; i++) {
                     int opt_idx = get_opt_idx(i);
                     // '\0' transposes option to just -
                     // '-'  creates the "--" opt, which has a special meaning
                     //      int getopt, so it is valid 
+                    // see "man 3 getopt" or "man 3 getopt_long"
                     if (opt_idx >= 0 || i == '\0' || i == '-')
                         continue;
                     FORK() {
@@ -93,6 +91,8 @@ int main(void)
                         ASSERT_TRUE(0);
                     }
 
+                    // should not have printed to stdout
+                    // should not have gotten any signals
                     EXPECT_OUT_EQ("");
                     EXPECT_SIGNAL_CODE_EQ(NOT_SIGNALED);
                     
@@ -130,19 +130,26 @@ int main(void)
                         EXPECT_EQ(optind, ((i != '\0') ? argc : argc-1));
                         EXPECT_EQ_PTR(delim, DEFAULT_DELIM);
 
-                        if      (opt_idx == INT)    EXPECT_EQ(size, sizeof(int));
-                        else if (opt_idx == DOUBLE) EXPECT_EQ(size, sizeof(double));
-                        else if (opt_idx == FLOAT)  EXPECT_EQ(size, sizeof(float));
-                        else if (opt_idx == LONG)   EXPECT_EQ(size, sizeof(long));
-                        else                        EXPECT_EQ(size, DEFAULT_SIZE);
+                        if (opt_idx == INT)
+                            EXPECT_EQ(size, sizeof(int));
+                        else if (opt_idx == DOUBLE) 
+                            EXPECT_EQ(size, sizeof(double));
+                        else if (opt_idx == FLOAT)
+                            EXPECT_EQ(size, sizeof(float));
+                        else if (opt_idx == LONG)
+                            EXPECT_EQ(size, sizeof(long));
+                        else
+                            EXPECT_EQ(size, DEFAULT_SIZE);
                         
-                        if (i != '\0' && i != '-')  EXPECT_EQ(flags, (1<<opt_idx));
-                        else                        EXPECT_EQ(flags, 0x0);                        
+                        if (i != '\0' && i != '-')
+                            EXPECT_EQ(flags, (1<<opt_idx));
+                        else
+                            EXPECT_EQ(flags, 0x0);                        
                     }
 
                     EXPECT_OUT_EQ("");
                     EXPECT_SIGNAL_CODE_EQ(NOT_SIGNALED);
-                    
+
                     char  *exp_err = NULL;
                     int   exp_exit = EXIT_SUCCESS;
                     if (i == 'h')
@@ -161,64 +168,116 @@ int main(void)
                     }
                 }
             }
-            //TEST("test separately combined short opts") {
-                //for (int i = 0; i < UCHAR_MAX + 1; i++) {
-                    //int opt_idx = get_opt_idx(i);
-                    //
-                    //FORK() {
-                        //char opt[3] = { '-', i, '\0' };
-                        //
-                        //int argc    = 2;
-                        //char **argv = create_argv(argc, "./freq_test", opt);
-                        //char *delim = DEFAULT_DELIM;
-                        //int size    = DEFAULT_SIZE;
-                        //
-                        //int flags = parse_opts(argc, argv, &delim, &size);
-//
-                        //// getopt.h: int optind, see "man 3 getopt"
-                        //EXPECT_EQ(optind, ((i != '\0') ? argc : argc-1));
-                        //EXPECT_EQ_PTR(delim, DEFAULT_DELIM);
-//
-                        //if      (opt_idx == INT)    EXPECT_EQ(size, sizeof(int));
-                        //else if (opt_idx == DOUBLE) EXPECT_EQ(size, sizeof(double));
-                        //else if (opt_idx == FLOAT)  EXPECT_EQ(size, sizeof(float));
-                        //else if (opt_idx == LONG)   EXPECT_EQ(size, sizeof(long));
-                        //else                        EXPECT_EQ(size, DEFAULT_SIZE);
-                        //
-                        //if (i != '\0' && i != '-')  EXPECT_EQ(flags, (1<<opt_idx));
-                        //else                        EXPECT_EQ(flags, 0x0);                        
-                    //}
-//
-                    //EXPECT_OUT_EQ("");
-                    //EXPECT_SIGNAL_CODE_EQ(NOT_SIGNALED);
-                    //
-                    //char  *exp_err = NULL;
-                    //int   exp_exit = EXIT_FAILURE;  
-                    //
-                    //if (i == 'h') {
-                        //easeprintf(&exp_err, UsageInfoStr);
-                        //exp_exit = EXIT_SUCCESS;  
-                    //} 
-                    //else if (i == '%')
-                        //easeprintf(&exp_err, InvOptStr, "-%%");
-                    //else if (i == '-' || i == '\0')
-                        //exp_exit = EXIT_SUCCESS;
-                    //else if (opt_idx >= 0 && LongOpts[opt_idx].has_arg == required_argument)
-                        //easeprintf(&exp_err, OptReqsArg, i);
-                    //else if (opt_idx >= 0)
-                        //exp_exit = EXIT_SUCCESS;
-                    //else
-                        //easeprintf(&exp_err, InvOptChar, i);
-                    //
-                    //EXPECT_ERR_EQ((exp_err ? exp_err : ""));
-                    //EXPECT_EXIT_CODE_EQ(exp_exit);
-//
-                    //if (exp_err) {
-                        //free(exp_err);
-                        //exp_err = NULL;
-                    //}
-                //}
-            //}
+            TEST("test separately combined 2 valid short opts") {
+                for (int i = 0; i < N_SUPPORTED_OPTS-1; i++) {
+                    for (int j = i+1; j < N_SUPPORTED_OPTS; j++)
+                        for (int k = 0; k < 2; k++) {
+                            char opts[2][3] = { 
+                                {'-', LongOpts[(k%2 ? j : i)].val, '\0'}, 
+                                {'-', LongOpts[(k%2 ? i : j)].val, '\0'}
+                            };
+                            int argc = 3;
+                            FORK() {
+                                int   flags  = 0x0;
+                                int   size   = DEFAULT_SIZE;
+                                char  *delim = DEFAULT_DELIM;
+                                char  **argv = create_argv(argc, "./freq_test", 
+                                                            opts[0], opts[1]);
+
+                                flags = parse_opts(argc, argv, &delim, &size);
+
+                                // impossible, parse opts should have exited
+                                // if opt[0] -h: usage and exit
+                                // if opt[0] -S: couldnt have converted 2nd opt 
+                                //              opt to an integer, err and exit
+                                // if opt[0] -D: it would hve taken the 2nd opt 
+                                //              as its delim arg, BUT
+                                // if opt[1] -D: then it would err and exit
+                                // if none of these are true, 
+                                //                but we received 2 mutex opts, 
+                                //                would have exited.
+                                if (opts[0][1] == 'h') 
+                                    ASSERT_EQ_CHAR(i, j);
+                                else if (opts[0][1] == 'S') 
+                                    ASSERT_EQ_CHAR(i, j);
+                                else if (opts[1][1] == 'D') 
+                                    ASSERT_EQ_CHAR(i, j);
+                                else if (is_mutex_opts(opts[0][1], opts[1][1]))
+                                    ASSERT_EQ_CHAR(i, j);
+
+                                // If none of the above are true, then we have 
+                                //  not exited
+                                // If opt[0] -D: it would have taken 2nd opt as
+                                //              its own arg for delim, so 2nd
+                                //              opt would not be processed as a
+                                //              opt during flag calculation
+                                // else business as usual
+                                if (opts[0][1] == 'D') { 
+                                    ASSERT_EQ(flags, (1<<DELIM));
+                                    ASSERT_STREQ(delim, opts[1]);
+                                } else {
+                                    ASSERT_EQ(flags, ((1<<i) | (1<<j)));
+                                    EXPECT_EQ_PTR(delim, NULL);
+                                }
+                                
+                                // see "man 3 getopt"
+                                EXPECT_EQ(optind, argc);
+ 
+                                // if a type flag was selected -i -d -f -l and 
+                                // processed (see -D eating up succeeding 
+                                // option above) we would expect the size to be
+                                // initialized to the correct sizeof(type)
+                                // else DEFAULT_SIZE (ie sizeof(char))
+                                if (flags & (1<<INT))     
+                                    EXPECT_EQ(size, sizeof(int));
+                                else if (flags & (1<<DOUBLE))  
+                                    EXPECT_EQ(size, sizeof(double));
+                                else if (flags & (1<<FLOAT))   
+                                    EXPECT_EQ(size, sizeof(float));
+                                else if (flags & (1<<LONG))    
+                                    EXPECT_EQ(size, sizeof(long));
+                                else
+                                    EXPECT_EQ(size, DEFAULT_SIZE);
+                            } 
+
+                            char  *exp_err = NULL;
+                            int   exp_exit = EXIT_FAILURE;  
+
+                            if (opts[0][1] == 'h') {
+                                easeprintf(&exp_err, UsageInfoStr);
+                                exp_exit = EXIT_SUCCESS;
+                            } 
+                            else if (opts[0][1] == 'D')
+                                exp_exit = EXIT_SUCCESS;
+                            else if (opts[0][1] == 'S')
+                                easeprintf(&exp_err, CantConvert, opts[1]);
+                            else if (opts[1][1] == 'S')
+                                easeprintf(&exp_err, OptReqsArg, 'S');
+                            else if (is_mutex_opts(opts[0][1], opts[1][1])) 
+                                easeprintf(&exp_err, InvOptMutex, MutexOpts);
+                            else if (opts[1][1] == 'h') {
+                                easeprintf(&exp_err, UsageInfoStr);
+                                exp_exit = EXIT_SUCCESS;
+                            } 
+                            else if (opts[1][1] == 'D') 
+                                easeprintf(&exp_err, OptReqsArg, 'D');
+                            else 
+                                exp_exit = EXIT_SUCCESS;
+                            
+                            EXPECT_OUT_EQ("");
+                            EXPECT_SIGNAL_CODE_EQ(NOT_SIGNALED);
+
+                            EXPECT_ERR_EQ((exp_err ? exp_err : ""));
+                            EXPECT_EXIT_CODE_EQ(exp_exit);
+
+                            if (exp_err) {
+                                free(exp_err);
+                                exp_err = NULL;
+                            }
+
+                        }
+                }
+            }
             TEST("test concat combined short opts") {
 
             }
@@ -238,92 +297,6 @@ int main(void)
 }
 
 //// region: parse_opts
-//void test_parse_opts_short_combined_single()
-//{
-//    int i, npass, nfail;
-//    struct TestCase {
-//        int       argc;
-//        int       exp_size;
-//        int       exp_optind; // GNU getopt intializes optind to 1
-//        unsigned  exp_optstate;
-//        char      *exp_msg;
-//        char      **argv;
-//    };
-//
-//    printf("\n\tshort opts combined separate\n"); 
-//
-//    npass = nfail = 0;
-//
-//    struct TestCase cases[] = {
-//    // Valid combinations
-//    {3, 0, 3, 0x28, NULL, 
-//      create_argv(3, "./freq_test", "-i", "-R")}, 
-//    
-//    {4, 0, 4, 0x0C, NULL, 
-//      create_argv(4, "./freq_test", "-D", "\"delim\"", "-R")},  
-//    
-//    {4, 0, 4, 0x112, NULL, 
-//      create_argv(4, "./freq_test", "-s", "-a", "-l")}, 
-//    
-//    {3, 0, 3, 0x88, NULL, 
-//      create_argv(3, "./freq_test", "-f", "-R")}, 
-//    
-//    {4, 10, 4, 0x208, NULL, 
-//      create_argv(4, "./freq_test", "-S", "10", "-R")}, 
-//
-//    // Invalid combinations (mutually exclusive)
-//    {3, 0, 3, 0x00, rus_doll_fmt(3, "freq_test: %s\n", InvOptMutex, MutexOpts), 
-//      create_argv(3, "./freq_test", "-i", "-d")}, 
-//    
-//    {3, 0, 3, 0x00, rus_doll_fmt(3, "freq_test: %s\n", InvOptMutex, MutexOpts), 
-//      create_argv(3, "./freq_test", "-f", "-l")}, 
-//    
-//    {5, 0, 6, 0x00, rus_doll_fmt(3, "freq_test: %s\n", InvOptMutex, MutexOpts), 
-//      create_argv(5, "./freq_test", "-i", "-d", "-S", "5")}, 
-//    
-//    {4, 0, 4, 0x00, rus_doll_fmt(3, "freq_test: %s\n", InvOptMutex, MutexOpts), 
-//      create_argv(4, "./freq_test", "-S", "5", "-i")}, 
-//    
-//    {4, 0, 4, 0x00, rus_doll_fmt(3, "freq_test: %s\n", InvOptMutex, MutexOpts),
-//      create_argv(4, "./freq_test","-S", "5", "-d")},  
-//
-//    // Missing required arguments
-//    {3, 0, 3, 0x00, rus_doll_fmt(3, "freq_test: %s\n", OptReqsQt, "-D"), 
-//      create_argv(3, "./freq_test", "-D", "-R")},  
-//    
-//    {3, 0, 3, 0x00, rus_doll_fmt(3, "freq_test: %s\n", OptReqsArg, "-S"), 
-//      create_argv(3, "./freq_test", "-S", "-R")},  
-//
-//    // Option -S requires -R
-//    {4, 0, 4, 0x00, rus_doll_fmt(2, "freq_test: %s\n", OptSReqsArgR),
-//      create_argv(4, "./freq_test", "-S", "10", "-s")},  
-//    
-//    {4, 10, 4, 0x208, NULL, 
-//      create_argv(4, "./freq_test", "-S", "10", "-R")},  
-//
-//    // Valid multiple short options
-//    {7, 0, 7, 0x3E, NULL, // 0000 0011 1110 
-//      create_argv(7, "./freq_test", "-i", "-R", "-s", "-a", "-D", "\",\"")},  
-//    {4, 0, 4, 0x98, NULL, 
-//      create_argv(5, "./freq_test", "-f", "-R", "-s")},
-//
-//    {0, 0, 0, 0, NULL, NULL}  
-//    };
-//
-//    for (i = 0; cases[i].argc != 0; i++) {
-//        printf("\t\tcmd: \"%s\" argc: %d, exp_optstate: %u, exp_optind: %d: ", 
-//                concat_str_arr(cases[i].argv, " "), cases[i].argc, 
-//                cases[i].exp_optstate, cases[i].exp_optind);
-//        fflush(stdout);
-//        if (test_parse_opts(cases[i].argc,cases[i].argv,cases[i].exp_optstate,
-//                     cases[i].exp_size, cases[i].exp_optind, cases[i].exp_msg))
-//        if (cases[i].exp_msg)
-//            free(cases[i].exp_msg);
-//        free(cases[i].argv);
-//    }
-//
-//}
-//
 //void test_parse_opts_short_combined_concat()
 //{
 //    int i, npass, nfail;
@@ -682,3 +655,43 @@ int main(void)
 //    return s;
 //}
 //
+
+int get_opt_idx(int opt)
+{
+    for (int i = 0; LongOpts[i].name != NULL; i++)
+        if (LongOpts[i].val == opt)
+            return i;
+    return -1;
+}
+
+char **create_argv(int argc, ...)
+{
+   int i;
+   char **argv;
+   va_list args;
+
+   argv = (char **) emalloc(sizeof(char *) * (argc+1));
+
+   va_start(args, argc);
+   for (i = 0; i < argc; i++)
+       argv[i] = va_arg(args, char *);
+   va_end(args);
+   
+   argv[argc] = NULL;
+   return argv;
+}
+
+int is_mutex_opts(char opt1, char opt2)
+{
+    if (opt1 == opt2)
+        return 0;
+    int i, j, k;
+    for (i = j = k = 0; i < N_SUPPORTED_OPTS; i++) {
+        if (LongOpts[i].val == opt1 && (TYPE_OPTS_MASK & (1<<i)))
+            j++;
+        if (LongOpts[i].val == opt2 && (TYPE_OPTS_MASK & (1<<i)))
+            k++;
+    }
+    return (j & k);
+}
+

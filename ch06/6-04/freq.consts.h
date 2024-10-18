@@ -12,7 +12,7 @@
 
 #define DEFAULT_DELIM     NULL
 #define DEFAULT_SIZE      sizeof(char)
-#define OPT_STR           "+:haD:RsidflS:"
+#define OPT_STR           ":haD:RsidflS:"
 
 enum { HELP, AGGR, DELIM, RAW, SORT, INT, DOUBLE, FLOAT, LONG, STRUCT };
 
@@ -20,6 +20,7 @@ extern char *MutexOpts;
 extern char *InvOptMutex;
 extern char *InvOptChar;
 extern char *InvOptStr;
+extern char *CantConvert;
 extern char *OptReqsArg;
 extern char *OptReqsOpt;
 
