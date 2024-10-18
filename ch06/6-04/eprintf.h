@@ -25,8 +25,6 @@ extern char   *estrndup     (char *, int);
 extern char   *eshstrdup    (char *); 
 extern char   *eshstrndup   (char *, int);
 
-extern int    eatoi         (char *);
-
 extern void   *emalloc      (size_t); 
 extern void   *ecalloc      (size_t, size_t);
 extern void   *erealloc     (void *, size_t); 
