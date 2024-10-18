@@ -72,9 +72,49 @@ int main(void)
             }
         }
         TEST_SUITE("SUITE: parse_opts unit tests") {
-            TEST("single short opts") {
+            TEST("test single short invalid opts") {
                 for (int i = 0; i < UCHAR_MAX + 1; i++) {
                     int opt_idx = get_opt_idx(i);
+                    // '\0' transposes option to just -
+                    // '-'  creates the "--" opt, which has a special meaning
+                    //      int getopt, so it is valid 
+                    if (opt_idx >= 0 || i == '\0' || i == '-')
+                        continue;
+                    FORK() {
+                        char opt[3] = { '-', i, '\0' };
+                        
+                        int argc    = 2;
+                        char **argv = create_argv(argc, "./freq_test", opt);
+                        char *delim = DEFAULT_DELIM;
+                        int size    = DEFAULT_SIZE;
+                        
+                        parse_opts(argc, argv, &delim, &size);
+                        //should not reach here, we are testing inv opts only
+                        ASSERT_TRUE(0);
+                    }
+
+                    EXPECT_OUT_EQ("");
+                    EXPECT_SIGNAL_CODE_EQ(NOT_SIGNALED);
+                    
+                    char *exp_err = NULL;
+                    if (i == '%')
+                        easeprintf(&exp_err, InvOptStr, "-%%");
+                    else
+                        easeprintf(&exp_err, InvOptChar, i);
+                    
+                    EXPECT_ERR_EQ((exp_err ? exp_err : ""));
+                    EXPECT_EXIT_CODE_EQ(EXIT_FAILURE);
+
+                    free(exp_err);
+                    exp_err = NULL;
+                }
+            }
+            TEST("test single short valid opts") {
+                for (int i = 0; i < UCHAR_MAX + 1; i++) {
+                    int opt_idx = get_opt_idx(i);
+                    // filter out invalid options
+                    if (opt_idx < 0 & i != '\0' & i != '-')
+                        continue;
                     
                     FORK() {
                         char opt[3] = { '-', i, '\0' };
@@ -104,22 +144,13 @@ int main(void)
                     EXPECT_SIGNAL_CODE_EQ(NOT_SIGNALED);
                     
                     char  *exp_err = NULL;
-                    int   exp_exit = EXIT_FAILURE;  
-                    
-                    if (i == 'h') {
+                    int   exp_exit = EXIT_SUCCESS;
+                    if (i == 'h')
                         easeprintf(&exp_err, UsageInfoStr);
-                        exp_exit = EXIT_SUCCESS;  
-                    } 
-                    else if (i == '%')
-                        easeprintf(&exp_err, InvOptStr, "-%%");
-                    else if (i == '-' || i == '\0')
-                        exp_exit = EXIT_SUCCESS;
-                    else if (opt_idx >= 0 && LongOpts[opt_idx].has_arg == required_argument)
+                    else if (LongOpts[opt_idx].has_arg == required_argument) {
                         easeprintf(&exp_err, OptReqsArg, i);
-                    else if (opt_idx >= 0)
-                        exp_exit = EXIT_SUCCESS;
-                    else
-                        easeprintf(&exp_err, InvOptChar, i);
+                        exp_exit = EXIT_FAILURE;
+                    }
                     
                     EXPECT_ERR_EQ((exp_err ? exp_err : ""));
                     EXPECT_EXIT_CODE_EQ(exp_exit);
@@ -130,9 +161,72 @@ int main(void)
                     }
                 }
             }
+            //TEST("test separately combined short opts") {
+                //for (int i = 0; i < UCHAR_MAX + 1; i++) {
+                    //int opt_idx = get_opt_idx(i);
+                    //
+                    //FORK() {
+                        //char opt[3] = { '-', i, '\0' };
+                        //
+                        //int argc    = 2;
+                        //char **argv = create_argv(argc, "./freq_test", opt);
+                        //char *delim = DEFAULT_DELIM;
+                        //int size    = DEFAULT_SIZE;
+                        //
+                        //int flags = parse_opts(argc, argv, &delim, &size);
+//
+                        //// getopt.h: int optind, see "man 3 getopt"
+                        //EXPECT_EQ(optind, ((i != '\0') ? argc : argc-1));
+                        //EXPECT_EQ_PTR(delim, DEFAULT_DELIM);
+//
+                        //if      (opt_idx == INT)    EXPECT_EQ(size, sizeof(int));
+                        //else if (opt_idx == DOUBLE) EXPECT_EQ(size, sizeof(double));
+                        //else if (opt_idx == FLOAT)  EXPECT_EQ(size, sizeof(float));
+                        //else if (opt_idx == LONG)   EXPECT_EQ(size, sizeof(long));
+                        //else                        EXPECT_EQ(size, DEFAULT_SIZE);
+                        //
+                        //if (i != '\0' && i != '-')  EXPECT_EQ(flags, (1<<opt_idx));
+                        //else                        EXPECT_EQ(flags, 0x0);                        
+                    //}
+//
+                    //EXPECT_OUT_EQ("");
+                    //EXPECT_SIGNAL_CODE_EQ(NOT_SIGNALED);
+                    //
+                    //char  *exp_err = NULL;
+                    //int   exp_exit = EXIT_FAILURE;  
+                    //
+                    //if (i == 'h') {
+                        //easeprintf(&exp_err, UsageInfoStr);
+                        //exp_exit = EXIT_SUCCESS;  
+                    //} 
+                    //else if (i == '%')
+                        //easeprintf(&exp_err, InvOptStr, "-%%");
+                    //else if (i == '-' || i == '\0')
+                        //exp_exit = EXIT_SUCCESS;
+                    //else if (opt_idx >= 0 && LongOpts[opt_idx].has_arg == required_argument)
+                        //easeprintf(&exp_err, OptReqsArg, i);
+                    //else if (opt_idx >= 0)
+                        //exp_exit = EXIT_SUCCESS;
+                    //else
+                        //easeprintf(&exp_err, InvOptChar, i);
+                    //
+                    //EXPECT_ERR_EQ((exp_err ? exp_err : ""));
+                    //EXPECT_EXIT_CODE_EQ(exp_exit);
+//
+                    //if (exp_err) {
+                        //free(exp_err);
+                        //exp_err = NULL;
+                    //}
+                //}
+            //}
+            TEST("test concat combined short opts") {
+
+            }
+            TEST("test single long  opts") {
+
+            }
         }
     } 
-
 //    test_parse_opts_short_combined_single();
 //    test_parse_opts_short_combined_concat();
 //    test_parse_opts_long_single();
