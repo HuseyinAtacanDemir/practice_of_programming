@@ -5,11 +5,11 @@
 #include <stdarg.h>
 
 // eprintf.h: error wrapper functions
-extern void   eprintf       (char *, ...);
-extern void   weprintf      (char *, ...); 
+extern void   eprintf       (const char *fmt, ...);
+extern void   weprintf      (const char *fmt, ...); 
 
-extern void   efprintf      (FILE *, char *, ...);
-extern void   wefprintf     (FILE *, char *, ...); 
+extern void   efprintf      (FILE *, const char *fmt, ...);
+extern void   wefprintf     (FILE *, const char *fmt, ...); 
 
 extern int    easeprintf    (char **, const char *fmt, ...);
 

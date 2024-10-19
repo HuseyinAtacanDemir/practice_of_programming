@@ -7,7 +7,7 @@
 #include <errno.h>
 #include <limits.h>
 
-static void vfprint_msg         (FILE *fout, char *fmt, va_list args);
+static void vfprint_msg         (FILE *fout, const char *fmt, va_list args);
 static int  evasprintf_common   (char **strp, const char *fmt,  
                                   void *(*alloc_fn)(size_t), 
                                   void (*free_fn)(void *), va_list args);
@@ -15,7 +15,7 @@ static int  evasprintf_common   (char **strp, const char *fmt,
 /* vfprint_msg: helper routine that prints an error/warning message with:
                 1) progname if it exists, 
                 2) errno info if fmt's last char is ':'*/
-static void vfprint_msg(FILE *fout, char *fmt, va_list args)
+static void vfprint_msg(FILE *fout, const char *fmt, va_list args)
 {
     fflush(fout); 
     if(getprogname() != NULL)
@@ -29,7 +29,7 @@ static void vfprint_msg(FILE *fout, char *fmt, va_list args)
 }
 
 /* eprintf: print error message and exit */ 
-void eprintf(char *fmt, ...)
+void eprintf(const char *fmt, ...)
 {
     fflush(stdout); 
 
@@ -42,7 +42,7 @@ void eprintf(char *fmt, ...)
 }
 
 /* weprintf: print warning message */ 
-void weprintf(char *fmt, ...)
+void weprintf(const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt); 
@@ -51,7 +51,7 @@ void weprintf(char *fmt, ...)
 }
 
 /* efprintf: print error message to file and exit */
-void efprintf(FILE *fin, char *fmt, ...)
+void efprintf(FILE *fin, const char *fmt, ...)
 {
     fflush(stdout); 
 
@@ -64,7 +64,7 @@ void efprintf(FILE *fin, char *fmt, ...)
 }
 
 /* wefprintf: print warning message to file */ 
-void wefprintf(FILE *fin, char *fmt, ...)
+void wefprintf(FILE *fin, const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt); 

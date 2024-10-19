@@ -1,71 +1,95 @@
 .TH FREQ 1 "2024" "1.0" "User Commands"
 .SH NAME
-freq \- count and display the frequency of distinct elements
+freq \- frequency of distinct characters, integers, doubles, strings
 .SH SYNOPSIS
 .B freq
-[ \-haDRsidflS ] [ \fB\-D\fR \fIDELIM\fR] [ \fB\-S\fR \fIsize\fR ] [ \fB\-i\fR | \fB\-d\fR | \fB\-f\fR | \fB\-l\fR ] [ \fB\-\-delimiter\fR=\fIDELIM\fR ] [ \fB\-\-struct\fR=\fIsize\fR ] [ file ... ]
+[ \-acdDhisRS ]
+[ \fB\-D\fR \fIDELIM\fR]
+[ \fB\-R\fR \fIsize\fR ]
+[ file ... ]
 .SH DESCRIPTION
+The
 .B freq
-reads from stdin or input files. Counts the frequency of distinct elements. It outputs the elements along with their counts in the following format:
+utility reads input line by line from stdin or input files -if provided- and
+counts the frequency of appereance of distinct elements in the input.
+It outputs each distinct element found in the input in a new line along with
+its count of appereance in the following format:
 .sp
 element:count
 .sp
-By default, \fBfreq\fR processes input as delimited text. It can also process byte streams and handle various data types using appropriate options.
+By default, \fBfreq\fR processes input as whitespace delimited strings, where
+a whitespace is defined as any input which is considered a whitespace by
+\fBiswspace(3)\fR function of the Standard C Library. The delimiter can be
+changed with options.
+.sp
+Depending on options provided, \fBfreq\fR can process byte streams; handle
+char, integer, and double data types in text input; and handle char, integer,
+double, and string input in byte streams.
+
+When provided with one or more options that specify input type,
+\fBfreq\fR disregards input that does not conform to the specified types.
 .SH OPTIONS
 .TP
 .BR \-h ", " \-\-help
-Display help information and exit.
+Display usage information and exit.
 .TP
 .BR \-a ", " \-\-aggregate
-Aggregate the input files and perform freq on the aggregated input set
+Aggregate the input files and perform the operations specified by the
+remaining options on the aggregated input set
 .TP
 .BR \-D " " \fIDELIM\fR ", " \fB\-\-delimiter\fR=\fIDELIM\fB
-Specify the delimiter to split input elements (supports regex). If not specified, the default delimiter is empty string.
+Specify the delimiter to split input elements (supports regex).
+If not specified, the default delimiter is any whitespace character
+cluster of any length.
 .TP
-.BR \-R ", " \-\-raw
-Process the input as a raw byte stream, without delimiters. Assumes packed data. 
+.BR \-R " " \fIsize\fR ", " \fB\-\-raw\fR=\fIsize\fR
+Process the input as a raw byte stream, using the specified \fIsize\fR value
+as the byte count delimiter. Assumes packed data. 
 .TP
 .BR \-s ", " \-\-sort
 Sort the output by the element values.
+When one or more type options are present,
+the sorted output is grouped by type, and the groups appear in the same order
+as the type options provided to by the user
+.TP
+.BR \-S ", " \-\-string
+Interpret the input as strings.
+\fBfreq\fR interprets the input as strings by default.
+When used on its own \fI-S\fR would consider each delimited input as a string.
+When used in conjunction with other type options,
+\fI-S\fR option would give the ability not to disregard strings in the input.
+.TP
+.BR \-c ", " \-\-char
+Interpret the input as characters. 
 .TP
 .BR \-i ", " \-\-int
-Interpret the input as integers.
+Interpret the input as integers or long or long long. When used in conjunction with other type options
 .TP
 .BR \-d ", " \-\-double
-Interpret the input as doubles.
-.TP
-.BR \-f ", " \-\-float
-Interpret the input as floats.
-.TP
-.BR \-l ", " \-\-long
-Interpret the input as long integers.
-.TP
-.BR \-S " " \fIsize\fR ", " \-\-struct= \fIsize\fR
-Interpret the input as packed structs of \fIsize\fR bytes. Requires the \fB\-R\fR (or \fB\-\-raw\fR) option to be selected.
+Interpret the input as doubles or long doubles.
 .SH EXAMPLES
 .TP
 Count distinct chars in a file using no delimiters (each char read is counted until EOF):
 .sp
-.B freq
-file.txt
+$ \fBfreq\fR file.txt
 .TP
 Use a comma as the delimiter for splitting input elements:
 .sp
-.B freq \-D ","
-file.csv
+$ \fBfreq \-D ,\fR file.csv
 .TP
 Count distinct integers from a byte stream:
 .sp
 .B freq \-\-raw \-i
 file.bin
 .TP
-Sort the output while counting distinct floats:
+Sort the output while counting distinct doubles:
 .sp
-.B freq \-f \-s
+.B freq \-d \-s
 file.txt
 .SH SEE ALSO
 .B sort(1),
-.B uniq(1)
+.B uniq(1),
+.B grep(1)
 .SH HISTORY
 .TP
 The first version of \fBfreq\fR appeared as the \fIauthor\fR's solution to the question 6-4 in the book \fBPractice of Programming\fR by Brian W. Kernighan and Rob Pike.
