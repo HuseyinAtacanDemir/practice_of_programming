@@ -15,7 +15,36 @@ int main(void)
 {
     init_ctx();
     TEST_PROGRAM("FREQ INTERNAL UNIT TESTS") {
-      TEST_SUITE("SUITE: set_opt_flag unit tests") {
+/*
+      TEST_SUITE("SUITE: atoi_pos") {
+        struct {
+            char *test_name;
+            char *input;
+            int exp_result;
+        } cases[] = {
+            {"test positive int str",   "123",          123},
+            {"test int max str",        "2147483647",   INT_MAX},
+            {"test zero int str",       "0",            NOT_POSITIVE_INT_ERR},
+            {"test int min str",        "-2147483648",  NOT_POSITIVE_INT_ERR},
+            {"test negative int str",   "-123",         NOT_POSITIVE_INT_ERR},
+            {"test invalid str",        "asd",          NOT_POSITIVE_INT_ERR},
+            {"test semivalid int str",  "123.123",      NOT_POSITIVE_INT_ERR},
+            {"test int max+1 str",      "2147483648",   NOT_POSITIVE_INT_ERR},
+            {"test int min-1 str",      "-2147483649",  NOT_POSITIVE_INT_ERR},
+            {"test positive long str",  "3147483649",   NOT_POSITIVE_INT_ERR},
+            {"test negative long str",  "-3147483649",  NOT_POSITIVE_INT_ERR},
+            {"test stress",  "3149475927592457483649",  NOT_POSITIVE_INT_ERR},
+            {NULL, NULL, 0}
+        };
+        for (int i = 0; cases[i].test_name; i++) {
+            TEST(cases[i].test_name) {
+                int result = atoi_pos(cases[i].input);
+                EXPECT_EQ(result, cases[i].exp_result);
+            }
+        }
+      }
+
+      TEST_SUITE("SUITE: set_opt_flag") {
         TEST("test valid opts 0x0 initial flags") {
             for (int i = 0; i < N_SUPPORTED_OPTS; i++) {
                 char opt = LongOpts[i].val; 
@@ -54,8 +83,135 @@ int main(void)
                 EXPECT_EQ(0x0, set_opt_flag(0x0, cases[i]));
         }
       }
+*/
+      TEST_SUITE("SUITE: parse_opts") {
+        struct {
+            char  *name;
+            int   argc;
+            int   exp_flags;
+            int   exp_size;
+            char  *exp_delim;
+            char  *exp_err;
+            int   exp_exit_code;
+            char  **argv;
+        } cases[] = {
+            // no opts
+            /* {"test no args should just exit from fork with success",
+              1, 0x000, 0, NULL, NULL, 
+              EXIT_SUCCESS, create_argv(1)},
+
+            // single valid short opts
+            {"test -h should print usage and exit from fork with success", 
+              2, 0x000, 0, NULL, get_eprintf_str(UsageInfoStr), 
+              EXIT_SUCCESS, create_argv(2, "-h")},
+
+            {"test -a should set the proper flag", 
+              2, 0x002, 0, NULL, NULL, 
+              EXIT_SUCCESS, create_argv(2, "-a")},
+
+            {"test -s should set the proper flag", 
+              2, 0x004, 0, NULL, NULL, 
+              EXIT_SUCCESS, create_argv(2, "-s")}, */
+
+            {"test -D should set delim to ','", 
+              3, 0x008, 0, ",", NULL, 
+              EXIT_SUCCESS, create_argv(3, "-D", ",")},
+
+            /* {"test -c should set the proper flag", 
+              2, 0x020, 0, NULL, NULL,
+              EXIT_SUCCESS, create_argv(2, "-c")},
+
+            {"test -i should set the proper flag", 
+              2, 0x040, 0, NULL, NULL, 
+              EXIT_SUCCESS, create_argv(2, "-i")},
+
+            {"test -d should set the proper flag", 
+              2, 0x080, 0, NULL, NULL, 
+              EXIT_SUCCESS, create_argv(2, "-d")},
+              
+            {"test -S should set the proper flag", 
+              2, 0x100, 0, NULL, NULL, 
+              EXIT_SUCCESS, create_argv(2, "-S")}, */
+
+            // single invalid usage short opts
+            {"test -D should exit with failure and ErrOptReqsArg", 
+              2, 0x000, 0, NULL, get_eprintf_str(ErrOptReqsArg, 'D'), 
+              EXIT_SUCCESS, create_argv(2, "-D")},
+
+            /* {"test -R should exit with failure and ErrOptMutexDefault", 
+              2, 0x000, 0, NULL, get_eprintf_str(ErrOptMutexDefault), 
+              EXIT_FAILURE, create_argv(2, "-R")},
+
+            {"test -Rasd should exit with failure and ErrInvSizeArg", 
+              2, 0x000, 0, NULL, get_eprintf_str(ErrInvSizeArg, "asd"), 
+              EXIT_FAILURE, create_argv(2, "-Rasd")},
+
+            // single invalid short opts
+            {"test -z should exit with failure and ErrInvOpt", 
+              2, 0x000, 0, NULL, get_eprintf_str(ErrInvOpt, "-z"), 
+              EXIT_FAILURE, create_argv(2, "-z")},
+
+            {"test -@ should exit with failure and ErrInvOpt", 
+              2, 0x000, 0, NULL, get_eprintf_str(ErrInvOpt, "-@"), 
+              EXIT_FAILURE, create_argv(2, "-@")}, */
+            
+            //{"test ",    
+              //1, 0x000, 0, NULL, NULL, 
+              //EXIT_SUCCESS, create_argv(1)},
+            //{"test",    
+              //1, 0x000, 0, NULL, NULL, 
+              //EXIT_SUCCESS, create_argv(1)},
+            //{"test",    
+              //1, 0x000, 0, NULL, NULL, 
+              //EXIT_SUCCESS, create_argv(1)},
+            //{"test",    
+              //1, 0x000, 0, NULL, NULL, 
+              //EXIT_SUCCESS, create_argv(1)},
+            //{"test",    
+              //1, 0x000, 0, NULL, NULL, 
+              //EXIT_SUCCESS, create_argv(1)},
+            //{"test",    
+              //1, 0x000, 0, NULL, NULL, 
+              //EXIT_SUCCESS, create_argv(1)},
+            {NULL, 0, 0, 0, 0, 0, 0, NULL}
+        };
+
+        for (int i = 0; cases[i].name; i++) {
+
+            TEST(cases[i].name) {
+                FORK(){ // jankunit FORKs exit at the end of block with 0
+                    char *delim = NULL;
+                    int  size   = 0;    
+                    optind = optreset = 1;
+                    int  flags  = parse_opts(cases[i].argc, cases[i].argv,
+                                            &delim, &size);
+
+                    if (cases[i].exp_exit_code != EXIT_SUCCESS) ASSERT_TRUE(0);
+
+                    EXPECT_EQ(optind, cases[i].argc);
+                    EXPECT_EQ(flags, cases[i].exp_flags);
+                    EXPECT_EQ(size, cases[i].exp_size);
+                    if (cases[i].exp_delim) 
+                        EXPECT_STREQ(delim, cases[i].exp_delim);
+                    else
+                        EXPECT_EQ_PTR(delim, cases[i].exp_delim);
+                }
+
+                EXPECT_EXIT_CODE_EQ(cases[i].exp_exit_code);
+                EXPECT_SIGNAL_CODE_EQ(NOT_SIGNALED);
+                EXPECT_OUT_EQ("");
+
+                if (cases[i].exp_err == NULL) {
+                    EXPECT_ERR_EQ("");
+                } else { 
+                    EXPECT_ERR_EQ(cases[i].exp_err);
+                    free(cases[i].exp_err);
+                    cases[i].exp_err = NULL;
+                }
+            }
+            destroy_argv(cases[i].argv);
+        }
 /*
-      TEST_SUITE("SUITE: parse_opts unit tests") {
         TEST("test boundary no args") {
             FORK() {
                 int   argc = 1;
@@ -364,16 +520,11 @@ int main(void)
         TEST("test single long opts") {
 
         }
-      }
+
 */
+      }
     } 
-//    test_parse_opts_short_combined_single();
-//    test_parse_opts_short_combined_concat();
-//    test_parse_opts_long_single();
-//    test_parse_opts_long_combined();
-//    test_parse_opts_short_long_mixed();
-//    test_parse_opts_delim();
- 
+    //eshfree_all();
     return 0;
 }
 
