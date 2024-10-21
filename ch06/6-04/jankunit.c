@@ -50,10 +50,6 @@ void start_test_block(int block_type, const char *name_fmt, ...)
 
     GLOBAL_CTX->cur_block[block_type] = (TestBlock *) emalloc(sizeof(TestBlock));
     
-    va_start(args, name_fmt);
-    evasprintf(&(GLOBAL_CTX->cur_block[block_type]->name), name_fmt, args);
-    va_end(args);
-
     GLOBAL_CTX->cur_block[block_type]->type = block_type;
     GLOBAL_CTX->cur_block[block_type]->total = 0;
     GLOBAL_CTX->cur_block[block_type]->passed = 0;
