@@ -87,6 +87,7 @@ void *shrealloc(void *ptr, size_t size)
     h = (HEADER *) (((char *) ptr) - HEADER_SIZE);
     memcpy(allocated_block, ptr, h->size);
     shfree(ptr);
+    ptr = NULL;
 
     return allocated_block;    
 }
