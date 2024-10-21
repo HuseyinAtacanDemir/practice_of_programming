@@ -175,10 +175,13 @@ void configure_ctx_pre_fork()
             if (GLOBAL_CTX->cur_block[i]->name) {
                 eshasprintf(&(sh_block->name), GLOBAL_CTX->cur_block[i]->name);
                 free(GLOBAL_CTX->cur_block[i]->name);
+                GLOBAL_CTX->cur_block[i]->name = NULL;
             } else {
                 eprintf("Block with no name in context! :");   
             }
             free(GLOBAL_CTX->cur_block[i]);
+            GLOBAL_CTX->cur_block[i] = NULL;
+
             GLOBAL_CTX->cur_block[i] = sh_block;
             sh_block = NULL;
         }
@@ -189,19 +192,33 @@ void configure_ctx_pre_fork()
         *sh_indent = *GLOBAL_CTX->indent;
         
         free(GLOBAL_CTX->indent);
+        GLOBAL_CTX->indent = NULL;
+
         GLOBAL_CTX->indent = sh_indent;
         sh_indent = NULL;
     } else {
         eprintf("No indent information in context! :");
     }
     /*
-        BUFS will be assumed NULL and 
-        will be initialized in regular mem,
+        BUFS will initialized in regular mem,
         forked process need not access BUFS
         of parent.
         Parent only ever needs initialized BUFS
         to copy pipes in from eventual children
     */
+    if (GLOBAL_CTX->bufs) {
+        for (int i = USR; i <= SYS; i++) {
+            for (int j = OUT; j <= ERR; j++) {
+                if (GLOBAL_CTX->bufs->bufs[i][j] != NULL) {
+                    free(GLOBAL_CTX->bufs->bufs[i][j]);
+                    GLOBAL_CTX->bufs->bufs[i][j] = NULL;
+                }
+                GLOBAL_CTX->bufs->sizes[i][j] = 0;
+            }
+        }
+        free(GLOBAL_CTX->bufs);
+        GLOBAL_CTX->bufs = NULL;
+    }
     GLOBAL_CTX->bufs = (BUFS *) emalloc(sizeof(BUFS));
     for (int i = USR; i <= SYS; i++)
         for (int j = OUT; j <= ERR; j++) {
@@ -262,11 +279,15 @@ void configure_ctx_post_fork()
             if (GLOBAL_CTX->cur_block[i]->name) {
                 easprintf(&(block->name), GLOBAL_CTX->cur_block[i]->name);
                 eshfree(GLOBAL_CTX->cur_block[i]->name);
+                GLOBAL_CTX->cur_block[i]->name = NULL;
+
                 GLOBAL_CTX->cur_block[i]->name = block->name;
             } else {
                 eprintf("Block with no name in context! :");
             }
             eshfree(GLOBAL_CTX->cur_block[i]);
+            GLOBAL_CTX->cur_block[i] = NULL;
+
             GLOBAL_CTX->cur_block[i] = block;
             block = NULL;
         }
@@ -278,25 +299,37 @@ void configure_ctx_post_fork()
         *indent = *GLOBAL_CTX->indent;
 
         eshfree(GLOBAL_CTX->indent);
+        GLOBAL_CTX->indent = NULL;
+
         GLOBAL_CTX->indent = indent;
         indent = NULL;
     } else {
         eprintf("No indent information in context! :");
     }
     /*
-        During cleanup, sys buffers will be printed,
-        If sys errors exist, program will exit.
+        During cleanup sys out buffers, which hold
+        printed output of the checks implemented
+        within the forked block, will be printed
+        to stdout of parent.
+        
+        If sys errors exist, sys errs will be printed 
+        and the program will exit.
+
         After sys out and err printing,
         sys bufs will be freed.
+        
         USR out and ERR will stay put for use in
         assertion and expectation macros
     */
 
-    if (GLOBAL_CTX->bufs && GLOBAL_CTX->bufs->bufs[SYS][OUT] 
-      && strlen(GLOBAL_CTX->bufs->bufs[SYS][OUT]) > 0) {
-        printf("%s", GLOBAL_CTX->bufs->bufs[SYS][OUT]);
-        fflush(stdout);
+    // TODO bufs could be refactored to be test_block specific
+    if (GLOBAL_CTX->bufs && GLOBAL_CTX->bufs->bufs[SYS][OUT]) {
+        if (strlen(GLOBAL_CTX->bufs->bufs[SYS][OUT]) > 0) {
+            printf("%s", GLOBAL_CTX->bufs->bufs[SYS][OUT]);
+            fflush(stdout);
+        }
         free(GLOBAL_CTX->bufs->bufs[SYS][OUT]);
+        GLOBAL_CTX->bufs->bufs[SYS][OUT] = NULL;
     }
 
     if (GLOBAL_CTX->bufs && GLOBAL_CTX->bufs->bufs[SYS][ERR] 
@@ -405,24 +438,25 @@ void read_pipes_to_bufs()
             for (int j = OUT; j <= ERR; j++) {
                 if (nread[i][j] > 0) {
                     char **cur_buf = &(GLOBAL_CTX->bufs->bufs[i][j]);
-                    int  *cur_size = &(GLOBAL_CTX->bufs->sizes[i][j]);
+                    int *cur_size = &(GLOBAL_CTX->bufs->sizes[i][j]);
             
                     if (*cur_buf == NULL) {
-                        *cur_buf = (char *) emalloc(sizeof(char) * BUFSIZE);
+                        *cur_buf = (char *) emalloc((sizeof(char) * BUFSIZE));
                         *cur_size = BUFSIZE;
                     } else if ((nread[i][j] + ntot[i][j]) > *cur_size) {
-                        *cur_buf = (char *) erealloc(cur_buf, (*cur_size * 2));    
+                        *cur_buf = (char *) erealloc(*cur_buf, (*cur_size * 2));    
                         *cur_size *= 2;
                     }
-                    memcpy((*cur_buf + ntot[i][j]), temp_bufs[i][j], nread[i][j]);
+                    memcpy(((*cur_buf) + ntot[i][j]), temp_bufs[i][j], nread[i][j]);
                     ntot[i][j] += nread[i][j];
                 }
             }    
     }
+
     // NULL terminate bufs that exist
     for (int i = USR; i <= SYS; i++)
-        for (int j = OUT; i <= ERR; i++)
-            if (GLOBAL_CTX->bufs->bufs[i][j] != NULL)
+        for (int j = OUT; j <= ERR; j++)
+            if (GLOBAL_CTX->bufs && GLOBAL_CTX->bufs->bufs[i][j] )
                 GLOBAL_CTX->bufs->bufs[i][j][ntot[i][j]] = '\0';
 
 }
