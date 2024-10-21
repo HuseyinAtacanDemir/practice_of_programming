@@ -1,11 +1,17 @@
 #include "freq.test_helper.h"
 #include "freq.internal.h"
 
+#include <stdlib.h>
 #include "eprintf.h"
 
 int   get_opt_idx       (int opt);        
-char  **create_argv     (int argc, ...);
 int   is_mutex_opts     (char opt1, char opt2);
+
+char  **create_argv     (int argc, ...);
+void  destroy_argv      (char **argv);
+
+char  *get_eprintf_str  (const char *fmt, ...);
+
 //char  *concat_str_arr   (char **arr, const char *delim);
 //char  *rus_doll_fmt     (int n, ...);
 
@@ -378,22 +384,6 @@ int get_opt_idx(int opt)
     return -1;
 }
 
-char **create_argv(int argc, ...)
-{
-   int i;
-   char **argv;
-   va_list args;
-
-   argv = (char **) emalloc(sizeof(char *) * (argc+1));
-
-   va_start(args, argc);
-   for (i = 0; i < argc; i++)
-       argv[i] = va_arg(args, char *);
-   va_end(args);
-   
-   argv[argc] = NULL;
-   return argv;
-}
 
 int is_mutex_opts(char opt1, char opt2)
 {
@@ -409,3 +399,44 @@ int is_mutex_opts(char opt1, char opt2)
     return (j & k);
 }
 
+char **create_argv(int argc, ...)
+{
+    int i;
+    char **argv;
+
+    if (argc == 0)
+        eprintf("create_argv: argc needs to be >= 1");
+
+    argv = (char **) emalloc(sizeof(char *) * (argc+1));
+
+    argv[0] = estrdup(getprogname());
+
+    va_list args;
+    va_start(args, argc);
+    for (i = 1; i < argc; i++)
+        argv[i] = estrdup(va_arg(args, char *));
+    va_end(args);
+   
+    argv[argc] = NULL;
+    return argv;
+}
+
+void destroy_argv(char **argv) {
+    for (int i = 0; argv[i]; i++) {
+        free(argv[i]);
+        argv[i] = NULL;
+    }
+    free(argv);
+}
+
+char *get_eprintf_str(const char *fmt, ...)
+{
+    char *str = NULL;
+
+    va_list args;
+    va_start(args, fmt);
+    evaseprintf(&str, fmt, args);
+    va_end(args);
+
+    return str;
+}
