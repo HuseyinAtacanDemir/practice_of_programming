@@ -11,14 +11,13 @@
 #include "hash.h"
 //#include "qsort.h"
 
-const char *ErrOptReqsArg   = "option -%c requires an argument";
-const char *ErrOptMutex     = "Option -%c cannot be used with -%c";
-const char *ErrDupOptArg    = "Option -%c cannot be used more than one argument";
-const char *ErrMultiSizeRaw = "Option -R cannot be used with multiple types/sizes";
-const char *ErrInvOptChar   = "invalid option -%c";
-const char *ErrInvOptStr    = "invalid option %s";
-const char *ErrInvSizeArg   = "SIZE needs to be a positive integer. Given SIZE: %s";
-const char *ErrInvInteger   = "cannot convert %s to a valid SIZE";
+const char *ErrOptReqsArg       = "option -%c requires an argument";
+const char *ErrOptMutex         = "Option -%c cannot be used with -%c";
+const char *ErrOptMutexDefault  = "Option -R with no arguments can only be used with an explicit type option";
+const char *ErrDupOptArg        = "Option -%c cannot be used more than one argument";
+const char *ErrMultiSizeRaw     = "Option -R cannot be used with multiple types/sizes";
+const char *ErrInvOpt           = "invalid option %s";
+const char *ErrInvSizeArg       = "SIZE needs to be a positive integer. Given SIZE: %s";
  
 const char *UsageInfoStr = 
 "Usage: freq [-acdDhiRsS] [-D DELIM] [-R[SIZE]] [--delim=DELIM] [--raw[=SIZE]] [file ...]\n"
@@ -55,63 +54,77 @@ void freq(FILE *fin, int flags, char *delim, int size)
     return ;
 }
 
-int parse_opts(int argc, char **argv, char **delim, int *size) 
+int parse_opts(int argc, char *argv[], char **delim, int *size) 
 {
-    int opt, type_opts, flags, is_raw_size_provided, is_delim_provided;
-    
-    *delim  = DEFAULT_DELIM;
-    *size   = DEFAULT_SIZE;	
-    flags   = 0x0;
-    is_raw_size_provided = 0;
-    is_delim_provided = 0;
-    
+    int opt, flags, n_raw_size_given, n_delim_given;
+    char *inv_opt_str = NULL;
+
+    flags = n_raw_size_given = n_delim_given = 0;
+
     // opterr: getopt.h, 0'ing it supresses getop.h errs, see "man 3 getopt"
     opterr = 0; 
     while ((opt = getopt_long(argc, argv, OPT_STR, LongOpts, NULL)) != -1) {
-        switch (opt) {              // cases 'h' ':' and '?' exit the program
+        // cases 'h' ':' and '?' exit the program
+        switch (opt) {              
             case 'h': usage_exit(); // EXIT_SUCCESS
             case 'a': break;
             case 's': break;
-            case 'D': *delim = estrdup(optarg); is_delim_provided++; break;
+            case 'D': *delim = estrdup(optarg); n_delim_given++; break;
             case 'R': 
-                if (optarg && (*size = eatoi_positive(optarg)) == NOT_NUM_ERR)
-                    eprintf(ErrInvInteger, optarg);  // EXIT_FAILURE
-                else if (*size == NEG_NUM_ERR)
-                    eprintf(ErrInvSizeArg, optarg);   // EXIT_FAILURE
-                else if (optarg)
-                    is_raw_size_provided++;
+                if (optarg) {
+                    n_raw_size_given++;
+                    if ((*size = atoi_pos(optarg)) == NOT_POSITIVE_INT_ERR)
+                        eprintf(ErrInvSizeArg, optarg);  // EXIT_FAILURE
+                }
                 break;
-            case 'c': *size = sizeof(char); break;
-            case 'i': *size = sizeof(int); break;
-            case 'd': *size = sizeof(double); break;
+            case 'c': // type options just set relevant flag bit
+            case 'i':
+            case 'd':
             case 'S': break;
             // optind: getopt.h, index of next arg, "man 3 getopt"
             case ':': eprintf(ErrOptReqsArg, optopt); // EXIT_FAILURE
-            case '?': optopt ? eprintf(ErrInvOptChar, optopt)
-                              : eprintf(ErrInvOptStr, argv[optind-1]);
-
+            case '?':
+                if (optopt) 
+                    easprintf(&inv_opt_str, "-%c", optopt);
+                else
+                    easprintf(&inv_opt_str, "%s", argv[optind-1]);
+                eprintf(ErrInvOpt, inv_opt_str);  // EXIT_FAILURE
+                
             // impossible case, EXIT_FAILURE
             default: eprintf("Unexpected option: %c:", opt);
         }
 		    flags = set_opt_flag(flags, opt);
     }
     
-    type_opts = flags & TYPE_OPTS_MASK;
+    // TODO: validation in a different function?
+    int type_opts = flags & TYPE_OPTS_MASK;
     // binary algebraic expr results non-zero if more than 1 bit is set 
     if ((type_opts & (type_opts - 1)) && (flags & RAW_OPT_MASK))
         eprintf(ErrMultiSizeRaw);
-    if (type_opts && is_raw_size_provided)
+    
+    // -R was used multiple times with size information
+    if (n_raw_size_given > 1) 
+        eprintf(ErrDupOptArg, 'R');
+    
+    // -R was used without optional size argument, but with no type option
+    if (n_raw_size_given == 0 && (flags == RAW_OPT_MASK))
+        eprintf(ErrOptMutexDefault);
+    
+    // -D was used multiple times with delim information
+    if (n_delim_given > 1)
+        eprintf(ErrDupOptArg, 'D');
+    
+    // type opt was provided alongisde a raw size
+    if (type_opts && n_raw_size_given)
         eprintf(ErrMultiSizeRaw);
+    
+    // cannot have delims on raw binary input
     if ((flags & RAW_OPT_MASK) && (flags & DELIM_OPT_MASK))
-        eprintf(ErrOptMutex, 'D', 'R'); 
+        eprintf(ErrOptMutex, 'D', 'R');
+    
+    // cannot have "raw" string, we handle ascii files, it's already raw
     if ((flags & RAW_OPT_MASK) && (flags & STRING_OPT_MASK))
         eprintf(ErrOptMutex, 'S', 'R');
-    if ((flags & CHAR_OPT_MASK) && (flags & STRING_OPT_MASK))
-        eprintf(ErrOptMutex, 'S', 'c');
-    if (is_raw_size_provided > 1) 
-        eprintf(ErrDupOptArg, 'R');
-    if (is_delim_provided > 1)
-        eprintf(ErrDupOptArg, 'D');
 
     return flags;
 }
@@ -134,8 +147,8 @@ void usage_exit(void)
     exit(EXIT_SUCCESS);
 }
 
-/* eatoi_positive: convert a string to +integer, report if error */
-int eatoi_positive(char *str)
+/* atoi_pos: convert a string to +integer, report if error */
+int atoi_pos(char *str)
 {
     char *endptr;
     long result;
@@ -144,10 +157,10 @@ int eatoi_positive(char *str)
     result = strtol(str, &endptr, 10);
 
     //  See man 3 strtol
-    if (!(*str && *endptr == '\0'))
-        return NOT_NUM_ERR;
-    if (result <= 0)
-        return NEG_NUM_ERR;
+    if (!(*str && *endptr == '\0') || result <= 0 
+      || (int) result <= 0 || result > INT_MAX)
+        return NOT_POSITIVE_INT_ERR;
 
     return (int) result;
 }
+
