@@ -12,6 +12,7 @@ extern void   efprintf      (FILE *, const char *fmt, ...);
 extern void   wefprintf     (FILE *, const char *fmt, ...); 
 
 extern int    easeprintf    (char **, const char *fmt, ...);
+extern int    evaseprintf   (char **, const char *fmt, va_list);
 
 extern int    easprintf     (char **, const char *fmt, ...);
 extern int    evasprintf    (char **, const char *fmt, va_list);
@@ -19,7 +20,7 @@ extern int    evasprintf    (char **, const char *fmt, va_list);
 extern int    eshasprintf   (char **, const char *fmt, ...);
 extern int    eshvasprintf  (char **, const char *fmt, va_list);
 
-extern char   *estrdup      (char *); 
+extern char   *estrdup      (const char *); 
 extern char   *estrndup     (char *, int);
 
 extern char   *eshstrdup    (char *); 

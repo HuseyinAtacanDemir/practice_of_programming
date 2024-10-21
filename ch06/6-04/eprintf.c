@@ -78,13 +78,20 @@ void wefprintf(FILE *fin, const char *fmt, ...)
                 reports if error */ 
 int easeprintf(char **strp, const char *fmt, ...)
 {
+    va_list args;
+    va_start(args, fmt); 
+    int n = evaseprintf(strp, fmt, args);
+    va_end(args);
+    
+    return n;
+}
+
+int evaseprintf(char **strp, const char *fmt, va_list args)
+{
     char *p = NULL;
     int n = 0;
 
-    va_list args;
-    va_start(args, fmt); 
-    evasprintf(&p, fmt, args);
-    va_end(args);
+    n = evasprintf(&p, fmt, args);
     
     // TODO: do I free the return of strerror? Should I even use strerror?
     if(getprogname() != NULL && fmt[0] != '\0' && fmt[strlen(fmt)-1] == ':')
@@ -165,7 +172,7 @@ int eshvasprintf(char **strp, const char *fmt, va_list args)
 /* estrdup: duplicate a string, 
             returns pointer to the duplicate,
             report if error */ 
-char *estrdup(char *str)
+char *estrdup(const char *str)
 {
     errno = 0;
     char *t = (char *) emalloc(strlen(str)+1); 
