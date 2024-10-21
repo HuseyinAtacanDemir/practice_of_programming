@@ -110,6 +110,7 @@ HashmapItem *del_hmi(Hashmap *hmap, void *data)
           
           hmap->n_elems--; 
           free(li);
+          li = NULL;
           return hmi;
     }
     return NULL; 
@@ -150,7 +151,9 @@ void free_map(Hashmap *hmap)
     
     table = hmap->table;
     free(table);
+    table = NULL;
     free(hmap);
+    hmap = NULL;
 }
 
 int compare_keys(Hashmap *hmap, void *data1, void *data2)
@@ -222,5 +225,6 @@ void resize(Hashmap *hmap)
     }
     
     free(tbl_old);
+    tbl_old = NULL;
 }
 

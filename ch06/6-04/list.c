@@ -189,6 +189,7 @@ ListItem *sort(ListItem *listp, int (*cmp)(void*, void*), int order)
 
   cur = tmp_head->next;
   free(tmp_head);
+  tmp_head = NULL;
   return cur;
 }
 
@@ -321,6 +322,7 @@ ListItem *del_item(ListItem *listp, void *data,
     else
         prev->next = p->next;
     free(p);
+    p = NULL;
     
     return listp;
 }
@@ -377,6 +379,7 @@ void free_all(ListItem *listp)
     for ( ; listp != NULL; listp = next) {
         next = listp->next;
         free(listp);
+        listp = NULL;
     }
 }
 
