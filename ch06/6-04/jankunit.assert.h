@@ -176,11 +176,13 @@
         CONTINUE_IF_FAILED_ASSERT_IN_SCOPE(); \
         const char* s1 = (str1); \
         const char* s2 = (str2); \
-        if (!((s1 == NULL && s2 == NULL) || (s1 != NULL && s2 != NULL && strcmp(s1, s2) == 0))) { \
-            print_with_indent("Expected string '%s' to equal '%s', but got different strings: '%s' and '%s', strcmp((%s), (%s)). %s:%d\n", (s1 ? s1 : "NULL"), (s2 ? s2 : "NULL"), (s1 ? s1 : "NULL"), (s2 ? s2 : "NULL"), #str1, #str2, __FILE__, __LINE__); \
-            FAIL(); \
-        } else { \
+        if (s1 == NULL && s2 == NULL) { \
             PASS(); \
+        } else if (s1 != NULL && s2 != NULL && strcmp(s1,s2) == 0) { \
+            PASS(); \
+        } else { \
+            print_with_indent("Expected string '%s' to equal '%s', strcmp((%s), (%s)). %s:%d\n", (s1 ? s1 : "NULL"), (s2 ? s2 : "NULL"), #str1, #str2, __FILE__, __LINE__); \
+            FAIL(); \
         } \
     } while (0)
 
@@ -190,11 +192,13 @@
         CONTINUE_IF_FAILED_ASSERT_IN_SCOPE(); \
         const char* s1 = (str1); \
         const char* s2 = (str2); \
-        if (!((s1 == NULL && s2 == NULL) || (s1 != NULL && s2 != NULL && strcmp(s1, s2) == 0))) { \
-            print_with_indent("ASSERT failed: Expected string '%s' to equal '%s', but got different strings: '%s' and '%s', strcmp((%s), (%s)). %s:%d\n", (s1 ? s1 : "NULL"), (s2 ? s2 : "NULL"), (s1 ? s1 : "NULL"), (s2 ? s2 : "NULL"), #str1, #str2, __FILE__, __LINE__); \
-            FAIL_ASSERT(); \
-        } else { \
+        if (s1 == NULL && s2 == NULL) { \
             PASS(); \
+        } else if (s1 != NULL && s2 != NULL && strcmp(s1,s2) == 0) { \
+            PASS(); \
+        } else { \
+            print_with_indent("ASSERT FAILED: Expected string '%s' to equal '%s', strcmp((%s), (%s)). %s:%d\n", (s1 ? s1 : "NULL"), (s2 ? s2 : "NULL"), #str1, #str2, __FILE__, __LINE__); \
+            FAIL(); \
         } \
     } while (0)
 
@@ -299,7 +303,7 @@ wont be propagated to the parent, however total assert/expect count will be.
             _pid_ == -2;    \
             GLOBAL_CTX->is_forked = (_pid_ > 0 && (configure_ctx_post_fork(), 0)) )   \
         for (_pid_ = fork(); \
-                _pid_ == 0 && (dup2_usr_pipes(), 1) && (atexit(close_all_pipes), 1) && (handle_all_catchable_signals(), 1);    \
+                _pid_ == 0 && (dup2_usr_pipes(), 1) && (atexit(flush_and_close_all_pipes), 1) && (handle_all_catchable_signals(), 1);    \
                 exit(EXIT_SUCCESS) )
 
 #define TEST_PROGRAM(...) \
