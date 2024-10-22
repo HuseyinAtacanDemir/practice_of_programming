@@ -15,7 +15,6 @@ int main(void)
 {
     init_ctx();
     TEST_PROGRAM("FREQ INTERNAL UNIT TESTS") {
-/*
       TEST_SUITE("SUITE: atoi_pos") {
         struct {
             char *test_name;
@@ -83,7 +82,7 @@ int main(void)
                 EXPECT_EQ(0x0, set_opt_flag(0x0, cases[i]));
         }
       }
-*/
+
       TEST_SUITE("SUITE: parse_opts") {
         struct {
             char  *name;
@@ -96,7 +95,7 @@ int main(void)
             char  **argv;
         } cases[] = {
             // no opts
-            /* {"test no args should just exit from fork with success",
+             {"test no args should just exit from fork with success",
               1, 0x000, 0, NULL, NULL, 
               EXIT_SUCCESS, create_argv(1)},
 
@@ -111,13 +110,17 @@ int main(void)
 
             {"test -s should set the proper flag", 
               2, 0x004, 0, NULL, NULL, 
-              EXIT_SUCCESS, create_argv(2, "-s")}, */
+              EXIT_SUCCESS, create_argv(2, "-s")},
 
             {"test -D should set delim to ','", 
               3, 0x008, 0, ",", NULL, 
               EXIT_SUCCESS, create_argv(3, "-D", ",")},
 
-            /* {"test -c should set the proper flag", 
+            {"test -R5 should set size to 5", 
+              2, 0x010, 5, NULL, NULL, 
+              EXIT_SUCCESS, create_argv(2, "-R5")},
+
+            {"test -c should set the proper flag", 
               2, 0x020, 0, NULL, NULL,
               EXIT_SUCCESS, create_argv(2, "-c")},
 
@@ -131,14 +134,14 @@ int main(void)
               
             {"test -S should set the proper flag", 
               2, 0x100, 0, NULL, NULL, 
-              EXIT_SUCCESS, create_argv(2, "-S")}, */
+              EXIT_SUCCESS, create_argv(2, "-S")},
 
             // single invalid usage short opts
             {"test -D should exit with failure and ErrOptReqsArg", 
               2, 0x000, 0, NULL, get_eprintf_str(ErrOptReqsArg, 'D'), 
-              EXIT_SUCCESS, create_argv(2, "-D")},
+              EXIT_FAILURE, create_argv(2, "-D")},
 
-            /* {"test -R should exit with failure and ErrOptMutexDefault", 
+            {"test -R should exit with failure and ErrOptMutexDefault", 
               2, 0x000, 0, NULL, get_eprintf_str(ErrOptMutexDefault), 
               EXIT_FAILURE, create_argv(2, "-R")},
 
@@ -153,8 +156,25 @@ int main(void)
 
             {"test -@ should exit with failure and ErrInvOpt", 
               2, 0x000, 0, NULL, get_eprintf_str(ErrInvOpt, "-@"), 
-              EXIT_FAILURE, create_argv(2, "-@")}, */
-            
+              EXIT_FAILURE, create_argv(2, "-@")},
+
+            // separate combined 2 valid short opts
+            {"test -a -s should set proper flags", 
+              3, 0x006, 0, NULL, NULL, 
+              EXIT_SUCCESS, create_argv(3, "-a", "-s")},
+
+            {"test -a -D . should set proper flags and delim", 
+              4, 0x00A, 0, ".", NULL, 
+              EXIT_SUCCESS, create_argv(4, "-a", "-D", ".")},
+
+            {"test -s -R10 should set proper flags and size", 
+              3, 0x014, 10, NULL, NULL, 
+              EXIT_SUCCESS, create_argv(3, "-s", "-R10")},
+
+            {"test -s -R should exit with failure", 
+              3, 0x000, 0, NULL, get_eprintf_str(ErrOptMutexDefault), 
+              EXIT_FAILURE, create_argv(3, "-s", "-R")},
+
             //{"test ",    
               //1, 0x000, 0, NULL, NULL, 
               //EXIT_SUCCESS, create_argv(1)},
@@ -212,125 +232,6 @@ int main(void)
             destroy_argv(cases[i].argv);
         }
 /*
-        TEST("test boundary no args") {
-            FORK() {
-                int   argc = 1;
-                char  **argv = create_argv(argc, "./freq_test");
-
-                char  *delim = NULL;
-                int   size = 0;
-
-                int result = parse_opts(argc, argv, &delim, &size);
-
-                EXPECT_EQ_PTR(delim, DEFAULT_DELIM);
-                EXPECT_EQ(size, DEFAULT_SIZE);
-                EXPECT_EQ(result, 0x0);
-                EXPECT_EQ(optind, argc);
-            } 
-            EXPECT_EXIT_CODE_EQ(EXIT_SUCCESS);
-            EXPECT_SIGNAL_CODE_EQ(NOT_SIGNALED);
-            EXPECT_OUT_EQ("");
-            EXPECT_ERR_EQ("");
-        }
-        TEST("test single short invalid opts") {
-            for (int i = 0; i < UCHAR_MAX + 1; i++) {
-                int opt_idx = get_opt_idx(i);
-                // '\0' transposes option to just -
-                // '-'  creates the "--" opt, which has a special meaning
-                //      int getopt, so it is valid 
-                // see "man 3 getopt" or "man 3 getopt_long"
-                if (opt_idx >= 0 || i == '\0' || i == '-')
-                    continue;
-                FORK() {
-                    char opt[3] = { '-', i, '\0' };
-                    
-                    int argc    = 2;
-                    char **argv = create_argv(argc, "./freq_test", opt);
-                    char *delim = DEFAULT_DELIM;
-                    int size    = DEFAULT_SIZE;
-                    
-                    parse_opts(argc, argv, &delim, &size);
-                    //should not reach here, we are testing inv opts only
-                    ASSERT_TRUE(0);
-                }
-
-                // should not have printed to stdout
-                // should not have gotten any signals
-                EXPECT_OUT_EQ("");
-                EXPECT_SIGNAL_CODE_EQ(NOT_SIGNALED);
-                
-                char *exp_err = NULL;
-                if (i == '%')
-                    easeprintf(&exp_err, InvOptStr, "-%%");
-                else
-                    easeprintf(&exp_err, InvOptChar, i);
-                
-                EXPECT_ERR_EQ((exp_err ? exp_err : ""));
-                EXPECT_EXIT_CODE_EQ(EXIT_FAILURE);
-
-                free(exp_err);
-                exp_err = NULL;
-            }
-        }
-        TEST("test single short valid opts") {
-            for (int i = 0; i < UCHAR_MAX + 1; i++) {
-                int opt_idx = get_opt_idx(i);
-                // filter out invalid options
-                if (opt_idx < 0 & i != '\0' & i != '-')
-                    continue;
-                
-                FORK() {
-                    char opt[3] = { '-', i, '\0' };
-                    
-                    int argc    = 2;
-                    char **argv = create_argv(argc, "./freq_test", opt);
-                    char *delim = DEFAULT_DELIM;
-                    int size    = DEFAULT_SIZE;
-                    
-                    int flags = parse_opts(argc, argv, &delim, &size);
-
-                    // getopt.h: int optind, see "man 3 getopt"
-                    EXPECT_EQ(optind, ((i != '\0') ? argc : argc-1));
-                    EXPECT_EQ_PTR(delim, DEFAULT_DELIM);
-
-                    if (opt_idx == INT)
-                        EXPECT_EQ(size, sizeof(int));
-                    else if (opt_idx == DOUBLE) 
-                        EXPECT_EQ(size, sizeof(double));
-                    else if (opt_idx == FLOAT)
-                        EXPECT_EQ(size, sizeof(float));
-                    else if (opt_idx == LONG)
-                        EXPECT_EQ(size, sizeof(long));
-                    else
-                        EXPECT_EQ(size, DEFAULT_SIZE);
-                    
-                    if (i != '\0' && i != '-')
-                        EXPECT_EQ(flags, (1<<opt_idx));
-                    else
-                        EXPECT_EQ(flags, 0x0);                        
-                }
-
-                EXPECT_OUT_EQ("");
-                EXPECT_SIGNAL_CODE_EQ(NOT_SIGNALED);
-
-                char  *exp_err = NULL;
-                int   exp_exit = EXIT_SUCCESS;
-                if (i == 'h')
-                    easeprintf(&exp_err, UsageInfoStr);
-                else if (LongOpts[opt_idx].has_arg == required_argument) {
-                    easeprintf(&exp_err, OptReqsArg, i);
-                    exp_exit = EXIT_FAILURE;
-                }
-                
-                EXPECT_ERR_EQ((exp_err ? exp_err : ""));
-                EXPECT_EXIT_CODE_EQ(exp_exit);
-
-                if (exp_err) {
-                    free(exp_err);
-                    exp_err = NULL;
-                }
-            }
-        }
         TEST("test separately combined 2 valid short opts") {
             for (int i = 0; i < N_SUPPORTED_OPTS-1; i++) {
                 for (int j = i+1; j < N_SUPPORTED_OPTS; j++)
