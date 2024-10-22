@@ -13,14 +13,17 @@ struct Person {
     int   age;
 };
 
-int char_cmp        (const void*, const void*);
-int int_cmp         (const void*, const void*);
-int float_cmp       (const void*, const void*);
-int double_cmp      (const void*, const void*);
-int long_cmp        (const void*, const void*);
-int person_fn_cmp   (const void*, const void*);
-int person_ln_cmp   (const void*, const void*);
-int person_age_cmp  (const void*, const void*);
+int char_cmp          (const void*, const void*);
+int int_cmp           (const void*, const void*);
+int float_cmp         (const void*, const void*);
+int double_cmp        (const void*, const void*);
+int long_cmp          (const void*, const void*);
+int person_p_fn_cmp   (const void*, const void*);
+int person_p_ln_cmp   (const void*, const void*);
+int person_p_age_cmp  (const void*, const void*);
+int person_pp_fn_cmp  (const void*, const void*);
+int person_pp_ln_cmp  (const void*, const void*);
+int person_pp_age_cmp (const void*, const void*);
 
 int *intdup(int len, ...);
 double *double_dup(int len, ...);
@@ -283,10 +286,133 @@ int main(void)
             }
         }
         TEST_SUITE("SORTS STRUCT arrays") {
-        
+            Person *people = (Person *) emalloc(sizeof(Person) * 5);
+            people[0].first_name = estrdup("John"); 
+            people[0].last_name = estrdup("McSomething"); 
+            people[0].age = 23; 
+
+            people[1].first_name = estrdup("Mark"); 
+            people[1].last_name = estrdup("Somethingsey"); 
+            people[1].age = 20; 
+
+            people[2].first_name = estrdup("Aaron"); 
+            people[2].last_name = estrdup("Somestein"); 
+            people[2].age = 13; 
+
+            people[3].first_name = estrdup("Ivan"); 
+            people[3].last_name = estrdup("Ivanovich Somethingskiyy"); 
+            people[3].age = 3; 
+
+            people[4].first_name = estrdup("Shuji"); 
+            people[4].last_name = estrdup("Samatinura"); 
+            people[4].age = 21; 
+
+            FORK() {
+                qsort_generic(people, 5, sizeof(Person), person_p_fn_cmp);
+                EXPECT_STREQ(people[0].first_name, "Aaron");
+                EXPECT_STREQ(people[1].first_name, "Ivan");
+                EXPECT_STREQ(people[2].first_name, "John");
+                EXPECT_STREQ(people[3].first_name, "Mark");
+                EXPECT_STREQ(people[4].first_name, "Shuji");
+            }
+            
+            ASSERT_EXIT_CODE_EQ(EXIT_SUCCESS);
+            ASSERT_SIGNAL_CODE_EQ(NOT_SIGNALED);
+            EXPECT_OUT_EQ(NULL);
+            EXPECT_ERR_EQ(NULL);
+
+            FORK() {
+                qsort_generic(people, 5, sizeof(Person), person_p_ln_cmp);
+                EXPECT_STREQ(people[0].last_name, "Ivanovich Somethingskiyy");
+                EXPECT_STREQ(people[1].last_name, "McSomething");
+                EXPECT_STREQ(people[2].last_name, "Samatinura");
+                EXPECT_STREQ(people[3].last_name, "Somestein");
+                EXPECT_STREQ(people[4].last_name, "Somethingsey");
+            }
+            
+            ASSERT_EXIT_CODE_EQ(EXIT_SUCCESS);
+            ASSERT_SIGNAL_CODE_EQ(NOT_SIGNALED);
+            EXPECT_OUT_EQ(NULL);
+            EXPECT_ERR_EQ(NULL);
+
+            FORK() {
+                qsort_generic(people, 5, sizeof(Person), person_p_age_cmp);
+                EXPECT_EQ(people[0].age, 3);
+                EXPECT_EQ(people[1].age, 13);
+                EXPECT_EQ(people[2].age, 20);
+                EXPECT_EQ(people[3].age, 21);
+                EXPECT_EQ(people[4].age, 23);
+            }
+            
+            ASSERT_EXIT_CODE_EQ(EXIT_SUCCESS);
+            ASSERT_SIGNAL_CODE_EQ(NOT_SIGNALED);
+            EXPECT_OUT_EQ(NULL);
+            EXPECT_ERR_EQ(NULL);
         }
         TEST_SUITE("SORTS STRUCT PTR arrays") {
-        
+            Person **people = (Person **) emalloc(sizeof(Person *) * 5);
+            for (int i = 0; i < 5; i++) {
+                people[i] = (Person *) emalloc(sizeof(Person));
+            }
+            people[0]->first_name = estrdup("John"); 
+            people[0]->last_name = estrdup("McSomething"); 
+            people[0]->age = 23; 
+
+            people[1]->first_name = estrdup("Mark"); 
+            people[1]->last_name = estrdup("Somethingsey"); 
+            people[1]->age = 20; 
+
+            people[2]->first_name = estrdup("Aaron"); 
+            people[2]->last_name = estrdup("Somestein"); 
+            people[2]->age = 13; 
+
+            people[3]->first_name = estrdup("Ivan"); 
+            people[3]->last_name = estrdup("Ivanovich Somethingskiyy"); 
+            people[3]->age = 3; 
+
+            people[4]->first_name = estrdup("Shuji"); 
+            people[4]->last_name = estrdup("Samatinura"); 
+            people[4]->age = 21; 
+
+            FORK() {
+                qsort(people, 5, sizeof(Person *), person_pp_fn_cmp);
+                EXPECT_STREQ(people[0]->first_name, "Aaron");
+                EXPECT_STREQ(people[1]->first_name, "Ivan");
+                EXPECT_STREQ(people[2]->first_name, "John");
+                EXPECT_STREQ(people[3]->first_name, "Mark");
+                EXPECT_STREQ(people[4]->first_name, "Shuji");
+            } 
+            ASSERT_EXIT_CODE_EQ(EXIT_SUCCESS);
+            ASSERT_SIGNAL_CODE_EQ(NOT_SIGNALED);
+            EXPECT_OUT_EQ(NULL);
+            EXPECT_ERR_EQ(NULL);
+
+            FORK() {
+                qsort(people, 5, sizeof(Person *), person_pp_ln_cmp);
+                EXPECT_STREQ(people[0]->last_name, "Ivanovich Somethingskiyy");
+                EXPECT_STREQ(people[1]->last_name, "McSomething");
+                EXPECT_STREQ(people[2]->last_name, "Samatinura");
+                EXPECT_STREQ(people[3]->last_name, "Somestein");
+                EXPECT_STREQ(people[4]->last_name, "Somethingsey");
+            } 
+            ASSERT_EXIT_CODE_EQ(EXIT_SUCCESS);
+            ASSERT_SIGNAL_CODE_EQ(NOT_SIGNALED);
+            EXPECT_OUT_EQ(NULL);
+            EXPECT_ERR_EQ(NULL);
+
+            FORK() {
+                qsort_generic(people, 5, sizeof(Person *), person_pp_age_cmp);
+                EXPECT_EQ(people[0]->age, 3);
+                EXPECT_EQ(people[1]->age, 13);
+                EXPECT_EQ(people[2]->age, 20);
+                EXPECT_EQ(people[3]->age, 21);
+                EXPECT_EQ(people[4]->age, 23);
+            }
+            
+            ASSERT_EXIT_CODE_EQ(EXIT_SUCCESS);
+            ASSERT_SIGNAL_CODE_EQ(NOT_SIGNALED);
+            EXPECT_OUT_EQ(NULL);
+            EXPECT_ERR_EQ(NULL);
         }
     }
     return 0;
@@ -316,7 +442,7 @@ int long_cmp(const void *a, const void *b)
     return *((long *)a) - *((long *)b);
 }
 
-int person_fn_cmp(const void *a, const void *b)
+int person_p_fn_cmp(const void *a, const void *b)
 {
     Person *person_a = (Person *) a;
     Person *person_b = (Person *) b;
@@ -331,7 +457,22 @@ int person_fn_cmp(const void *a, const void *b)
         return 0;
 }
 
-int person_ln_cmp(const void *a, const void *b)
+int person_pp_fn_cmp(const void *a, const void *b)
+{
+    Person **person_a = (Person **) a;
+    Person **person_b = (Person **) b;
+
+    if ((*person_a)->first_name || (*person_b)->first_name)
+        return strcmp((*person_a)->first_name, (*person_b)->first_name);
+    else if ((*person_a)->first_name && !(*person_b)->first_name)
+        return 1;
+    else if (!(*person_a)->first_name && (*person_b)->first_name)
+        return -1;
+    else
+        return 0;
+}
+
+int person_p_ln_cmp(const void *a, const void *b)
 {
     Person *person_a = (Person *) a;
     Person *person_b = (Person *) b;
@@ -346,12 +487,35 @@ int person_ln_cmp(const void *a, const void *b)
         return 0;
 }
 
-int person_age_cmp(const void *a, const void *b)
+int person_pp_ln_cmp(const void *a, const void *b)
+{
+    Person **person_a = (Person **) a;
+    Person **person_b = (Person **) b;
+
+    if ((*person_a)->last_name || (*person_b)->last_name)
+        return strcmp((*person_a)->last_name, (*person_b)->last_name);
+    else if ((*person_a)->last_name && !(*person_b)->last_name)
+        return 1;
+    else if (!(*person_a)->last_name && (*person_b)->last_name)
+        return -1;
+    else
+        return 0;
+}
+
+int person_p_age_cmp(const void *a, const void *b)
 {
     Person *person_a = (Person *) a;
     Person *person_b = (Person *) b;
 
     return person_a->age - person_b->age;
+}
+
+int person_pp_age_cmp(const void *a, const void *b)
+{
+    Person **person_a = (Person **) a;
+    Person **person_b = (Person **) b;
+
+    return ((*person_a)->age) - ((*person_b)->age);
 }
 
 int *intdup(int len, ...) {
