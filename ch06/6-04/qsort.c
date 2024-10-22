@@ -17,7 +17,7 @@ void qsort_generic(void *arr, int len, int elem_size,
     void *bigger, *cur;
     int i, last_small;
 
-    if (len <= 1)
+    if (len <= 1 || arr == NULL)
         return;
 
     swap(arr, elem_size, 0, rand() % len);
