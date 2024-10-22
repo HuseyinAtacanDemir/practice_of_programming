@@ -8,8 +8,10 @@ enum { HELP, AGGR, SORT, DELIM, RAW, CHAR, INT, DOUBLE, STRING };
 //  parse_opts constants
 #define N_SUPPORTED_OPTS  9 
 #define OPT_STR           "+:hasD:R::cidS"
+
 #define DEFAULT_DELIM     NULL
 #define DEFAULT_SIZE      0
+
 #define TYPE_OPTS_MASK    ((1<<INT)|(1<<CHAR)|(1<<DOUBLE))
 #define RAW_OPT_MASK      ((1<<RAW))
 #define DELIM_OPT_MASK    ((1<<DELIM))

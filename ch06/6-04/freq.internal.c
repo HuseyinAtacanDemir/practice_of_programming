@@ -61,6 +61,9 @@ int parse_opts(int argc, char *argv[], char **delim, int *size)
 
     flags = n_raw_size_given = n_delim_given = 0;
 
+    *delim = DEFAULT_DELIM;
+    *size = DEFAULT_SIZE;
+
     // opterr: getopt.h, 0'ing it supresses getop.h errs, see "man 3 getopt"
     opterr = 0; 
     while ((opt = getopt_long(argc, argv, OPT_STR, LongOpts, NULL)) != -1) {
@@ -107,7 +110,7 @@ int parse_opts(int argc, char *argv[], char **delim, int *size)
         eprintf(ErrDupOptArg, 'R');
     
     // -R was used without optional size argument, but with no type option
-    if (n_raw_size_given == 0 && (flags == RAW_OPT_MASK))
+    if (!type_opts && (flags & RAW_OPT_MASK) && !n_raw_size_given)
         eprintf(ErrOptMutexDefault);
     
     // -D was used multiple times with delim information
