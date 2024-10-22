@@ -102,24 +102,25 @@ int parse_opts(int argc, char *argv[], char **delim, int *size)
     // TODO: validation in a different function?
     int type_opts = flags & TYPE_OPTS_MASK;
     // binary algebraic expr results non-zero if more than 1 bit is set 
+    // more than one type opts with a raw option
     if ((type_opts & (type_opts - 1)) && (flags & RAW_OPT_MASK))
         eprintf(ErrMultiSizeRaw);
     
-    // -R was used multiple times with size information
-    if (n_raw_size_given > 1) 
-        eprintf(ErrDupOptArg, 'R');
+    // type opt was provided alongisde an explicit raw size
+    if (type_opts && n_raw_size_given)
+        eprintf(ErrMultiSizeRaw);
     
     // -R was used without optional size argument, but with no type option
     if (!type_opts && (flags & RAW_OPT_MASK) && !n_raw_size_given)
         eprintf(ErrOptMutexDefault);
     
+    // -R was used multiple times with size information
+    if (n_raw_size_given > 1) 
+        eprintf(ErrDupOptArg, 'R');
+    
     // -D was used multiple times with delim information
     if (n_delim_given > 1)
         eprintf(ErrDupOptArg, 'D');
-    
-    // type opt was provided alongisde a raw size
-    if (type_opts && n_raw_size_given)
-        eprintf(ErrMultiSizeRaw);
     
     // cannot have delims on raw binary input
     if ((flags & RAW_OPT_MASK) && (flags & DELIM_OPT_MASK))

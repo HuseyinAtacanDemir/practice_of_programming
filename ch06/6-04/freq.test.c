@@ -20,7 +20,7 @@ int main(void)
             char *test_name;
             char *input;
             int exp_result;
-        } cases[] = {
+        } tests[] = {
             {"test positive int str",   "123",          123},
             {"test int max str",        "2147483647",   INT_MAX},
             {"test zero int str",       "0",            NOT_POSITIVE_INT_ERR},
@@ -35,10 +35,10 @@ int main(void)
             {"test stress",  "3149475927592457483649",  NOT_POSITIVE_INT_ERR},
             {NULL, NULL, 0}
         };
-        for (int i = 0; cases[i].test_name; i++) {
-            TEST(cases[i].test_name) {
-                int result = atoi_pos(cases[i].input);
-                EXPECT_EQ(result, cases[i].exp_result);
+        for (int i = 0; tests[i].test_name; i++) {
+            TEST(tests[i].test_name) {
+                int result = atoi_pos(tests[i].input);
+                EXPECT_EQ(result, tests[i].exp_result);
             }
         }
       }
@@ -77,9 +77,9 @@ int main(void)
             }
         }
         TEST("test boundaries INT_MAX INT_MIN UCHAR_MAX+1 CHAR_MIN-1") {
-            int cases[] = { INT_MAX, INT_MIN, UCHAR_MAX+1, CHAR_MIN-1, 0 };
-            for (int i = 0; cases[i] != 0; i++)
-                EXPECT_EQ(0x0, set_opt_flag(0x0, cases[i]));
+            int tests[] = { INT_MAX, INT_MIN, UCHAR_MAX+1, CHAR_MIN-1, 0 };
+            for (int i = 0; tests[i] != 0; i++)
+                EXPECT_EQ(0x0, set_opt_flag(0x0, tests[i]));
         }
       }
 
@@ -93,698 +93,114 @@ int main(void)
             char  *exp_err;
             int   exp_exit_code;
             char  **argv;
-        } cases[] = {
+        } tests[] = {
             // no opts
-             {"test no args should just exit from fork with success",
-              1, 0x000, 0, NULL, NULL, 
-              EXIT_SUCCESS, create_argv(1)},
-
+             {"test no args should just exit from fork with success",           1, 0x000, 0,  NULL, NULL,                                   EXIT_SUCCESS, create_argv(1)},
             // single valid short opts
-            {"test -h should print usage and exit from fork with success", 
-              2, 0x000, 0, NULL, get_eprintf_str(UsageInfoStr), 
-              EXIT_SUCCESS, create_argv(2, "-h")},
-
-            {"test -a should set the proper flag", 
-              2, 0x002, 0, NULL, NULL, 
-              EXIT_SUCCESS, create_argv(2, "-a")},
-
-            {"test -s should set the proper flag", 
-              2, 0x004, 0, NULL, NULL, 
-              EXIT_SUCCESS, create_argv(2, "-s")},
-
-            {"test -D should set delim to ','", 
-              3, 0x008, 0, ",", NULL, 
-              EXIT_SUCCESS, create_argv(3, "-D", ",")},
-
-            {"test -R5 should set size to 5", 
-              2, 0x010, 5, NULL, NULL, 
-              EXIT_SUCCESS, create_argv(2, "-R5")},
-
-            {"test -c should set the proper flag", 
-              2, 0x020, 0, NULL, NULL,
-              EXIT_SUCCESS, create_argv(2, "-c")},
-
-            {"test -i should set the proper flag", 
-              2, 0x040, 0, NULL, NULL, 
-              EXIT_SUCCESS, create_argv(2, "-i")},
-
-            {"test -d should set the proper flag", 
-              2, 0x080, 0, NULL, NULL, 
-              EXIT_SUCCESS, create_argv(2, "-d")},
-              
-            {"test -S should set the proper flag", 
-              2, 0x100, 0, NULL, NULL, 
-              EXIT_SUCCESS, create_argv(2, "-S")},
-
+            {"test -h should print usage and exit from fork with success",      2, 0x000, 0,  NULL, get_eprintf_str(UsageInfoStr),          EXIT_SUCCESS, create_argv(2, "-h")},
+            {"test -a should set the proper flag",                              2, 0x002, 0,  NULL, NULL,                                   EXIT_SUCCESS, create_argv(2, "-a")},
+            {"test -s should set the proper flag",                              2, 0x004, 0,  NULL, NULL,                                   EXIT_SUCCESS, create_argv(2, "-s")},
+            {"test -D should set delim to ','",                                 3, 0x008, 0,   ",", NULL,                                   EXIT_SUCCESS, create_argv(3, "-D", ",")},
+            {"test -R5 should set size to 5",                                   2, 0x010, 5,  NULL, NULL,                                   EXIT_SUCCESS, create_argv(2, "-R5")},
+            {"test -c should set the proper flag",                              2, 0x020, 0,  NULL, NULL,                                   EXIT_SUCCESS, create_argv(2, "-c")},
+            {"test -i should set the proper flag",                              2, 0x040, 0,  NULL, NULL,                                   EXIT_SUCCESS, create_argv(2, "-i")},
+            {"test -d should set the proper flag",                              2, 0x080, 0,  NULL, NULL,                                   EXIT_SUCCESS, create_argv(2, "-d")},
+            {"test -S should set the proper flag",                              2, 0x100, 0,  NULL, NULL,                                   EXIT_SUCCESS, create_argv(2, "-S")},
             // single invalid usage short opts
-            {"test -D should exit with failure and ErrOptReqsArg", 
-              2, 0x000, 0, NULL, get_eprintf_str(ErrOptReqsArg, 'D'), 
-              EXIT_FAILURE, create_argv(2, "-D")},
-
-            {"test -R should exit with failure and ErrOptMutexDefault", 
-              2, 0x000, 0, NULL, get_eprintf_str(ErrOptMutexDefault), 
-              EXIT_FAILURE, create_argv(2, "-R")},
-
-            {"test -Rasd should exit with failure and ErrInvSizeArg", 
-              2, 0x000, 0, NULL, get_eprintf_str(ErrInvSizeArg, "asd"), 
-              EXIT_FAILURE, create_argv(2, "-Rasd")},
-
+            {"test -D should exit with failure and ErrOptReqsArg",              2, 0x000, 0,  NULL, get_eprintf_str(ErrOptReqsArg, 'D'),    EXIT_FAILURE, create_argv(2, "-D")},
+            {"test -R should exit with failure and ErrOptMutexDefault",         2, 0x000, 0,  NULL, get_eprintf_str(ErrOptMutexDefault),    EXIT_FAILURE, create_argv(2, "-R")},
+            {"test -Rasd should exit with failure and ErrInvSizeArg",           2, 0x000, 0,  NULL, get_eprintf_str(ErrInvSizeArg, "asd"),  EXIT_FAILURE, create_argv(2, "-Rasd")},
             // single invalid short opts
-            {"test -z should exit with failure and ErrInvOpt", 
-              2, 0x000, 0, NULL, get_eprintf_str(ErrInvOpt, "-z"), 
-              EXIT_FAILURE, create_argv(2, "-z")},
-
-            {"test -@ should exit with failure and ErrInvOpt", 
-              2, 0x000, 0, NULL, get_eprintf_str(ErrInvOpt, "-@"), 
-              EXIT_FAILURE, create_argv(2, "-@")},
-
+            {"test --z should exit with failure and ErrInvOpt",                 2, 0x000, 0,  NULL, get_eprintf_str(ErrInvOpt, "-z"),       EXIT_FAILURE, create_argv(2, "-z")},
+            {"test -@ should exit with failure and ErrInvOpt",                  2, 0x000, 0,  NULL, get_eprintf_str(ErrInvOpt, "-@"),       EXIT_FAILURE, create_argv(2, "-@")},
             // separate combined 2 valid short opts
-            {"test -a -s should set proper flags", 
-              3, 0x006, 0, NULL, NULL, 
-              EXIT_SUCCESS, create_argv(3, "-a", "-s")},
-
-            {"test -a -D . should set proper flags and delim", 
-              4, 0x00A, 0, ".", NULL, 
-              EXIT_SUCCESS, create_argv(4, "-a", "-D", ".")},
-
-            {"test -s -R10 should set proper flags and size", 
-              3, 0x014, 10, NULL, NULL, 
-              EXIT_SUCCESS, create_argv(3, "-s", "-R10")},
-
-            {"test -s -R should exit with failure", 
-              3, 0x000, 0, NULL, get_eprintf_str(ErrOptMutexDefault), 
-              EXIT_FAILURE, create_argv(3, "-s", "-R")},
-
-            //{"test ",    
-              //1, 0x000, 0, NULL, NULL, 
-              //EXIT_SUCCESS, create_argv(1)},
-            //{"test",    
-              //1, 0x000, 0, NULL, NULL, 
-              //EXIT_SUCCESS, create_argv(1)},
-            //{"test",    
-              //1, 0x000, 0, NULL, NULL, 
-              //EXIT_SUCCESS, create_argv(1)},
-            //{"test",    
-              //1, 0x000, 0, NULL, NULL, 
-              //EXIT_SUCCESS, create_argv(1)},
-            //{"test",    
-              //1, 0x000, 0, NULL, NULL, 
-              //EXIT_SUCCESS, create_argv(1)},
-            //{"test",    
-              //1, 0x000, 0, NULL, NULL, 
-              //EXIT_SUCCESS, create_argv(1)},
+            {"test -a -s should set proper flags",                              3, 0x006, 0,  NULL, NULL,                                   EXIT_SUCCESS, create_argv(3, "-a", "-s")},
+            {"test -a -D . should set proper flags and delim",                  4, 0x00A, 0,   ".", NULL,                                   EXIT_SUCCESS, create_argv(4, "-a", "-D", ".")},
+            {"test -s -R10 should set proper flags and size",                   3, 0x014, 10, NULL, NULL,                                   EXIT_SUCCESS, create_argv(3, "-s", "-R10")},
+            {"test -s -c should set proper flags",                              3, 0x024, 0,  NULL, NULL,                                   EXIT_SUCCESS, create_argv(3, "-s", "-c")},
+            {"test -D : -c should set proper flags and delim",                  4, 0x028, 0,   ":", NULL,                                   EXIT_SUCCESS, create_argv(4, "-D", ":", "-c")},
+            {"test -D - -i should set proper flags and delim",                  4, 0x048, 0,   "-", NULL,                                   EXIT_SUCCESS, create_argv(4, "-D", "-", "-i")},
+            {"test -R -i should set proper flags",                              3, 0x050, 0,  NULL, NULL,                                   EXIT_SUCCESS, create_argv(3, "-R", "-i")},
+            {"test -R -d should set proper flags and delim",                    3, 0x090, 0,  NULL, NULL,                                   EXIT_SUCCESS, create_argv(3, "-R", "-d")},
+            // separate combined 2 invalid usage short opts
+            {"test -s -R should exit with failure",                             3, 0x000, 0,  NULL, get_eprintf_str(ErrOptMutexDefault),    EXIT_FAILURE, create_argv(3, "-s", "-R")},
+            {"test -c -R10 should exit with failure",                           3, 0x000, 0,  NULL, get_eprintf_str(ErrMultiSizeRaw),       EXIT_FAILURE, create_argv(3, "-c", "-R10")},
+            {"test -s -R should exit with failure",                             3, 0x000, 0,  NULL, get_eprintf_str(ErrOptMutexDefault),    EXIT_FAILURE, create_argv(3, "-s", "-R")},
+            {"test -R5 -R10 should exit with failure",                          3, 0x000, 0,  NULL, get_eprintf_str(ErrDupOptArg, 'R'),     EXIT_FAILURE, create_argv(3, "-R5", "-R10")},
+            {"test -S -R10 should exit with failure",                           3, 0x000, 0,  NULL, get_eprintf_str(ErrOptMutex, 'S', 'R'), EXIT_FAILURE, create_argv(3, "-S", "-R10")},
+            {"test -D * -R10 should exit with failure",                         4, 0x000, 0,  NULL, get_eprintf_str(ErrOptMutex, 'D', 'R'), EXIT_FAILURE, create_argv(4, "-D", "*", "-R10")},
+            {"test -D - -D + should exit with failure",                         5, 0x000, 0,  NULL, get_eprintf_str(ErrDupOptArg, 'D'),     EXIT_FAILURE, create_argv(5, "-D", "-", "-D", "+")},
+            // single valid long opts
+            {"test --help should print usage and exit from fork with success",  2, 0x000, 0,  NULL, get_eprintf_str(UsageInfoStr),          EXIT_SUCCESS, create_argv(2, "--help")},
+            {"test --aggregate should set the proper flag",                     2, 0x002, 0,  NULL, NULL,                                   EXIT_SUCCESS, create_argv(2, "--aggregate")},
+            {"test --sort should set the proper flag",                          2, 0x004, 0,  NULL, NULL,                                   EXIT_SUCCESS, create_argv(2, "--sort")},
+            {"test --delim=, should set delim to ','",                          2, 0x008, 0,   ",", NULL,                                   EXIT_SUCCESS, create_argv(2, "--delim=,")},
+            {"test --raw=5 should set size to 5",                               2, 0x010, 5,  NULL, NULL,                                   EXIT_SUCCESS, create_argv(2, "--raw=5")},
+            {"test --char should set the proper flag",                          2, 0x020, 0,  NULL, NULL,                                   EXIT_SUCCESS, create_argv(2, "--char")},
+            {"test --int should set the proper flag",                           2, 0x040, 0,  NULL, NULL,                                   EXIT_SUCCESS, create_argv(2, "--int")},
+            {"test --double should set the proper flag",                        2, 0x080, 0,  NULL, NULL,                                   EXIT_SUCCESS, create_argv(2, "--double")},
+            {"test --string should set the proper flag",                        2, 0x100, 0,  NULL, NULL,                                   EXIT_SUCCESS, create_argv(2, "--string")},
+            // single invalid usage long opts
+            {"test --delim should exit with failure and ErrOptReqsArg",         2, 0x000, 0,  NULL, get_eprintf_str(ErrOptReqsArg, 'D'),    EXIT_FAILURE, create_argv(2, "--delim")},
+            {"test --raw should exit with failure and ErrOptMutexDefault",      2, 0x000, 0,  NULL, get_eprintf_str(ErrOptMutexDefault),    EXIT_FAILURE, create_argv(2, "--raw")},
+            {"test --raw=asd should exit with failure and ErrInvSizeArg",       2, 0x000, 0,  NULL, get_eprintf_str(ErrInvSizeArg, "asd"),  EXIT_FAILURE, create_argv(2, "--raw=asd")},
+            // single invalid long opts
+            {"test --zafga should exit with failure and ErrInvOpt",             2, 0x000, 0,  NULL, get_eprintf_str(ErrInvOpt, "--zafga"),  EXIT_FAILURE, create_argv(2, "--zafga")},
+            {"test --@+&123 should exit with failure and ErrInvOpt",            2, 0x000, 0,  NULL, get_eprintf_str(ErrInvOpt, "--@+&123"), EXIT_FAILURE, create_argv(2, "--@+&123")},
+            // separate combined 2 valid long opts
+            {"test --aggregate --sort should set proper flags",                 3, 0x006, 0,  NULL, NULL,                                   EXIT_SUCCESS, create_argv(3, "--aggregate", "--sort")},
+            {"test --aggregate --delim=. should set proper flags and delim",    3, 0x00A, 0,   ".", NULL,                                   EXIT_SUCCESS, create_argv(3, "--aggregate", "--delim=.")},
+            {"test --sort --raw=10 should set proper flags and size",           3, 0x014, 10, NULL, NULL,                                   EXIT_SUCCESS, create_argv(3, "--sort", "--raw=10")},
+            {"test --sort --char should set proper flags",                      3, 0x024, 0,  NULL, NULL,                                   EXIT_SUCCESS, create_argv(3, "--sort", "--char")},
+            {"test --delim=: --char should set proper flags and delim",         3, 0x028, 0,   ":", NULL,                                   EXIT_SUCCESS, create_argv(3, "--delim=:", "--char")},
+            {"test --delim=- --int should set proper flags and delim",          3, 0x048, 0,   "-", NULL,                                   EXIT_SUCCESS, create_argv(3, "--delim=-", "--int")},
+            {"test --raw --int should set proper flags",                        3, 0x050, 0,  NULL, NULL,                                   EXIT_SUCCESS, create_argv(3, "--raw", "--int")},
+            {"test --raw --double should set proper flags and delim",           3, 0x090, 0,  NULL, NULL,                                   EXIT_SUCCESS, create_argv(3, "--raw", "--double")},
+            // separate combined 2 invalid usage long opts
+            {"test --sort --raw should exit with failure",                      3, 0x000, 0,  NULL, get_eprintf_str(ErrOptMutexDefault),    EXIT_FAILURE, create_argv(3, "--sort", "--raw")},
+            {"test --char --raw=10 should exit with failure",                   3, 0x000, 0,  NULL, get_eprintf_str(ErrMultiSizeRaw),       EXIT_FAILURE, create_argv(3, "--char", "--raw=10")},
+            {"test --sort --raw should exit with failure",                      3, 0x000, 0,  NULL, get_eprintf_str(ErrOptMutexDefault),    EXIT_FAILURE, create_argv(3, "--sort", "--raw")},
+            {"test --raw=5 --raw=10 should exit with failure",                  3, 0x000, 0,  NULL, get_eprintf_str(ErrDupOptArg, 'R'),     EXIT_FAILURE, create_argv(3, "--raw=5", "--raw=10")},
+            {"test --string --raw=10 should exit with failure",                 3, 0x000, 0,  NULL, get_eprintf_str(ErrOptMutex, 'S', 'R'), EXIT_FAILURE, create_argv(3, "--string", "--raw=10")},
+            {"test --delim=* --raw=10 should exit with failure",                3, 0x000, 0,  NULL, get_eprintf_str(ErrOptMutex, 'D', 'R'), EXIT_FAILURE, create_argv(3, "--delim=*", "--raw=10")},
+            {"test --delim=- --delim=+ should exit with failure",               3, 0x000, 0,  NULL, get_eprintf_str(ErrDupOptArg, 'D'),     EXIT_FAILURE, create_argv(3, "--delim=-", "--delim=+")},
             {NULL, 0, 0, 0, 0, 0, 0, NULL}
         };
 
-        for (int i = 0; cases[i].name; i++) {
-
-            TEST(cases[i].name) {
+        for (int i = 0; tests[i].name; i++) {
+            TEST(tests[i].name) {
                 FORK(){ // jankunit FORKs exit at the end of block with 0
-                    char *delim = NULL;
-                    int  size   = 0;    
+                    int   argc    = tests[i].argc;
+                    char  **argv  = tests[i].argv; 
+                    char  *delim  = NULL;
+                    int   size    = 0;
+
                     optind = optreset = 1;
-                    int  flags  = parse_opts(cases[i].argc, cases[i].argv,
-                                            &delim, &size);
+                    int flags = parse_opts(argc, argv, &delim, &size);
 
-                    if (cases[i].exp_exit_code != EXIT_SUCCESS) ASSERT_TRUE(0);
+                    if (tests[i].exp_exit_code != EXIT_SUCCESS) ASSERT_TRUE(0);
 
-                    EXPECT_EQ(optind, cases[i].argc);
-                    EXPECT_EQ(flags, cases[i].exp_flags);
-                    EXPECT_EQ(size, cases[i].exp_size);
-                    if (cases[i].exp_delim) 
-                        EXPECT_STREQ(delim, cases[i].exp_delim);
-                    else
-                        EXPECT_EQ_PTR(delim, cases[i].exp_delim);
+                    EXPECT_EQ(optind, argc);
+                    EXPECT_EQ(flags, tests[i].exp_flags);
+                    EXPECT_STREQ(delim, tests[i].exp_delim);
+                    EXPECT_EQ(size, tests[i].exp_size);
                 }
 
-                EXPECT_EXIT_CODE_EQ(cases[i].exp_exit_code);
+                EXPECT_EXIT_CODE_EQ(tests[i].exp_exit_code);
                 EXPECT_SIGNAL_CODE_EQ(NOT_SIGNALED);
-                EXPECT_OUT_EQ("");
 
-                if (cases[i].exp_err == NULL) {
-                    EXPECT_ERR_EQ("");
-                } else { 
-                    EXPECT_ERR_EQ(cases[i].exp_err);
-                    free(cases[i].exp_err);
-                    cases[i].exp_err = NULL;
+                EXPECT_OUT_EQ(NULL);
+                EXPECT_ERR_EQ(tests[i].exp_err);
+                
+                if (tests[i].exp_err != NULL) {
+                    free(tests[i].exp_err);
+                    tests[i].exp_err = NULL;
                 }
             }
-            destroy_argv(cases[i].argv);
+            destroy_argv(tests[i].argv);
         }
-/*
-        TEST("test separately combined 2 valid short opts") {
-            for (int i = 0; i < N_SUPPORTED_OPTS-1; i++) {
-                for (int j = i+1; j < N_SUPPORTED_OPTS; j++)
-                    for (int k = 0; k < 2; k++) {
-                        char opts[2][3] = { 
-                            {'-', LongOpts[(k%2 ? j : i)].val, '\0'}, 
-                            {'-', LongOpts[(k%2 ? i : j)].val, '\0'}
-                        };
-                        int argc = 3;
-                        FORK() {
-                            int   flags  = 0x0;
-                            int   size   = DEFAULT_SIZE;
-                            char  *delim = DEFAULT_DELIM;
-                            char  **argv = create_argv(argc, "./freq_test", 
-                                                        opts[0], opts[1]);
-
-                            flags = parse_opts(argc, argv, &delim, &size);
-
-                            // impossible, parse opts should have exited
-                            // if opt[0] -h: usage and exit
-                            // if opt[0] -S: couldnt have converted 2nd opt 
-                            //              opt to an integer, err and exit
-                            // if opt[0] -D: it would hve taken the 2nd opt 
-                            //              as its delim arg, BUT
-                            // if opt[1] -D: then it would err and exit
-                            // if none of these are true, 
-                            //                but we received 2 mutex opts, 
-                            //                would have exited.
-                            if (opts[0][1] == 'h') 
-                                ASSERT_EQ_CHAR(i, j);
-                            else if (opts[0][1] == 'S') 
-                                ASSERT_EQ_CHAR(i, j);
-                            else if (opts[1][1] == 'D') 
-                                ASSERT_EQ_CHAR(i, j);
-                            else if (is_mutex_opts(opts[0][1], opts[1][1]))
-                                ASSERT_EQ_CHAR(i, j);
-
-                            // If none of the above are true, then we have 
-                            //  not exited
-                            // If opt[0] -D: it would have taken 2nd opt as
-                            //              its own arg for delim, so 2nd
-                            //              opt would not be processed as a
-                            //              opt during flag calculation
-                            // else business as usual
-                            if (opts[0][1] == 'D') { 
-                                ASSERT_EQ(flags, (1<<DELIM));
-                                ASSERT_STREQ(delim, opts[1]);
-                            } else {
-                                ASSERT_EQ(flags, ((1<<i) | (1<<j)));
-                                EXPECT_EQ_PTR(delim, NULL);
-                            }
-                            
-                            // see "man 3 getopt"
-                            EXPECT_EQ(optind, argc);
-
-                            // if a type flag was selected -i -d -f -l and 
-                            // processed (see -D eating up succeeding 
-                            // option above) we would expect the size to be
-                            // initialized to the correct sizeof(type)
-                            // else DEFAULT_SIZE (ie sizeof(char))
-                            if (flags & (1<<INT))     
-                                EXPECT_EQ(size, sizeof(int));
-                            else if (flags & (1<<DOUBLE))  
-                                EXPECT_EQ(size, sizeof(double));
-                            else if (flags & (1<<FLOAT))   
-                                EXPECT_EQ(size, sizeof(float));
-                            else if (flags & (1<<LONG))    
-                                EXPECT_EQ(size, sizeof(long));
-                            else
-                                EXPECT_EQ(size, DEFAULT_SIZE);
-                        } 
-
-                        char  *exp_err = NULL;
-                        int   exp_exit = EXIT_FAILURE;  
-
-                        if (opts[0][1] == 'h') {
-                            easeprintf(&exp_err, UsageInfoStr);
-                            exp_exit = EXIT_SUCCESS;
-                        } 
-                        else if (opts[0][1] == 'D')
-                            exp_exit = EXIT_SUCCESS;
-                        else if (opts[0][1] == 'S')
-                            easeprintf(&exp_err, CantConvert, opts[1]);
-                        else if (opts[1][1] == 'S')
-                            easeprintf(&exp_err, OptReqsArg, 'S');
-                        else if (is_mutex_opts(opts[0][1], opts[1][1])) 
-                            easeprintf(&exp_err, InvOptMutex, MutexOpts);
-                        else if (opts[1][1] == 'h') {
-                            easeprintf(&exp_err, UsageInfoStr);
-                            exp_exit = EXIT_SUCCESS;
-                        } 
-                        else if (opts[1][1] == 'D') 
-                            easeprintf(&exp_err, OptReqsArg, 'D');
-                        else 
-                            exp_exit = EXIT_SUCCESS;
-                        
-                        EXPECT_OUT_EQ("");
-                        EXPECT_SIGNAL_CODE_EQ(NOT_SIGNALED);
-
-                        EXPECT_ERR_EQ((exp_err ? exp_err : ""));
-                        EXPECT_EXIT_CODE_EQ(exp_exit);
-
-                        if (exp_err) {
-                            free(exp_err);
-                            exp_err = NULL;
-                        }
-
-                    }
-            }
-        }
-        TEST("test concat combined short opts w\\o requirements") {
-            for (int i = 0; i < N_SUPPORTED_OPTS-1; i++) {
-                if (LongOpts[i].has_arg == required_argument)
-                    continue;
-                for (int j = i+1; j < N_SUPPORTED_OPTS; j++) {
-                    if (LongOpts[j].has_arg == required_argument)
-                        continue;
-                    int argc = 2;
-                    char *opts = NULL;
-                    easprintf(&opts, "-%c%c", LongOpts[i].val, LongOpts[j].val);
-                    FORK() {
-                        int size = DEFAULT_SIZE;
-                        char *delim = DEFAULT_DELIM;
-                        char **argv = create_argv(2, "./freq_test", opts);
-                        
-                        int flags = parse_opts(argc, argv, &delim, &size);
-
-                        if (index(opts, 'h')) 
-                            ASSERT_TRUE(0);
-                        else if (is_mutex_opts(opts[1], opts[2]))
-                            ASSERT_TRUE(0);
-                        
-                        EXPECT_EQ(optind, argc);
-                        EXPECT_EQ_PTR(delim, NULL);
-                        EXPECT_EQ(flags, ((1<<i)|(1<<j)));
-
-                        if (index(opts, 'i'))
-                            EXPECT_EQ(size, sizeof(int));
-                        else if (index(opts, 'd'))
-                            EXPECT_EQ(size, sizeof(double));
-                        else if (index(opts, 'f'))
-                            EXPECT_EQ(size, sizeof(float));
-                        else if (index(opts, 'l'))
-                            EXPECT_EQ(size, sizeof(long));
-                        else 
-                            EXPECT_EQ(size, sizeof(char));
-                    }
-                  
-                    EXPECT_OUT_EQ("");
-                    EXPECT_SIGNAL_CODE_EQ(NOT_SIGNALED);
-
-                    char *exp_err = NULL;
-                    int exp_exit = EXIT_SUCCESS; 
-
-                    if (index(opts, 'h')) { 
-                        easeprintf(&exp_err, UsageInfoStr);
-                    } else if (is_mutex_opts(opts[1], opts[2])) {
-                        easeprintf(&exp_err, InvOptMutex, MutexOpts);
-                        exp_exit = EXIT_FAILURE;
-                    }
-
-                    EXPECT_ERR_EQ((exp_err ? exp_err : ""));
-                    EXPECT_EXIT_CODE_EQ(exp_exit);
-                    
-                    free(opts);
-                }
-            }
-        }
-        TEST("test concat combined short opts with requirements") {
-            int argc;
-            FORK() {
-                argc = 2;
-                char **argv = create_argv(argc, "./freq_test", "-RS5");
-                int size = 0;
-                char *delim = NULL;
-                int flags = parse_opts(2, argv, &delim, &size);
-                EXPECT_EQ(optind, argc);
-                EXPECT_EQ_PTR(delim, NULL);
-                EXPECT_EQ(flags, ((1<<RAW)|(1<<STRUCT)));
-                EXPECT_EQ(size, 5);
-            }
-            EXPECT_OUT_EQ("");
-            EXPECT_ERR_EQ("");
-            EXPECT_EXIT_CODE_EQ(EXIT_SUCCESS);
-            EXPECT_SIGNAL_CODE_EQ(NOT_SIGNALED);
-        }
-        TEST("test single long opts") {
-
-        }
-
-*/
       }
     } 
     //eshfree_all();
     return 0;
 }
-
-//// region: parse_opts
-//void test_parse_opts_short_combined_concat()
-//{
-//    int i, npass, nfail;
-//    struct TestCase {
-//        int       argc;
-//        int       exp_size;
-//        int       exp_optind; // GNU getopt intializes optind to 1
-//        unsigned  exp_optstate;
-//        char      *exp_msg;
-//        char      **argv;
-//    };
-//    
-//    printf("\n\tshort opts combined together\n"); 
-//
-//    npass = nfail = 0;
-//
-//    struct TestCase cases[] = {
-//    // Valid combinations
-//    {2, 0, 2, 0x28, NULL, 
-//      create_argv(2, "./freq_test", "-iR")}, 
-//    
-//    {3, 0, 3, 0x0C, NULL, 
-//      create_argv(3, "./freq_test", "-RD", "\"delim\"")},  
-//    
-//    {2, 0, 2, 0x112, NULL, 
-//      create_argv(2, "./freq_test", "-sal")}, 
-//    
-//    {2, 0, 2, 0x88, NULL, 
-//      create_argv(2, "./freq_test", "-fR")}, 
-//    
-//    {3, 10, 3, 0x208, NULL, 
-//      create_argv(3, "./freq_test", "-RS", "10")}, 
-//
-//    // Invalid combinations (mutually exclusive)
-//    {2, 0, 2, 0x00, rus_doll_fmt(3, "freq_test: %s\n", InvOptMutex, MutexOpts), 
-//      create_argv(2, "./freq_test", "-id")}, 
-//    
-//    {2, 0, 2, 0x00, rus_doll_fmt(3, "freq_test: %s\n", InvOptMutex, MutexOpts), 
-//      create_argv(2, "./freq_test", "-fl")}, 
-//    
-//    {3, 0, 3, 0x00, rus_doll_fmt(3, "freq_test: %s\n", InvOptMutex, MutexOpts), 
-//      create_argv(3, "./freq_test", "-idS", "5")}, 
-//   
-//    // Invalid opt ordering (req arg opt should come last) 
-//    {3, 0, 3, 0x00, rus_doll_fmt(3, "freq_test: %s\n", OptReqsArg, "-S"), 
-//      create_argv(3, "./freq_test", "-Si", "5")}, 
-//    
-//    {3, 0, 3, 0x00, rus_doll_fmt(3, "freq_test: %s\n", OptReqsArg, "-S"), 
-//      create_argv(3, "./freq_test","-Sd", "5")},  
-//    
-//    {3, 0, 3, 0x00, rus_doll_fmt(3, "freq_test: %s\n", OptReqsArg, "-S"), 
-//      create_argv(3, "./freq_test","-dfiSR", "5")},  
-//    
-//    // Missing required arguments
-//    {2, 0, 2, 0x00, rus_doll_fmt(3, "freq_test: %s\n", OptReqsQt, "-D"), 
-//      create_argv(2, "./freq_test", "-DR")},  
-//    
-//    {2, 0, 2, 0x00, rus_doll_fmt(3, "freq_test: %s\n", OptReqsArg, "-S"), 
-//      create_argv(2, "./freq_test", "-SR")},  
-//
-//    // Option -S requires -R
-//    {3, 0, 3, 0x00, rus_doll_fmt(2, "freq_test: %s\n", OptSReqsArgR), 
-//      create_argv(3, "./freq_test", "-sS", "10")},  
-//    
-//    {3, 10, 3, 0x208, NULL, 
-//      create_argv(3, "./freq_test", "-RS", "10")},  
-//
-//    // Valid multiple short options
-//    {3, 0, 3, 0x3E, NULL, // 0000 0011 1110 
-//      create_argv(3, "./freq_test", "-iRsaD", "\",\"")},  
-//    {2, 0, 2, 0x98, NULL, 
-//      create_argv(2, "./freq_test", "-fRs")},
-//    
-//    {0, 0, 0, 0, NULL, NULL} 
-//    };
-//
-//    for (i = 0; cases[i].argc != 0; i++) {
-//         printf("\t\tcmd: \"%s\" argc: %d, exp_optstate: %u, exp_optind: %d: ", 
-//                concat_str_arr(cases[i].argv, " "), cases[i].argc, 
-//                cases[i].exp_optstate, cases[i].exp_optind);
-//        fflush(stdout);
-//        if (test_parse_opts(cases[i].argc,cases[i].argv,cases[i].exp_optstate,
-//                     cases[i].exp_size, cases[i].exp_optind, cases[i].exp_msg))
-//
-//        if (cases[i].exp_msg)
-//            free(cases[i].exp_msg);        
-//        free(cases[i].argv);
-//    }
-//
-//}
-//
-//void test_parse_opts_long_single()
-//{
-//    int i, npass, nfail;
-//    struct TestCase {
-//        int       argc;
-//        int       exp_size;
-//        int       exp_optind; // GNU getopt intializes optind to 1
-//        unsigned  exp_optstate;
-//        char      *exp_msg;
-//        char      **argv;
-//    };
-//    
-//    printf("\n\tlong opts single\n"); 
-//
-//    struct TestCase cases[] = {
-//    {2, 0, 0, 0x0, rus_doll_fmt(2, "freq_test: %s\n", UsageInfoStr), 
-//      create_argv(2, "./freq", "--help")},    
-//
-//    {2, 0, 2, 0x2, NULL, 
-//      create_argv(2, "./freq", "--aggregate")},    
-//
-//    {2, 0, 0, 0x0, rus_doll_fmt(3, "freq_test: %s\n", OptReqsArg, "--delim"), 
-//      create_argv(2, "./freq", "--delim")},    
-//
-//    {2, 0, 2, 0x8, NULL, 
-//      create_argv(2, "./freq", "--raw")},    
-//
-//    {2, 0, 2, 0x10, NULL, 
-//      create_argv(2, "./freq", "--sort")},    
-//
-//    {2, 0, 2, 0x20, NULL, 
-//      create_argv(2, "./freq", "--int")},    
-//
-//    {2, 0, 2, 0x40, NULL, 
-//      create_argv(2, "./freq", "--double")},    
-//
-//    {2, 0, 2, 0x80, NULL, 
-//      create_argv(2, "./freq", "--float")},    
-//
-//    {2, 0, 2, 0x100, NULL, 
-//      create_argv(2, "./freq", "--long")},    
-//
-//    {2, 0, 0, 0x0, rus_doll_fmt(3, "freq_test: %s\n", OptReqsArg, "--struct"), 
-//      create_argv(2, "./freq", "--struct")},
-//
-//    {2, 0, 0, 0x0, rus_doll_fmt(3, "freq_test: %s\n", InvOptStr, "--abcd"),
-//      create_argv(2, "./freq", "--abcd")}, 
-//
-//    {0, 0, 0, 0, NULL, NULL} 
-//    };
-//
-//    npass = nfail = 0;
-//    for (i = 0; cases[i].argc != 0; i++) {
-//         printf("\t\tcmd: \"%s\" argc: %d, exp_optstate: %u, exp_optind: %d: ", 
-//                concat_str_arr(cases[i].argv, " "), cases[i].argc, 
-//                cases[i].exp_optstate, cases[i].exp_optind);
-//        fflush(stdout);
-//        if (test_parse_opts(cases[i].argc,cases[i].argv,cases[i].exp_optstate,
-//                     cases[i].exp_size, cases[i].exp_optind, cases[i].exp_msg))
-//
-//        free(cases[i].argv);
-//        if (cases[i].exp_msg)
-//            free(cases[i].exp_msg);
-//    }
-//
-//}
-// 
-//void test_parse_opts_long_combined()
-//{
-//    int i, npass, nfail;
-//    struct TestCase {
-//        int       argc;
-//        int       exp_size;
-//        int       exp_optind; // GNU getopt intializes optind to 1
-//        unsigned  exp_optstate;
-//        char      *exp_msg;
-//        char      **argv;
-//    };
-//    
-//    printf("\n\tlong opts combined\n"); 
-//
-//    struct TestCase cases[] = {
-//    // Valid Cases
-//    {4, 0, 4, 0x0, rus_doll_fmt(2, "freq_test: %s\n", UsageInfoStr), 
-//      create_argv(4, "./freq", "--raw", "--sort", "--help")},    
-//
-//    {5, 0, 5, 0x36, NULL, 
-//      create_argv(5, "./freq", "--aggregate", "--delim=\",\"", "--int", "--sort")},    
-//
-//    {6, 0, 6, 0x3E, NULL, 
-//      create_argv(6, "./freq", "--int", "--sort", "--raw", "--aggregate", "--delim=\"delim\"")},    
-//
-//    // Invalid Mutex opts
-//    {5, 0, 5, 0x0, rus_doll_fmt(3, "freq_test: %s\n", InvOptMutex, MutexOpts), 
-//      create_argv(5, "./freq", "--raw", "--int", "--double", "--float")},    
-//
-//    {6, 0, 6, 0x0, rus_doll_fmt(3, "freq_test: %s\n", InvOptMutex, MutexOpts), 
-//      create_argv(6, "./freq", "--raw", "--int", "--long", "--float", "--sort")},    
-//
-//    {4, 0, 4, 0x0, rus_doll_fmt(3, "freq_test: %s\n", InvOptMutex, MutexOpts), 
-//      create_argv(4, "./freq", "--int", "--long", "--struct=5")},    
-//
-//    // Opt requires arg
-//    {3, 0, 3, 0x0, rus_doll_fmt(3, "freq_test: %s\n", OptReqsArg, "--delim"), 
-//      create_argv(3, "./freq", "--sort", "--delim")},    
-//
-//    {3, 0, 3, 0x0, rus_doll_fmt(3, "freq_test: %s\n", OptReqsArg, "--struct"), 
-//      create_argv(3, "./freq", "--sort", "--struct")},   
-//
-//    // Opt reqs other opt 
-//    {3, 0, 3, 0x0, rus_doll_fmt(2, "freq_test: %s\n", OptSReqsArgR), 
-//      create_argv(3, "./freq", "--sort", "--struct=100")},   
-//
-//    // Opt reqs arg in quotes
-//    {3, 0, 3, 0x0, rus_doll_fmt(3, "freq_test: %s\n", OptReqsQt, "-D"), 
-//      create_argv(3, "./freq", "--sort", "--delim=asd")},    
-//
-//    // invalid arg
-//    {3, 0, 3, 0x0, rus_doll_fmt(3, "freq_test: %s\n", OptReqsArg, "-S"), 
-//      create_argv(3, "./freq", "--sort", "--struct=asd")},    
-//
-//    // no arg opt given arg
-//    {3, 0, 3, 0x0, rus_doll_fmt(3, "freq_test: %s\n", InvOptStr, "-R"), 
-//      create_argv(3, "./freq", "--sort", "--raw=asd")},    
-//
-//    // invalid opt
-//    {3, 0, 3, 0x0, rus_doll_fmt(3, "freq_test: %s\n", InvOptStr, "--asdasd"), 
-//      create_argv(3, "./freq", "--sort", "--asdasd")},    
-//
-//    {3, 0, 3, 0x0, rus_doll_fmt(3, "freq_test: %s\n", InvOptStr, "--qweqwe"), 
-//      create_argv(3, "./freq", "--qweqwe", "--asdasd")},    
-//
-//    {0, 0, 0, 0, NULL, NULL} 
-//    };
-//
-//    npass = nfail = 0;
-//    for (i = 0; cases[i].argc != 0; i++) {
-//         printf("\t\tcmd: \"%s\" argc: %d, exp_optstate: %u, exp_optind: %d: ", 
-//                concat_str_arr(cases[i].argv, " "), cases[i].argc, 
-//                cases[i].exp_optstate, cases[i].exp_optind);
-//        fflush(stdout);
-//        if (test_parse_opts(cases[i].argc,cases[i].argv,cases[i].exp_optstate,
-//                     cases[i].exp_size, cases[i].exp_optind, cases[i].exp_msg))
-//
-//        free(cases[i].argv);
-//        if (cases[i].exp_msg)
-//            free(cases[i].exp_msg);
-//    }
-//
-//}
-// 
-//void test_parse_opts_short_long_mixed()
-//{
-//    int i, npass, nfail;
-//    struct TestCase {
-//        int       argc;
-//        int       exp_size;
-//        int       exp_optind; // GNU getopt intializes optind to 1
-//        unsigned  exp_optstate;
-//        char      *exp_msg;
-//        char      **argv;
-//    };
-//    
-//    printf("\n\tshort-long mixed\n"); 
-//
-//    struct TestCase cases[] = {
-//    // Valid Cases
-//    {4, 0, 4, 0x0, rus_doll_fmt(2, "freq_test: %s\n", UsageInfoStr), 
-//      create_argv(4, "./freq", "-R", "--sort", "--help")},    
-//
-//    {4, 0, 4, 0x36, NULL, 
-//      create_argv(4, "./freq", "-ai", "--delim=\",\"", "--sort")},    
-//
-//    {3, 0, 3, 0x3E, NULL, 
-//      create_argv(3, "./freq", "-isRa", "--delim=\"delim\"")},    
-//
-//    // Invalid Mutex opts
-//    {4, 0, 4, 0x0, rus_doll_fmt(3, "freq_test: %s\n", InvOptMutex, MutexOpts), 
-//      create_argv(4, "./freq", "-Ri", "-d", "--float")},    
-//
-//    {4, 0, 4, 0x0, rus_doll_fmt(3, "freq_test: %s\n", InvOptMutex, MutexOpts), 
-//      create_argv(4, "./freq", "-Rsf", "--int", "--long")},    
-//
-//    {3, 0, 3, 0x0, rus_doll_fmt(3, "freq_test: %s\n", InvOptMutex, MutexOpts), 
-//      create_argv(3, "./freq", "-il", "--struct=5")},    
-//
-//    // Opt requires arg
-//    {3, 0, 3, 0x0, rus_doll_fmt(3, "freq_test: %s\n", OptReqsArg, "--delim"), 
-//      create_argv(3, "./freq", "-s", "--delim")},    
-//
-//    {3, 0, 3, 0x0, rus_doll_fmt(3, "freq_test: %s\n", OptReqsArg, "--struct"), 
-//      create_argv(3, "./freq", "-s", "--struct")},   
-//
-//    // Opt reqs other opt 
-//    {3, 0, 3, 0x0, rus_doll_fmt(2, "freq_test: %s\n", OptSReqsArgR), 
-//      create_argv(3, "./freq", "-sa", "--struct=100")},   
-//
-//    // Opt reqs arg in quotes
-//    {3, 0, 3, 0x0, rus_doll_fmt(3, "freq_test: %s\n", OptReqsQt, "-D"), 
-//      create_argv(3, "./freq", "-sf", "--delim=asd")},    
-//
-//    // invalid arg
-//    {3, 0, 3, 0x0, rus_doll_fmt(3, "freq_test: %s\n", OptReqsArg, "-S"), 
-//      create_argv(3, "./freq", "-dla", "--struct=asd")},    
-//
-//    // no arg opt given arg
-//    {3, 0, 3, 0x0, rus_doll_fmt(3, "freq_test: %s\n", InvOptStr, "-R"), 
-//      create_argv(3, "./freq", "-al", "--raw=asd")},    
-//
-//    // invalid opt
-//    {3, 0, 3, 0x0, rus_doll_fmt(3, "freq_test: %s\n", InvOptStr, "--asdasd"), 
-//      create_argv(3, "./freq", "-R", "--asdasd")},    
-//
-//    {3, 0, 3, 0x0, rus_doll_fmt(3, "freq_test: %s\n", InvOptStr, "-q"), 
-//      create_argv(3, "./freq", "-q", "--asdasd")},    
-//
-//    {0, 0, 0, 0, NULL, NULL} 
-//    };
-//
-//    npass = nfail = 0;
-//    for (i = 0; cases[i].argc != 0; i++) {
-//         printf("\t\tcmd: \"%s\" argc: %d, exp_optstate: %u, exp_optind: %d: ", 
-//                concat_str_arr(cases[i].argv, " "), cases[i].argc, 
-//                cases[i].exp_optstate, cases[i].exp_optind);
-//        fflush(stdout);
-//        if (test_parse_opts(cases[i].argc,cases[i].argv,cases[i].exp_optstate,
-//                     cases[i].exp_size, cases[i].exp_optind, cases[i].exp_msg))
-//
-//        free(cases[i].argv);
-//        if (cases[i].exp_msg)
-//            free(cases[i].exp_msg);
-//    }
-//
-//}
-// 
-//void test_parse_opts_delim()
-//{
-//    return;
-//}
-//// endregion: parse_opts
-//
-
-//
-//char *concat_str_arr(char **arr, const char *delim)
-//{
-//    int i, delim_len, total_len;
-//    char *s;
-//
-//    total_len = 1; // accounting for null terminator
-//    delim_len = strlen(delim);
-//
-//    for (i = 0; arr[i] != NULL; i++)
-//        total_len += strlen(arr[i]) + ((arr[i+1] != NULL) ? delim_len : 0);
-//
-//    s = emalloc(total_len);
-//
-//    // Copy strings and delimiters into `s`, strcat copies '\0' as well
-//    s[0] = '\0';
-//    for (i = 0; arr[i] != NULL; i++) {
-//        strcat(s, arr[i]);
-//        if (arr[i + 1] != NULL)
-//            strcat(s, delim);
-//    }
-//
-//    return s;
-//}
-//
