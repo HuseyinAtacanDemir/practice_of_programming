@@ -138,6 +138,10 @@ static int evasprintf_common(char **strp, const char *fmt,
 /* easprintf: allocates memory and formats string, reports if err */
 int easprintf(char **strp, const char *fmt, ...)
 {
+    if (fmt == NULL) {
+        *strp = NULL;
+        return 0;   
+    }
     va_list args;
     va_start(args, fmt);
     int result = evasprintf(strp, fmt, args);
