@@ -9,7 +9,7 @@ INCLUDES = -I.
 HDRS = freq.internal.h hash.h list.h eprintf.h shmalloc.h
 
 # Source files
-CONST_SRC = freq.internal.c eprintf.c shmalloc.c hash.c list.c
+CONST_SRC = freq.internal.c eprintf.c shmalloc.c hash.c list.c qsort.c
 MAIN_SRCS = freq.main.c $(CONST_SRC)
 TEST_SRCS = freq.test.c freq.test_helper.c jankunit.c $(CONST_SRC)
 
