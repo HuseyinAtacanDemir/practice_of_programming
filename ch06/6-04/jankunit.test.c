@@ -46,7 +46,7 @@ int main(void)
             char *str = "asd";
             TEST("is %d lte %d and %s equal to %s", val, val, str, str) { 
                 EXPECT_LTE(val, val);
-                EXPECT_STREQ(str, str);
+                EXPECT_EQ_STR(str, str);
             }
         }
         

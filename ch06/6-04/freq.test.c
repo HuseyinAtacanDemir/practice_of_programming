@@ -182,7 +182,7 @@ int main(void)
 
                     EXPECT_EQ(optind, argc);
                     EXPECT_EQ(flags, tests[i].exp_flags);
-                    EXPECT_STREQ(delim, tests[i].exp_delim);
+                    EXPECT_EQ_STR(delim, tests[i].exp_delim);
                     EXPECT_EQ(size, tests[i].exp_size);
                 }
 
@@ -198,9 +198,9 @@ int main(void)
                 }
             }
             destroy_argv(tests[i].argv);
+            tests[i].argv = NULL;
         }
       }
     } 
-    //eshfree_all();
     return 0;
 }

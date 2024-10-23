@@ -170,7 +170,7 @@
 #define ASSERT_LTE_PTR(val1, val2)    COMPARE_COMMON(void *,  LTE_COMMON, val1, val2, FAIL_ASSERT(), "ASSERT failed: Expected %p <= %p, but got %p > %p, (%s <= %s). %s:%d\n")
 
 // String equality comparison (handles NULL pointers)
-#define EXPECT_STREQ(str1, str2) \
+#define EXPECT_EQ_STR(str1, str2) \
     do { \
         FLUSH_AND_REDIRECT_SYS_IF_IN_FORK_AND_USR_OUT_IS_UNFLUSHED();   \
         CONTINUE_IF_FAILED_ASSERT_IN_SCOPE(); \
@@ -186,7 +186,7 @@
         } \
     } while (0)
 
-#define ASSERT_STREQ(str1, str2) \
+#define ASSERT_EQ_STR(str1, str2) \
     do { \
         FLUSH_AND_REDIRECT_SYS_IF_IN_FORK_AND_USR_OUT_IS_UNFLUSHED();   \
         CONTINUE_IF_FAILED_ASSERT_IN_SCOPE(); \
@@ -210,10 +210,10 @@
         free(_buf_);  \
     } while (0)
 
-#define EXPECT_OUT_EQ(...) COMMON_FORK_OUTPUT_COMPARISON(EXPECT_STREQ, OUT, __VA_ARGS__)
-#define EXPECT_ERR_EQ(...) COMMON_FORK_OUTPUT_COMPARISON(EXPECT_STREQ, ERR, __VA_ARGS__)
-#define ASSERT_OUT_EQ(...) COMMON_FORK_OUTPUT_COMPARISON(ASSERT_STREQ, OUT, __VA_ARGS__)
-#define ASSERT_ERR_EQ(...) COMMON_FORK_OUTPUT_COMPARISON(ASSERT_STREQ, ERR, __VA_ARGS__)
+#define EXPECT_OUT_EQ(...) COMMON_FORK_OUTPUT_COMPARISON(EXPECT_EQ_STR, OUT, __VA_ARGS__)
+#define EXPECT_ERR_EQ(...) COMMON_FORK_OUTPUT_COMPARISON(EXPECT_EQ_STR, ERR, __VA_ARGS__)
+#define ASSERT_OUT_EQ(...) COMMON_FORK_OUTPUT_COMPARISON(ASSERT_EQ_STR, OUT, __VA_ARGS__)
+#define ASSERT_ERR_EQ(...) COMMON_FORK_OUTPUT_COMPARISON(ASSERT_EQ_STR, ERR, __VA_ARGS__)
 
 #define EXPECT_EXIT_CODE_EQ(code)   EXPECT_EQ(code, GLOBAL_CTX->EXIT_CODE)
 #define EXPECT_SIGNAL_CODE_EQ(code) EXPECT_EQ(code, GLOBAL_CTX->SIGNAL_CODE)

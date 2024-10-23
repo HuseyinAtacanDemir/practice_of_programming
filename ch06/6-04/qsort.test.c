@@ -309,11 +309,11 @@ int main(void)
 
             FORK() {
                 qsort_generic(people, 5, sizeof(Person), person_p_fn_cmp);
-                EXPECT_STREQ(people[0].first_name, "Aaron");
-                EXPECT_STREQ(people[1].first_name, "Ivan");
-                EXPECT_STREQ(people[2].first_name, "John");
-                EXPECT_STREQ(people[3].first_name, "Mark");
-                EXPECT_STREQ(people[4].first_name, "Shuji");
+                EXPECT_EQ_STR(people[0].first_name, "Aaron");
+                EXPECT_EQ_STR(people[1].first_name, "Ivan");
+                EXPECT_EQ_STR(people[2].first_name, "John");
+                EXPECT_EQ_STR(people[3].first_name, "Mark");
+                EXPECT_EQ_STR(people[4].first_name, "Shuji");
             }
             
             ASSERT_EXIT_CODE_EQ(EXIT_SUCCESS);
@@ -323,11 +323,11 @@ int main(void)
 
             FORK() {
                 qsort_generic(people, 5, sizeof(Person), person_p_ln_cmp);
-                EXPECT_STREQ(people[0].last_name, "Ivanovich Somethingskiyy");
-                EXPECT_STREQ(people[1].last_name, "McSomething");
-                EXPECT_STREQ(people[2].last_name, "Samatinura");
-                EXPECT_STREQ(people[3].last_name, "Somestein");
-                EXPECT_STREQ(people[4].last_name, "Somethingsey");
+                EXPECT_EQ_STR(people[0].last_name, "Ivanovich Somethingskiyy");
+                EXPECT_EQ_STR(people[1].last_name, "McSomething");
+                EXPECT_EQ_STR(people[2].last_name, "Samatinura");
+                EXPECT_EQ_STR(people[3].last_name, "Somestein");
+                EXPECT_EQ_STR(people[4].last_name, "Somethingsey");
             }
             
             ASSERT_EXIT_CODE_EQ(EXIT_SUCCESS);
@@ -376,11 +376,11 @@ int main(void)
 
             FORK() {
                 qsort(people, 5, sizeof(Person *), person_pp_fn_cmp);
-                EXPECT_STREQ(people[0]->first_name, "Aaron");
-                EXPECT_STREQ(people[1]->first_name, "Ivan");
-                EXPECT_STREQ(people[2]->first_name, "John");
-                EXPECT_STREQ(people[3]->first_name, "Mark");
-                EXPECT_STREQ(people[4]->first_name, "Shuji");
+                EXPECT_EQ_STR(people[0]->first_name, "Aaron");
+                EXPECT_EQ_STR(people[1]->first_name, "Ivan");
+                EXPECT_EQ_STR(people[2]->first_name, "John");
+                EXPECT_EQ_STR(people[3]->first_name, "Mark");
+                EXPECT_EQ_STR(people[4]->first_name, "Shuji");
             } 
             ASSERT_EXIT_CODE_EQ(EXIT_SUCCESS);
             ASSERT_SIGNAL_CODE_EQ(NOT_SIGNALED);
@@ -389,11 +389,11 @@ int main(void)
 
             FORK() {
                 qsort(people, 5, sizeof(Person *), person_pp_ln_cmp);
-                EXPECT_STREQ(people[0]->last_name, "Ivanovich Somethingskiyy");
-                EXPECT_STREQ(people[1]->last_name, "McSomething");
-                EXPECT_STREQ(people[2]->last_name, "Samatinura");
-                EXPECT_STREQ(people[3]->last_name, "Somestein");
-                EXPECT_STREQ(people[4]->last_name, "Somethingsey");
+                EXPECT_EQ_STR(people[0]->last_name, "Ivanovich Somethingskiyy");
+                EXPECT_EQ_STR(people[1]->last_name, "McSomething");
+                EXPECT_EQ_STR(people[2]->last_name, "Samatinura");
+                EXPECT_EQ_STR(people[3]->last_name, "Somestein");
+                EXPECT_EQ_STR(people[4]->last_name, "Somethingsey");
             } 
             ASSERT_EXIT_CODE_EQ(EXIT_SUCCESS);
             ASSERT_SIGNAL_CODE_EQ(NOT_SIGNALED);
