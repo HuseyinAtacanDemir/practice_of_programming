@@ -3,8 +3,6 @@
 
 #include <getopt.h>
 
-#define E_READ_BUF_CHUNK_SIZE  (256*1024) // 256 kb
-
 enum { HELP, AGGR, SORT, DELIM, RAW, CHAR, INT, DOUBLE, STRING };
 
 // parse_opts constants
@@ -15,9 +13,13 @@ enum { HELP, AGGR, SORT, DELIM, RAW, CHAR, INT, DOUBLE, STRING };
 #define DEFAULT_SIZE      0
 
 #define TYPE_OPTS_MASK    ((1<<INT)|(1<<CHAR)|(1<<DOUBLE))
-#define RAW_OPT_MASK      ((1<<RAW))
+#define AGGR_OPT_MASK     ((1<<AGGR))
+#define SORT_OPT_MASK     ((1<<SORT))
 #define DELIM_OPT_MASK    ((1<<DELIM))
+#define RAW_OPT_MASK      ((1<<RAW))
 #define CHAR_OPT_MASK     ((1<<CHAR))
+#define INT_OPT_MASK      ((1<<INT))
+#define DOUBLE_OPT_MASK   ((1<<DOUBLE))
 #define STRING_OPT_MASK   ((1<<STRING))
 
 // atoi_pos err values
@@ -38,14 +40,11 @@ extern const char           *UsageInfoStr;
 // getopt.h struct opton, option and argument listing, "man 3 getopt_long"
 extern const struct option  LongOpts[];
 
-extern void freq            (int fd, int flags, char *delim, int size);
+extern void freq            (char *buf, int bufsize, int flags, char *delim, 
+                              int size);
 extern int  parse_opts      (int argc, char *argv[], char **delim, int *size);
 extern int  set_opt_flag    (int flags, int opt);
 extern int  atoi_pos        (char *str);
-extern int  e_getline       (char *buf, int bufsize, char **ln, int bufseek);
-extern int  ea_readline     (int fd, char **buf, int *nbuf_allocd, char **ln, int bufseek);
-extern int  ea_read_buf     (int fd, char **buf);
-
 
 extern void e_usage           (void);
 extern void e_set_delim       (char **delim, int *n_delim);

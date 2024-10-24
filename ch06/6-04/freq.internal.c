@@ -8,6 +8,7 @@
 #include <ctype.h>
 
 #include "eprintf.h"
+#include "eread.h"
 #include "hash.h"
 #include "qsort.h"
 
@@ -20,21 +21,24 @@ const char *ErrInvOpt           = "invalid option %s";
 const char *ErrInvSizeArg       = "SIZE needs to be a positive integer. Given SIZE: %s";
  
 const char *UsageInfoStr = 
-"Usage: freq [-acdDhiRsS] [-D DELIM] [-R[SIZE]] [--delim=DELIM] [--raw[=SIZE]] [file ...]\n"
+"Usage: freq [-acdDhiRsS] [-D DELIM] [-R[SIZE]] [--delim=DELIM] "
+                                                  "[--raw[=SIZE]] [file ...]\n"
 "Options:\n"
 "\t-h,        --help         Display this menu and exit\n"
 "\t-a,        --aggregate    Aggregate input files into a combined output\n"
 "\t-s,        --sort         Sort the output\n"
-"\t-D DELIM,  --delim=DELIM  Set delimiter string for non-raw input (supports regex)\n"
+"\t-D DELIM,  --delim=DELIM  Set delimiter for non-raw input (regex)\n"
 "\t-R[SIZE],  --raw[=SIZE]   Interpret input as a raw byte stream. Infers SIZE"
-" from provided type option, or explicit SIZE argument where SIZE > 0.\n"
+                                                  " from provided type option,"
+                                 " or explicit SIZE argument where SIZE > 0.\n"
 "\t-c,        --char         Interpret input as ASCII chars\n"
 "\t-i,        --int          Interpret input as integers\n"
 "\t-d,        --double       Interpret input as doubles\n"
 "\t-S,        --string       Interpret input as strings";
 
 // struct option: defined in getopt.h, see "man 3 getopt_long"
-const struct option LongOpts[] = {
+const struct option LongOpts[] = 
+{
     {"help",      no_argument,        0,  'h'},
     {"aggregate", no_argument,        0,  'a'},
     {"sort",      no_argument,        0,  's'},
@@ -47,36 +51,23 @@ const struct option LongOpts[] = {
     {0, 0, 0, 0}
 };
 
-void freq(int fd, int flags, char *delim, int size)
+void freq(char *buf, int bufsize, int flags, char *delim, int rawsize)
 {
-    char    *buf, *ln;
-    int     bufsize, bufseek, len;
-    Hashmap *maps[3];
-    char    char_freq[UCHAR_MAX];
 
-		if (fd < 0)
-        return;
+    //if (flags && RAW_OPT_MASK)
+        //handle_raw_input(flags, *buf, *bufsize);
+    //else
+        //handle_text_input(flags, *buf, *bufsize);
 
-    bufsize = ea_read_buf(fd, &buf);
 
-    if (flags & CHAR_OPT_MASK) {
-        for (int i = 0; i < UCHAR_MAX; i++)
-            char_freq[i] = 0;
-        for (int i = 0; i < bufsize; i++)
-            char_freq[(unsigned)buf[i]]++;
-    }
-
-    for (bufseek = 0; /*  break condition below  */ ; bufseek += len) {
-        if ((len = e_getline(buf, bufsize, &ln, bufseek)) < 0)
-            break;
-        // if len >= 0, process for loop body: 
-
-        int printlen = ln[len-1] == '\n' ? len-1 : len;
-        printf("%.*s\n", printlen, ln);
-    }
-    
-    if (buf)
-        free(buf);
+    //for (bufseek = 0; /*  break condition below  */ ; bufseek += len) {
+        //if ((len = e_getline(buf, bufsize, &ln, bufseek)) < 0)
+            //break;
+        //// if len >= 0, process for loop body: 
+        //int printlen = ln[len-1] == '\n' ? len-1 : len;
+        //printf("%.*s\n", printlen, ln);
+    //}
+  
     /*
     pseudocode:
     create an dynamic array of structs with possible hmaps
@@ -125,73 +116,20 @@ void freq(int fd, int flags, char *delim, int size)
     return;
 }
 
-int e_getline(char *buf, int bufsize, char **ln, int bufseek)
+void handle_raw_input(int flags, char *buf, int bufsize)
 {
-    int len;
-    char *c;
+    //if (flags & CHAR_OPT_MASK) {
+        //for (int i = 0; i < UCHAR_MAX; i++)
+            //char_freq[i] = 0;
+        //for (int i = 0; i < bufsize; i++)
+            //char_freq[(unsigned)buf[i]]++;
+    //}
 
-    if (bufseek >= bufsize)
-        return -1;
-
-    *ln = (char *)(buf+bufseek);
-    c = *ln;
-    for (len = 0; (bufseek+len) < bufsize && *c != '\n'; c++, len++)
-        ;
-    
-    return len + 1;
 }
 
-// e_readline: reads a file descriptor using a char **buffer line by line
-//              sets the cahr **ln pointer to the start of a line, where line
-//              defined as a string of bytes (any bytes) upto and including \n
-//
-//              returns line length, or -1 if end of buffer.
-//              exits with error message if failure.
-int ea_readline(int fd, char **buf, int *nbuf_allocd, char **ln, int bufseek)
+void handle_text_input(int flags, char *buf, int bufsize)
 {
-    if (*buf == NULL)
-        *nbuf_allocd = ea_read_buf(fd, buf);
-    
-    return e_getline(*buf, *nbuf_allocd, ln, bufseek);
-}
-
-// ea_read_buf: reads a file descriptor into a char **buffer.
-//              Allocates memory for the buffer and updates the buffer
-//              so that it only has only ntotal_read bytes of memory allocated.
-//              Does NOT terminate buffer with a NULL terminator
-//              returns total number of allocated bytes. 
-//              exits with error message if error
-int ea_read_buf(int fd, char **buf)
-{
-    int nbuf_allocd, nbuf_unused, ntotal_read, ncur_read;
-
-    nbuf_allocd = nbuf_unused = E_READ_BUF_CHUNK_SIZE;
-    ntotal_read = 0;
-
-    *buf = (char *) emalloc(nbuf_allocd);
-    
-    // while read returns a value bigger than 0:
-    //    we check if we have filled our buf, if so we resize buf
-    while ((ncur_read = read(fd, (*buf + ntotal_read), nbuf_unused)) > 0) {
-        // resize, buffer was not big enough
-        if (ncur_read == nbuf_unused) {
-            nbuf_allocd *= 2;
-            void *new_buf = erealloc(*buf, nbuf_allocd);
-            *buf = new_buf;
-        }
-        ntotal_read += ncur_read;
-        nbuf_unused = (nbuf_allocd-ntotal_read);
-    }
-    if (ncur_read == -1)
-        eprintf("error while reading file:");
-
-    if (nbuf_unused) {
-        nbuf_allocd = ntotal_read;
-        void *new_buf = (char *) erealloc(*buf, nbuf_allocd);
-        *buf = new_buf;
-    }
-    
-    return nbuf_allocd;
+    return;
 }
 
 int parse_opts(int argc, char *argv[], char **delim, int *size) 
@@ -226,6 +164,7 @@ int parse_opts(int argc, char *argv[], char **delim, int *size)
             // impossible case, EXIT_FAILURE
             default: eprintf("Unexpected option: %c:", opt);
         }
+        // valid option, set the relevant flag bit
 		    flags = set_opt_flag(flags, opt);
     }
     e_validate_flags(flags, n_raw_size_given, n_delim_given); 
