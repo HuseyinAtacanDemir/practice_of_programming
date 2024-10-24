@@ -42,7 +42,8 @@ extern void freq            (int fd, int flags, char *delim, int size);
 extern int  parse_opts      (int argc, char *argv[], char **delim, int *size);
 extern int  set_opt_flag    (int flags, int opt);
 extern int  atoi_pos        (char *str);
-extern int  ea_readline     (int fd, char **buf, int *nbuf_allocd, char **ln, int buf_seek);
+extern int  e_getline       (char *buf, int bufsize, char **ln, int bufseek);
+extern int  ea_readline     (int fd, char **buf, int *nbuf_allocd, char **ln, int bufseek);
 extern int  ea_read_buf     (int fd, char **buf);
 
 
