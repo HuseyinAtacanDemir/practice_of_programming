@@ -1,10 +1,12 @@
 #ifndef FREQ_INTERNAL_H
 #define FREQ_INTERNAL_H
 
-#include <stdio.h> 
 #include <getopt.h>
 
+#define E_READ_BUF_CHUNK_SIZE  256000
+
 enum { HELP, AGGR, SORT, DELIM, RAW, CHAR, INT, DOUBLE, STRING };
+
 // parse_opts constants
 #define N_SUPPORTED_OPTS  9 
 #define OPT_STR           "+:hasD:R::cidS"
@@ -36,11 +38,12 @@ extern const char           *UsageInfoStr;
 // getopt.h struct opton, option and argument listing, "man 3 getopt_long"
 extern const struct option  LongOpts[];
 
-extern void freq            (FILE *fin, int flags, char *delim, int size);
+extern void freq            (int fd, int flags, char *delim, int size);
 extern int  parse_opts      (int argc, char *argv[], char **delim, int *size);
 extern int  set_opt_flag    (int flags, int opt);
 extern int  atoi_pos        (char *str);
-extern char *a_readline     (FILE *fin);
+extern int  ea_readline     (int fd, char **buf, int *nbuf_allocd, char **ln, int buf_seek);
+extern int  ea_read_buf     (int fd, char **buf);
 
 
 extern void e_usage           (void);

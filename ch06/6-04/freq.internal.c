@@ -46,10 +46,22 @@ const struct option LongOpts[] = {
     {0, 0, 0, 0}
 };
 
-void freq(FILE *fin, int flags, char *delim, int size)
+void freq(int fd, int flags, char *delim, int size)
 {
-		if (fin == NULL)
-				return;
+    char  *buf, *ln;
+    int   nbuf_allocd, buf_seek, len;
+
+		if (fd < 0)
+        return;
+
+    buf_seek = 0;
+    buf = ln = NULL;
+    while ((len = ea_readline(fd, &buf, &nbuf_allocd, &ln, buf_seek)) >= 0) {
+        weprintf("%.*s", len, ln);
+        buf_seek += len + 1;
+    }
+    if (buf)
+        free(buf);
     /*
     pseudocode:
     create an dynamic array of structs with possible hmaps
@@ -96,6 +108,74 @@ void freq(FILE *fin, int flags, char *delim, int size)
 
     */
     return;
+}
+
+// e_readline: reads a null terminated buffer string,
+//              sets a Line pointer with a pointer to the '\n' stripped line
+//              and and the length of the line
+//              returns line length, or -1 if end of buffer ('\0' detected)
+//              exits with error message if failure
+int ea_readline(int fd, char **buf, int *nbuf_allocd, char **ln, int buf_seek)
+{
+    int   len;
+    char  *c_p;
+
+    if (*buf == NULL)
+        *nbuf_allocd = ea_read_buf(fd, buf);
+    
+    if (buf_seek >= *nbuf_allocd)
+        return -2;
+
+    len = 0;
+    for (c_p = (*buf)+buf_seek; *c_p != '\0'  && *c_p != '\n'; c_p++, len++)
+        ;
+     
+    *ln = (*buf) + buf_seek;
+
+    return (len || *c_p) ? len : -1;
+}
+
+// ea_read_buf: reads a file descriptor into a buffer with a null terminator,
+//              allocates memory for the buffer and updates the buffer
+//              so that it only has only ntotal_read + 1 (for '\0') bytes of
+//              memory allocated.
+//              returns total number of allocated bytes. 
+//              exits with error message if error
+int ea_read_buf(int fd, char **buf)
+{
+    int ntotal_read, ncur_read, nbuf_allocd, nbuf_unused;
+
+    nbuf_allocd = E_READ_BUF_CHUNK_SIZE;
+    nbuf_unused = nbuf_allocd-1;
+    ntotal_read = 0;
+
+    *buf = (char *) emalloc(nbuf_allocd);
+    
+    // while read returns a value bigger than 0:
+    //    we check if we have filled our buf, if so we resize buf
+    //    we always read 1 less than allocated space, for '\0'
+    while ((ncur_read = read(fd, (*buf + ntotal_read), nbuf_unused)) > 0) {
+        // resize, buffer was not big enough
+        if (ncur_read == nbuf_unused) {
+            void *new_buf = erealloc(*buf, (nbuf_allocd * 2));
+            *buf = new_buf;
+            nbuf_unused = nbuf_allocd - 1;
+            nbuf_allocd = nbuf_allocd * 2;
+        }
+        ntotal_read += ncur_read;
+        nbuf_unused -= ncur_read;
+    }
+    if (ncur_read == -1)
+        eprintf("error while reading file:");
+
+    if (nbuf_unused) {
+        void *new_buf = (char *) erealloc(*buf, ntotal_read + 1);
+        *buf = new_buf;
+        nbuf_allocd = ntotal_read + 1;
+    }
+    
+    (*buf)[ntotal_read] = '\0';
+    return nbuf_allocd;
 }
 
 int parse_opts(int argc, char *argv[], char **delim, int *size) 
