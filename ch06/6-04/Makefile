@@ -6,10 +6,10 @@ RELEASE_FLAGS = -O2
 INCLUDES = -I.
 
 # Headers
-HDRS = freq.internal.h hash.h list.h eprintf.h shmalloc.h
+HDRS = freq.internal.h hash.h list.h eprintf.h shmalloc.h qsort.h eread.h
 
 # Source files
-CONST_SRC = freq.internal.c eprintf.c shmalloc.c hash.c list.c qsort.c
+CONST_SRC = freq.internal.c eprintf.c shmalloc.c hash.c list.c qsort.c eread.c
 MAIN_SRCS = freq.main.c $(CONST_SRC)
 TEST_SRCS = freq.test.c freq.test_helper.c jankunit.c $(CONST_SRC)
 
