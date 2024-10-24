@@ -1,5 +1,6 @@
 #include "freq.internal.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <getopt.h>
 #include <string.h>
@@ -54,12 +55,16 @@ void freq(int fd, int flags, char *delim, int size)
 		if (fd < 0)
         return;
 
-    buf_seek = 0;
     buf = ln = NULL;
-    while ((len = ea_readline(fd, &buf, &nbuf_allocd, &ln, buf_seek)) >= 0) {
-        weprintf("%.*s", len, ln);
-        buf_seek += len + 1;
+//  for (buf_seek = 0; (len = ea_readline(....)) >= 0; buf_seek += (len+1)) {
+    for (buf_seek = 0; /*  break condition below  */ ; buf_seek += (len+1)) {
+        if ((len = ea_readline(fd, &buf, &nbuf_allocd, &ln, buf_seek)) < 0)
+            break;
+        // if len >= 0, process for loop body: 
+
+        printf("%.*s\n", len, ln);
     }
+    
     if (buf)
         free(buf);
     /*
