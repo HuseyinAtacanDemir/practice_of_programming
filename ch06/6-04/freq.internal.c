@@ -51,7 +51,7 @@ void freq(int fd, int flags, char *delim, int size)
 {
     char    *buf, *ln;
     int     bufsize, bufseek, len;
-    HashMap *maps[3];
+    Hashmap *maps[3];
     char    char_freq[UCHAR_MAX];
 
 		if (fd < 0)
@@ -63,7 +63,7 @@ void freq(int fd, int flags, char *delim, int size)
         for (int i = 0; i < UCHAR_MAX; i++)
             char_freq[i] = 0;
         for (int i = 0; i < bufsize; i++)
-            char_freq[buf[i]]++;
+            char_freq[(unsigned)buf[i]]++;
     }
 
     for (bufseek = 0; /*  break condition below  */ ; bufseek += len) {
@@ -71,7 +71,8 @@ void freq(int fd, int flags, char *delim, int size)
             break;
         // if len >= 0, process for loop body: 
 
-        printf("%.*s\n", len, ln);
+        int printlen = ln[len-1] == '\n' ? len-1 : len;
+        printf("%.*s\n", printlen, ln);
     }
     
     if (buf)
@@ -132,11 +133,12 @@ int e_getline(char *buf, int bufsize, char **ln, int bufseek)
     if (bufseek >= bufsize)
         return -1;
 
-    *ln = c = (*buf) + bufseek;
+    *ln = (char *)(buf+bufseek);
+    c = *ln;
     for (len = 0; (bufseek+len) < bufsize && *c != '\n'; c++, len++)
         ;
     
-    return len;
+    return len + 1;
 }
 
 // e_readline: reads a file descriptor using a char **buffer line by line
@@ -150,7 +152,7 @@ int ea_readline(int fd, char **buf, int *nbuf_allocd, char **ln, int bufseek)
     if (*buf == NULL)
         *nbuf_allocd = ea_read_buf(fd, buf);
     
-    return e_getline(*buf, nbuf_allocd, ln, bufseek);
+    return e_getline(*buf, *nbuf_allocd, ln, bufseek);
 }
 
 // ea_read_buf: reads a file descriptor into a char **buffer.
@@ -178,7 +180,7 @@ int ea_read_buf(int fd, char **buf)
             *buf = new_buf;
         }
         ntotal_read += ncur_read;
-        nbuf_unused -= (nbuf_allocd-ntotal_read);
+        nbuf_unused = (nbuf_allocd-ntotal_read);
     }
     if (ncur_read == -1)
         eprintf("error while reading file:");

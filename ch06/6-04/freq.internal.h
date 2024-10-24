@@ -3,7 +3,7 @@
 
 #include <getopt.h>
 
-#define E_READ_BUF_CHUNK_SIZE  256000
+#define E_READ_BUF_CHUNK_SIZE  (256*1024) // 256 kb
 
 enum { HELP, AGGR, SORT, DELIM, RAW, CHAR, INT, DOUBLE, STRING };
 
