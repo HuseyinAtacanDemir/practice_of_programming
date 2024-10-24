@@ -54,12 +54,14 @@ void configure_ctx_post_fork            (void);
 void dup2_usr_pipes                     (void);
 void flush_usr_pipes_and_dup2_sys_pipes (void);
 void flush_and_close_all_pipes          (void);
+void close_usr_pipes                    (void);
+void close_sys_pipes                    (void);
 void close_all_pipes                    (void);
 
 void read_pipes_in_parent               (void);
 void read_pipes_to_bufs                 (void);
 
-void handle_all_catchable_signals       (void);
+void register_signal_handlers           (void);
 void handle_signal                      (int);
 
 #endif

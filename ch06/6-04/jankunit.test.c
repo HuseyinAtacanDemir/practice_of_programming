@@ -30,6 +30,15 @@ int side_effect_fn(int num, int *num_p)
     return 0;
 }
 
+int infinite_fn()
+{
+    int a;
+    for (;;)
+        a++;
+
+    return 0;
+}
+
 int main(void) 
 {
     init_ctx(); 
@@ -69,7 +78,7 @@ int main(void)
                         EXPECT_EQ(result, (a+b));
                     }
                     if (!a || !b) {
-                        EXPECT_OUT_EQ("");
+                        EXPECT_OUT_EQ(NULL);
                         char *msg = NULL;
                         easeprintf(&msg, InvPosNumErr, a, b); 
                         EXPECT_ERR_EQ(msg);
@@ -77,7 +86,7 @@ int main(void)
                         msg = NULL;
                     } else {
                         EXPECT_OUT_EQ(SumInfoOut, a, b, (a+b));
-                        EXPECT_ERR_EQ("");
+                        EXPECT_ERR_EQ(NULL);
                     }
                 }
             }
@@ -107,6 +116,18 @@ int main(void)
                 eshfree(sh_int);
                 sh_int = NULL;
                 shfree_all();
+            }
+
+            TEST("FORK_KILL_AFTER should behave correctly") {
+                FORK_KILL_AFTER(1) {
+                    infinite_fn();
+                    ASSERT_TRUE(0);
+                }
+
+                EXPECT_OUT_EQ(NULL);
+                EXPECT_ERR_EQ(NULL);
+                EXPECT_EXIT_CODE_EQ(NOT_EXITED);
+                EXPECT_SIGNAL_CODE_EQ(SIGALRM);
             }
         }
     }

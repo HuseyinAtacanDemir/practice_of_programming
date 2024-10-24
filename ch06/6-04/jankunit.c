@@ -1,5 +1,7 @@
 #include "jankunit.h"
 #include "jankunit.internal.h"
+
+#include <unistd.h>
 #include <errno.h>
 #include <signal.h>
 
@@ -366,14 +368,7 @@ void flush_usr_pipes_and_dup2_sys_pipes()
 {
     fflush(stdout);
     
-    if (GLOBAL_CTX->pipes[USR][OUT][WRITE_END] != -1) {
-        close(GLOBAL_CTX->pipes[USR][OUT][WRITE_END]);
-        GLOBAL_CTX->pipes[USR][OUT][WRITE_END] = -1;
-    }
-    if (GLOBAL_CTX->pipes[USR][ERR][WRITE_END] != -1) {
-        close(GLOBAL_CTX->pipes[USR][ERR][WRITE_END]);
-        GLOBAL_CTX->pipes[USR][ERR][WRITE_END] = -1;
-    }
+    close_usr_pipes();
 
     dup2(GLOBAL_CTX->pipes[SYS][OUT][WRITE_END], STDOUT_FILENO);
     dup2(GLOBAL_CTX->pipes[SYS][ERR][WRITE_END], STDERR_FILENO);
@@ -386,15 +381,30 @@ void flush_and_close_all_pipes()
     close_all_pipes();
 }
 
+void close_usr_pipes()
+{
+    for (int j = OUT; j <= ERR; j++)
+        for (int k = READ_END; k <= WRITE_END; k++)
+            if (GLOBAL_CTX && GLOBAL_CTX->pipes[USR][j][k] != -1) {
+                close(GLOBAL_CTX->pipes[USR][j][k]);
+                GLOBAL_CTX->pipes[USR][j][k] = -1;
+            }
+}
+
+void close_sys_pipes()
+{
+    for (int j = OUT; j <= ERR; j++)
+        for (int k = READ_END; k <= WRITE_END; k++)
+            if (GLOBAL_CTX && GLOBAL_CTX->pipes[SYS][j][k] != -1) {
+                close(GLOBAL_CTX->pipes[SYS][j][k]);
+                GLOBAL_CTX->pipes[SYS][j][k] = -1;
+            }
+}
+
 void close_all_pipes() 
 {
-    for (int i = USR; i <= SYS; i++)
-        for (int j = OUT; j <= ERR; j++)
-            for (int k = READ_END; k <= WRITE_END; k++)
-                if (GLOBAL_CTX && GLOBAL_CTX->pipes[i][j][k] != -1) {
-                    close(GLOBAL_CTX->pipes[i][j][k]);
-                    GLOBAL_CTX->pipes[i][j][k] = -1;
-                }
+    close_usr_pipes();
+    close_sys_pipes();
 }
 
 void read_pipes_in_parent()
@@ -463,51 +473,53 @@ void read_pipes_to_bufs()
 
 void handle_signal(int sig)
 {
-    char *msg;
-    int len = 0;
+    char *msg, *indent;
     int err_no = errno;
 
-    if (sig == SIGSEGV)
-        msg = "\nSIGSEGV in child\n";
-    else if (sig == SIGBUS)
-        msg = "\nSIGBUS in child\n";
-    else
-        msg = "\nSome signale in child\n";
+    switch(*GLOBAL_CTX->indent) {
+        case 0:   indent = "";              break;
+        case 1:   indent = "    ";          break;
+        case 2:   indent = "        ";      break;
+        case 3:   indent = "            ";  break;
+        default:  indent = "";              break;
+    }
 
-    for (char *p = msg, len = 0; *p != '\0'; p++, len++)
-      ;
+    switch(sig) {
+        case SIGSEGV: msg = "SIGSEGV in child\n";     break;
+        case SIGBUS:  msg = "SIGBUS in child\n";      break;
+        case SIGALRM: msg = "SIGALRM in child\n";     break;
+        default:      msg = "Some signal in child\n"; break;
+    }
 
     //  write a message detailing the signal 
     //  and close all open pipes
-    write(STDOUT_FILENO, msg, len+1);
+    close_usr_pipes();
+    dup2(GLOBAL_CTX->pipes[SYS][OUT][WRITE_END], STDOUT_FILENO);
+    write(STDOUT_FILENO, indent, strlen(indent));
+    write(STDOUT_FILENO, msg, strlen(msg));
     close_all_pipes();
-
-    //after closing pipes, restore default sig handler
-    struct sigaction sa_dfl;
-    sa_dfl.sa_handler = SIG_DFL;
-    sigemptyset(&sa_dfl.sa_mask);
-    sa_dfl.sa_flags = 0;
 
     // reset the errno and raise the signal again 
     // for the default handler to handle
     errno = err_no;
+    
+    struct sigaction sa;
+    sa.sa_handler = SIG_DFL;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sigaction(sig, &sa, NULL);
+
     raise(sig);
 }
 
-void handle_all_catchable_signals()
+void register_signal_handlers()
 {
-    sigset_t set;
+    struct sigaction sa;
+    sa.sa_handler = handle_signal;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESTART;
 
-    struct sigaction sa_custom;
-    sa_custom.sa_handler = handle_signal;
-    sigemptyset(&sa_custom.sa_mask);
-    sa_custom.sa_flags = SA_RESTART;
-
-    //256 because, well, are there more signals??
-    for (int i = 0; i < 256; i++) {
-        sigfillset(&set);
-        if (sigismember(&set, i) && i != SIGKILL && i != SIGSTOP && i != SIGTRAP) {
-            sigaction(i, &sa_custom, NULL);
-        }
-    }
+    sigaction(SIGALRM, &sa, NULL);
+    sigaction(SIGSEGV, &sa, NULL);
+    sigaction(SIGBUS, &sa, NULL);
 }

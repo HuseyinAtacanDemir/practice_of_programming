@@ -303,24 +303,29 @@ wont be propagated to the parent, however total assert/expect count will be.
             _pid_ == -2;    \
             GLOBAL_CTX->is_forked = (_pid_ > 0 && (configure_ctx_post_fork(), 0)) )   \
         for (_pid_ = fork(); \
-                _pid_ == 0 && (dup2_usr_pipes(), 1) && (atexit(flush_and_close_all_pipes), 1) && (handle_all_catchable_signals(), 1);    \
+                _pid_ == 0  \
+                  && (dup2_usr_pipes(), 1)  \
+                  && (atexit(flush_and_close_all_pipes), 1) \
+                  && (register_signal_handlers(), 1);    \
                 exit(EXIT_SUCCESS) )
 
-/*
 // I want to have an option of creating a FORK block whereby the user can kill the forked process if the forked process does not exit
 // in a predetermined timeframe
 // for which, I would need to use signals, alarms, and custom signal handling logic in the parent so that we cancel the signal if the forked
 // process exits before the alarm
 // What I can think of is calling alarm(0) in configure_ctx_post_fork after ensuring that the wait was completed
 
-#define FORK_KILL_AFTER(interval)  \
-    for (pid_t _pid_ = (configure_ctx_pre_fork(), -2) + (alarm((interval)), 0);   \
+#define FORK_KILL_AFTER(seconds)  \
+    for (pid_t _pid_ = (configure_ctx_pre_fork(), -2);   \
             _pid_ == -2;    \
-            GLOBAL_CTX->is_forked = (_pid_ > 0 && () && (configure_ctx_post_fork(), 0)) )   \
+            GLOBAL_CTX->is_forked = (_pid_ > 0 && (configure_ctx_post_fork(), 0)) )   \
         for (_pid_ = fork(); \
-                _pid_ == 0 && (dup2_usr_pipes(), 1) && (atexit(flush_and_close_all_pipes), 1) && (handle_all_catchable_signals(), 1);    \
+                _pid_ == 0  \
+                  && (dup2_usr_pipes(), 1)  \
+                  && (alarm((seconds)), 1)  \
+                  && (atexit(flush_and_close_all_pipes), 1) \
+                  && (register_signal_handlers(), 1);    \
                 exit(EXIT_SUCCESS) )
-*/
 
 #define TEST_PROGRAM(...) \
     for (int _prog_flag_ = (start_test_block(PROG, __VA_ARGS__), 1); \
