@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 
 #include "eprintf.h"
 #include "list.h"
@@ -50,7 +51,7 @@ HashmapItem *find(Hashmap *hmap, void *data, int create, void *value)
         if (compare_keys(hmap, data, ((HashmapItem *) li->data)->data) == 0)
             return li->data;
                 
-    if (create && value)
+    if (create)
         return insert(hmap, data, value);
 
     return NULL;
@@ -120,19 +121,6 @@ HashmapItem *del_hmi(Hashmap *hmap, void *data)
     return NULL; 
 }
 
-// TODO clean all HMAP related DSTs
-void free_map(Hashmap *hmap)
-{
-    /*
-    pseudocode: 
-        loop over all mapped buckets (non null buckets)
-            iterate over li, li->next ... till NULL
-                for each li, free the HashMapItem
-                free the li
-        free (ListItem **) hmap->table
-        free (Hashmap *) hmap
-    */
-}
 
 // Hashmap compare_keys: compare the key members of data1 and data2. Key member
 //                        of the unknown struct that the void pointers point to
@@ -145,6 +133,10 @@ int compare_keys(Hashmap *hmap, void *data1, void *data2)
 
     key1 = (char *) hmap->get_key_field(data1);
     key2 = (char *) hmap->get_key_field(data2);
+
+    if (hmap->is_key_string)
+        return (hmap->key_size ? strcmp(key1, key2) 
+                              : memcmp(key1, key2, hmap->key_size));
 
     for (i = 0; i < hmap->key_size; i++, key1++, key2++)
         if (*key1 > *key2)
@@ -233,3 +225,32 @@ void resize(Hashmap *hmap)
     free(tbl_old);
     tbl_old = NULL;
 }
+
+// TODO clean all HMAP related DSTs
+void destroy_hmap(Hashmap *hmap)
+{
+    /*
+    pseudocode: 
+        loop over all mapped buckets (non null buckets)
+            iterate over li, li->next ... till NULL
+                for each li, free the HashMapItem
+                free the li
+        free (ListItem **) hmap->table
+        free (Hashmap *) hmap
+    */
+}
+
+void iterate_hmis(Hashmap *hmap, void (*fn)(HashmapItem *hmi, int idx, va_list args), ...)
+{
+    va_list args;
+
+    va_start(args, fn);
+    int j = 0;
+    for (int i = 0 ; i < hmap->n_bucket; i++)
+        for (ListItem *li = hmap->table[i]; li ; li = li->next) {
+            fn((HashmapItem *) li->data, j, args);
+            j++;
+        }
+    va_end(args);
+}
+
