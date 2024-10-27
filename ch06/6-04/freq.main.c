@@ -28,7 +28,6 @@ int main(int argc, char **argv)
     if (argc == 0) {
         ctx->bufsize = ea_read_buf(STDIN_FILENO, &ctx->buf);
         freq(ctx, flags, delim, rawsize);
-        exit(EXIT_SUCCESS);
     }
 
     for (int i = 0; i < argc; i++) {
@@ -44,12 +43,13 @@ int main(int argc, char **argv)
         if ((flags & AGGR_OPT_MASK) == 0) {
             if ((flags & CHAR_OPT_MASK)) {
                 if ((flags & SORT_OPT_MASK))
-                    qsort_generic(ctx->freq_char, UCHAR_MAX, sizeof(int) * 2, freq_char_cmp);
-                for (int i = 0; i < UCHAR_MAX; i++)
+                    qsort_generic(ctx->freq_char, UCHAR_MAX, sizeof(int) * 2, freq_char_cmp, QSORT_DESC);
+                for (int i = 0; i < UCHAR_MAX; i++) {
                     if (isprint((char)ctx->freq_char[i][1]))
                         printf("%d %c\n", ctx->freq_char[i][0], ctx->freq_char[i][1]);
                     else
                         printf("%d \\x%.2x\n", ctx->freq_char[i][0], ctx->freq_char[i][1]);
+                }
             }
             if (flags & INT_OPT_MASK) {
                 int n  = ctx->type_maps[0]->n_elems;
@@ -57,7 +57,7 @@ int main(int argc, char **argv)
                 IntFreq *int_freqs = (IntFreq *) emalloc(sizeof(IntFreq) * n);
                 iterate_hmis(ctx->type_maps[0], add_int_freqs, int_freqs);
                 if ((flags & SORT_OPT_MASK))
-                    qsort_generic(int_freqs, n, sizeof(IntFreq), freq_int_cmp);
+                    qsort_generic(int_freqs, n, sizeof(IntFreq), freq_int_cmp, QSORT_DESC);
                 
                 for (int i = 0; i < n; i++) 
                     printf("%d, %d\n", int_freqs[i].count, int_freqs[i].value);
@@ -68,7 +68,7 @@ int main(int argc, char **argv)
                 DoubleFreq *double_freqs = (DoubleFreq *) emalloc(sizeof(DoubleFreq) * n);
                 iterate_hmis(ctx->type_maps[1], add_double_freqs, double_freqs);
                 if ((flags & SORT_OPT_MASK))
-                    qsort_generic(double_freqs, n, sizeof(DoubleFreq), freq_double_cmp);
+                    qsort_generic(double_freqs, n, sizeof(DoubleFreq), freq_double_cmp, QSORT_DESC);
                 
                 for (int i = 0; i < n; i++) 
                     printf("%d, %lf\n", double_freqs[i].count, double_freqs[i].value);
@@ -79,7 +79,7 @@ int main(int argc, char **argv)
                 StrFreq *str_freqs = (StrFreq *) emalloc(sizeof(StrFreq) * n);
                 iterate_hmis(ctx->type_maps[2], add_str_freqs, str_freqs);
                 if ((flags & SORT_OPT_MASK))
-                    qsort_generic(str_freqs, n, sizeof(StrFreq), freq_str_cmp);
+                    qsort_generic(str_freqs, n, sizeof(StrFreq), freq_str_cmp, QSORT_DESC);
                 
                 for (int i = 0; i < n; i++) 
                     printf("%d, '%s'\n", str_freqs[i].count, str_freqs[i].value);
@@ -97,12 +97,14 @@ int main(int argc, char **argv)
     if (ctx) {
         if ((flags & CHAR_OPT_MASK)) {
             if ((flags & SORT_OPT_MASK))
-                qsort_generic(ctx->freq_char, UCHAR_MAX, sizeof(int) * 2, freq_char_cmp);
+                qsort_generic(ctx->freq_char, UCHAR_MAX, sizeof(int) * 2, freq_char_cmp, QSORT_DESC);
             for (int i = 0; i < UCHAR_MAX; i++)
-                if (isprint((char)ctx->freq_char[i][1]))
-                    printf("%d %c\n", ctx->freq_char[i][0], ctx->freq_char[i][1]);
-                else
-                    printf("%d \\x%.2x\n", ctx->freq_char[i][0], ctx->freq_char[i][1]);
+                if (ctx->freq_char[i][0]) {
+                    if (isprint((char)ctx->freq_char[i][1]))
+                        printf("%d %c\n", ctx->freq_char[i][0], ctx->freq_char[i][1]);
+                    else
+                        printf("%d \\x%.2x\n", ctx->freq_char[i][0], (unsigned char)ctx->freq_char[i][1]);
+                }
         }
         if (flags & INT_OPT_MASK) {
             int n  = ctx->type_maps[0]->n_elems;
@@ -110,10 +112,10 @@ int main(int argc, char **argv)
             IntFreq *int_freqs = (IntFreq *) emalloc(sizeof(IntFreq) * n);
             iterate_hmis(ctx->type_maps[0], add_int_freqs, int_freqs);
             if ((flags & SORT_OPT_MASK))
-                qsort_generic(int_freqs, n, sizeof(IntFreq), freq_int_cmp);
+                qsort_generic(int_freqs, n, sizeof(IntFreq), freq_int_cmp, QSORT_DESC);
             
             for (int i = 0; i < n; i++) 
-                printf("%d, %d\n", int_freqs[i].count, int_freqs[i].value);
+                printf("%d %d\n", int_freqs[i].count, int_freqs[i].value);
         }
         if (flags & DOUBLE_OPT_MASK) {
             int n  = ctx->type_maps[1]->n_elems;
@@ -121,10 +123,10 @@ int main(int argc, char **argv)
             DoubleFreq *double_freqs = (DoubleFreq *) emalloc(sizeof(DoubleFreq) * n);
             iterate_hmis(ctx->type_maps[1], add_double_freqs, double_freqs);
             if ((flags & SORT_OPT_MASK))
-                qsort_generic(double_freqs, n, sizeof(DoubleFreq), freq_double_cmp);
+                qsort_generic(double_freqs, n, sizeof(DoubleFreq), freq_double_cmp, QSORT_DESC);
             
             for (int i = 0; i < n; i++) 
-                printf("%d, %lf\n", double_freqs[i].count, double_freqs[i].value);
+                printf("%d %lf\n", double_freqs[i].count, double_freqs[i].value);
         }
         if ((flags & STRING_OPT_MASK) || (flags & TYPE_OPTS_MASK) == 0) {
             int n  = ctx->type_maps[2]->n_elems;
@@ -132,10 +134,10 @@ int main(int argc, char **argv)
             StrFreq *str_freqs = (StrFreq *) emalloc(sizeof(StrFreq) * n);
             iterate_hmis(ctx->type_maps[2], add_str_freqs, str_freqs);
             if ((flags & SORT_OPT_MASK))
-                qsort_generic(str_freqs, n, sizeof(StrFreq), freq_str_cmp);
+                qsort_generic(str_freqs, n, sizeof(StrFreq), freq_str_cmp, QSORT_DESC);
             
             for (int i = 0; i < n; i++) 
-                printf("%d, '%s'\n", str_freqs[i].count, str_freqs[i].value);
+                printf("%d '%s'\n", str_freqs[i].count, str_freqs[i].value);
         }
       // if (flags & SORT_OPT_MASK) sort map
       // print freq

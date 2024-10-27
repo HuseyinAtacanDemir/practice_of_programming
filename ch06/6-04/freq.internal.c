@@ -99,26 +99,29 @@ void add_int_freqs(HashmapItem *hmi, int n, va_list args)
 {
     IntFreq *int_freqs = va_arg(args, IntFreq *);
     int_freqs[n].value = *((int *) hmi->data);
-    int_freqs[n].count = *((int *) hmi->value);
+    int_freqs[n].count = (int)(uintptr_t)(hmi->value);
 }
 
 void add_double_freqs(HashmapItem *hmi, int n, va_list args)
 {
     DoubleFreq *double_freqs = va_arg(args, DoubleFreq *);
     double_freqs[n].value = *((double *) hmi->data);
-    double_freqs[n].count = *((int *) hmi->value);
+    double_freqs[n].count = (uintptr_t)(hmi->value);
 }
 void add_str_freqs(HashmapItem *hmi, int n, va_list args)
 {
     StrFreq *str_freqs = va_arg(args, StrFreq *);
     str_freqs[n].value = (char *) hmi->data;
-    str_freqs[n].count = *((int *) hmi->value);
+    str_freqs[n].count = (uintptr_t)(hmi->value);
 }
 
 Ctx *init_freq_ctx(int flags, int rawsize)
 {
     Ctx *ctx = (Ctx *) emalloc(sizeof(Ctx));
     memset(ctx->freq_char, 0, sizeof(int) * UCHAR_MAX * 2);
+    for (int i = 0; i < UCHAR_MAX; i++)
+        ctx->freq_char[i][1] = (char) i;
+
     memset(ctx->type_maps, 0, sizeof(Hashmap *) * N_MAPPED_TYPES);
 
     if (flags & INT_OPT_MASK)
@@ -164,7 +167,7 @@ void freq(Ctx *ctx, int flags, char *delim, int rawsize)
             type_map = ctx->type_maps[0];
             type_size = sizeof(int);
             for (int i = 0; i <= (ctx->bufsize-type_size); i += type_size) {
-                int rawdata = *((int *) ctx->buf+i);
+                int rawdata = *((int *) (ctx->buf+i));
                 data = (void *) estrndup((char *) &rawdata, type_size);
                 value = 0;
                 hmi = find(type_map, data, CREATE, value);
@@ -176,7 +179,7 @@ void freq(Ctx *ctx, int flags, char *delim, int rawsize)
             type_map = ctx->type_maps[1];
             type_size = sizeof(double);
             for (int i = 0; i <= (ctx->bufsize-type_size); i += type_size) {
-                double rawdata = *((double *) ctx->buf+i);
+                double rawdata = *((double *) (ctx->buf+i));
                 data = (void *) estrndup((char *) &rawdata, type_size);
                 value = 0;
                 hmi = find(type_map, data, CREATE, value);
@@ -184,7 +187,7 @@ void freq(Ctx *ctx, int flags, char *delim, int rawsize)
                     hmi->value++;
                 }
             }
-        } else {
+        } else if (rawsize){
             type_map = ctx->type_maps[2];
             type_size = rawsize;
             for (int i = 0; i <= (ctx->bufsize-type_size); i += type_size) {

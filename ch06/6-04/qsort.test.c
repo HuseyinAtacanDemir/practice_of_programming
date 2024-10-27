@@ -41,18 +41,22 @@ int main(void)
                 int len;
                 char *exp_arr;
                 int exp_len;
+                int sort_order;
             } tests[] = {
-                {"NULL char arr", NULL, 1, NULL, 0},
+                {"NULL char arr", NULL, 1, NULL, 0, QSORT_ASC},
                 {"ONE elem char arr", 
                   estrdup("1"), 1, 
-                  "1", 1},
+                  "1", 1, QSORT_ASC},
                 {"TWO elem char arr", 
                   estrdup("51"), 2, 
-                  "15", 2},
+                  "15", 2, QSORT_ASC},
                 {"20 elem char arr", 
                   estrdup("gjskgyuxwucnmgjflkys"), 20, 
-                  "cfgggjjkklmnssuuwxyy", 20},
-                {NULL, NULL, 0, NULL, 0}
+                  "cfgggjjkklmnssuuwxyy", 20, QSORT_ASC},
+                {"20 elem char arr DESC", 
+                  estrdup("gjskgyuxwucnmgjflkys"), 20, 
+                  "yyxwuussnmlkkjjgggfc", 20, QSORT_DESC},
+                {NULL, NULL, 0, NULL, 0, 0}
             };
 
             for (int i = 0; tests[i].test_name; i++) {
@@ -61,7 +65,7 @@ int main(void)
                         char *arr = tests[i].arr;
                         int len = tests[i].len;
 
-                        qsort_generic(arr, len, sizeof(char), char_cmp);
+                        qsort_generic(arr, len, sizeof(char), char_cmp, tests[i].sort_order);
 
                         char *exp_arr = tests[i].exp_arr;
                         int  exp_len = tests[i].exp_len;
@@ -87,16 +91,17 @@ int main(void)
                 int len;
                 int *exp_arr;
                 int exp_len;
+                int sort_order;
             } tests[] = {
                 {"NULL int arr", 
                   NULL, 1, 
-                  NULL, 0},
+                  NULL, 0, QSORT_ASC},
                 {"ONE elem int arr", 
                   intdup(1, 1), 1, 
-                  intdup(1, 1), 1},
+                  intdup(1, 1), 1, QSORT_ASC},
                 {"TWO elem int arr", 
                   intdup(2, 5, 1), 2, 
-                  intdup(2, 1, 5), 2},
+                  intdup(2, 1, 5), 2, QSORT_ASC},
                 {"20 elem int arr", 
                   intdup(20,
                     20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1), 
@@ -104,7 +109,15 @@ int main(void)
                   intdup(20,
                     1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20), 
                   20
-                },
+                , QSORT_ASC},
+                {"20 elem int arr DESC", 
+                  intdup(20,
+                    20,18,19,17,14,15,16,13,12,11,10,7,8,9,6,5,4,2,3,1), 
+                  20, 
+                  intdup(20,
+                    20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1), 
+                  20
+                , QSORT_DESC},
                 {NULL, NULL, 0, NULL, 0}
             };
             for (int i = 0; tests[i].test_name; i++) {
@@ -113,7 +126,7 @@ int main(void)
                         int *arr = tests[i].arr;
                         int len = tests[i].len;
 
-                        qsort_generic(arr, len, sizeof(int), int_cmp);
+                        qsort_generic(arr, len, sizeof(int), int_cmp, tests[i].sort_order);
 
                         int *exp_arr = tests[i].exp_arr;
                         int exp_len = tests[i].exp_len;
@@ -137,16 +150,17 @@ int main(void)
                 int len;
                 double *exp_arr;
                 int exp_len;
+                int sort_order;
             } tests[] = {
                 {"NULL double arr", 
                   NULL, 1, 
-                  NULL, 0},
+                  NULL, 0, QSORT_ASC},
                 {"ONE elem double arr", 
                   double_dup(1, 1.5), 1, 
-                  double_dup(1, 1.5), 1},
+                  double_dup(1, 1.5), 1, QSORT_ASC},
                 {"TWO elem double arr", 
                   double_dup(2, 5.5, 1.2), 2, 
-                  double_dup(2, 1.2, 5.5), 2},
+                  double_dup(2, 1.2, 5.5), 2, QSORT_ASC},
                 {"20 elem double arr", 
                   double_dup(20,
                     20.0,19.0,18.0,17.0,16.0,15.0,14.0,13.0,12.0,11.0,
@@ -156,7 +170,17 @@ int main(void)
                     1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0,
                     10.0,11.0,12.0,13.0,14.0,15.0,16.0,17.0,18.0,19.0,20.0), 
                   20
-                },
+                , QSORT_ASC},
+                {"20 elem double arr", 
+                  double_dup(20,
+                    20.0,18.0,19.0,17.0,16.0,12.0,14.0,13.0,15.0,10.0,
+                    11.0,9.0,8.0,7.0,4.0,5.0,6.0,3.0,2.0,1.0), 
+                  20, 
+                  double_dup(20,
+                    20.0,19.0,18.0,17.0,16.0,15.0,14.0,13.0,12.0,11.0,
+                    10.0,9.0,8.0,7.0,6.0,5.0,4.0,3.0,2.0,1.0), 
+                  20
+                , QSORT_DESC},
                 {NULL, NULL, 0, NULL, 0}
             };
             for (int i = 0; tests[i].test_name; i++) {
@@ -165,7 +189,7 @@ int main(void)
                         double *arr = tests[i].arr;
                         int len = tests[i].len;
 
-                        qsort_generic(arr, len, sizeof(double), double_cmp);
+                        qsort_generic(arr, len, sizeof(double), double_cmp, tests[i].sort_order);
 
                         double *exp_arr = tests[i].exp_arr;
                         int exp_len = tests[i].exp_len;
@@ -218,7 +242,7 @@ int main(void)
                         float *arr = tests[i].arr;
                         int len = tests[i].len;
 
-                        qsort_generic(arr, len, sizeof(float), float_cmp);
+                        qsort_generic(arr, len, sizeof(float), float_cmp, QSORT_ASC);
 
                         float *exp_arr = tests[i].exp_arr;
                         int exp_len = tests[i].exp_len;
@@ -268,7 +292,7 @@ int main(void)
                         long *arr = tests[i].arr;
                         int len = tests[i].len;
 
-                        qsort_generic(arr, len, sizeof(long), long_cmp);
+                        qsort_generic(arr, len, sizeof(long), long_cmp, QSORT_ASC);
 
                         long *exp_arr = tests[i].exp_arr;
                         int exp_len = tests[i].exp_len;
@@ -308,7 +332,7 @@ int main(void)
             people[4].age = 21; 
 
             FORK() {
-                qsort_generic(people, 5, sizeof(Person), person_p_fn_cmp);
+                qsort_generic(people, 5, sizeof(Person), person_p_fn_cmp, QSORT_ASC);
                 EXPECT_EQ_STR(people[0].first_name, "Aaron");
                 EXPECT_EQ_STR(people[1].first_name, "Ivan");
                 EXPECT_EQ_STR(people[2].first_name, "John");
@@ -322,7 +346,7 @@ int main(void)
             EXPECT_ERR_EQ(NULL);
 
             FORK() {
-                qsort_generic(people, 5, sizeof(Person), person_p_ln_cmp);
+                qsort_generic(people, 5, sizeof(Person), person_p_ln_cmp, QSORT_ASC);
                 EXPECT_EQ_STR(people[0].last_name, "Ivanovich Somethingskiyy");
                 EXPECT_EQ_STR(people[1].last_name, "McSomething");
                 EXPECT_EQ_STR(people[2].last_name, "Samatinura");
@@ -336,7 +360,7 @@ int main(void)
             EXPECT_ERR_EQ(NULL);
 
             FORK() {
-                qsort_generic(people, 5, sizeof(Person), person_p_age_cmp);
+                qsort_generic(people, 5, sizeof(Person), person_p_age_cmp, QSORT_ASC);
                 EXPECT_EQ(people[0].age, 3);
                 EXPECT_EQ(people[1].age, 13);
                 EXPECT_EQ(people[2].age, 20);
@@ -401,7 +425,7 @@ int main(void)
             EXPECT_ERR_EQ(NULL);
 
             FORK() {
-                qsort_generic(people, 5, sizeof(Person *), person_pp_age_cmp);
+                qsort_generic(people, 5, sizeof(Person *), person_pp_age_cmp, QSORT_ASC);
                 EXPECT_EQ(people[0]->age, 3);
                 EXPECT_EQ(people[1]->age, 13);
                 EXPECT_EQ(people[2]->age, 20);
