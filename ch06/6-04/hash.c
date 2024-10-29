@@ -7,138 +7,146 @@
 #include "eprintf.h"
 #include "list.h"
 
-#define DEF_N_BUCKET      32
-#define DEF_LOAD_FACTOR   0.75
-#define DEF_GROWTH_FACTOR 2
-#define DEF_MULTIPLIER    33
-#define PRINT_WIDTH       120
+void      resize          (Hashmap *hmap);
+int       compare_keys    (Hashmap *hmap, void *data1, void *data2);
+unsigned  hash            (Hashmap *hmap, void *data);
 
-int             compare_keys    (Hashmap *hmap, void *data1, void *data2);
-unsigned int    hash            (Hashmap *hmap, void *data);
-void            resize          (Hashmap *hmap);
-
-Hashmap *init_hmap(void *(*get_key_field)(void *data), int key_size, 
-                    int is_key_string, int n_bucket, double load_factor, 
-                    int growth_factor, int multiplier)
+Hashmap *init_hmap(void *(*get_key)(void *data), int keysize, int is_key_str, 
+                    int n_bucket, int x_load, int x_growth, int multiplier)
 {
     Hashmap *hmap;
 
-    hmap                = (Hashmap *) emalloc(sizeof(Hashmap));
-    hmap->n_bucket      = n_bucket > 0 ? n_bucket : DEF_N_BUCKET;
-    hmap->n_bucket_used = 0; 
-    hmap->table         = (ListItem **) emalloc(
-                                        sizeof(ListItem*) * (hmap->n_bucket));
-    hmap->n_elems       = 0;
-    hmap->load_factor   = load_factor > 0.0 ? load_factor 
-                                            : DEF_LOAD_FACTOR;
-    hmap->growth_factor = growth_factor > 0 ? growth_factor 
-                                            : DEF_GROWTH_FACTOR;
-    hmap->multiplier    = multiplier > 0 ? multiplier : DEF_MULTIPLIER;
-    hmap->get_key_field = get_key_field;
-    hmap->key_size      = key_size > 0 ? key_size : 0; 
-    hmap->is_key_string = is_key_string;
+    hmap            = (Hashmap *)emalloc(sizeof(Hashmap));
+
+    hmap->n_bucket  = n_bucket > 0 ? n_bucket : DEF_N_BUCKET;
+    hmap->table     = (ListItem **)emalloc(sizeof(ListItem*)*(hmap->n_bucket));
+    hmap->n_used    = 0; 
+    hmap->n_items   = 0;
+
+    hmap->x_load      = x_load > 0.0    ? x_load      : DEF_LOAD_FACTOR;
+    hmap->x_growth    = x_growth > 0    ? x_growth    : DEF_GROWTH_FACTOR;
+    hmap->multiplier  = multiplier > 0  ? multiplier  : DEF_MULTIPLIER;
+
+    hmap->get_key     = get_key;
+    hmap->keysize     = keysize > 0 ? keysize : 0; 
+    hmap->is_key_str  = is_key_string;
 
     return hmap;
 }
 
-HashmapItem *find(Hashmap *hmap, void *data, int create, void *value)
+Item *find(Hashmap *hmap, void *data, int create, void *value)
 {
-    ListItem      *li;
-    unsigned int  h;
+    ListItem  *li;
+    unsigned  h;
     
+    //  calculate the hash for the data, iterate over all mapped items in the
+    //  bucket with the corresponding match, compare the data to the data
+    //  of the items found in the bucket
     h = hash(hmap, data);
     for (li = hmap->table[h]; li != NULL; li = li->next)
-        if (compare_keys(hmap, data, ((HashmapItem *) li->data)->data) == 0)
+        if (compare_keys(hmap, data, ((Item *)li->data)->data) == 0)
             return li->data;
                 
+    //  if not found and a create option is selected, insert a new mapped item
     if (create)
         return insert(hmap, data, value);
 
     return NULL;
 }
 
-HashmapItem *insert(Hashmap *hmap, void *data, void *value)
+Item *insert(Hashmap *hmap, void *data, void *value)
 {
-    HashmapItem   *hmi;
-    ListItem      *li, *next;
-    unsigned int  h;
-    double        avg_load;
+    Item      *item;
+    ListItem  *li, *next;
+    unsigned  h;
+    int       load;
 
-    avg_load = ((double) hmap->n_elems) / ((double) hmap->n_bucket);
+    //  calculate current load by dividing n_items by n_buckets, 
+    //  multiply resulting percentage by 100, cast it to in
+    load = (int) ( ((double) hmap->n_items / (double) hmap->n_bucket) * 100.0);
     
-    if (avg_load > hmap->load_factor)
+    if (load > hmap->x_load)
         resize(hmap);
 
-    hmi         = (HashmapItem *) emalloc(sizeof(HashmapItem));
-    hmi->data   = data;
-    hmi->value  = value;
+    //  allocate memory for the new mapped item and the wrapper ListItem
+    item        = (Item *)emalloc(sizeof(Item));
+    item->data  = data;
+    item->value = value;
 
-    li        = (ListItem *) emalloc(sizeof(ListItem));
-    li->data  = hmi;
+    li        = (ListItem *)emalloc(sizeof(ListItem));
+    li->data  = item;
     li->next  = NULL;
 
+    //  calculate hash for the data of the item and insert it to corresponding
+    //  bucket of hmap using the ListItem wrapper
     h               = hash(hmap, data);
     next            = (ListItem *) hmap->table[h];
     li->next        = next;
     hmap->table[h]  = li;
 
-    hmap->n_elems++;
+    //  n_items ot hmap increases in any case, n_used only increases if
+    //  ListItem wrapper was inserted into a previously empty bucket
+    hmap->n_items++;
     if (next == NULL)
-        hmap->n_bucket_used++;
+        hmap->n_used++;
 
-    return hmi;
+    return item;
 }
 
-HashmapItem *del_hmi(Hashmap *hmap, void *data)
+void *del_item(Hashmap *hmap, void *data)
 {
-    unsigned int  h;
-    HashmapItem   *hmi;
-    ListItem      *li, *prev, *next;
+    ListItem  *li, *prev, *next;
+    unsigned  h;
 
+    // iterate over the items in the bucket corresponding to the hash
     prev = NULL;
     h = hash(hmap, data);
-    for (li = hmap->table[h]; li != NULL; li = li->next) {
-        if (compare_keys(hmap, data, ((HashmapItem *) li->data)->data) != 0) {
-            prev = li;
-            continue;
+    for (li = hmap->table[h]; li != NULL; prev = li, li = li->next) {
+        if (compare_keys(hmap, data, ((Item *) li->data)->data) == 0) {
+            next = li->next;
+            li->next = NULL;
+
+            if (prev) {         // found somewhere other than bucket list head
+                prev->next = next;
+            else if(next)       // found in bucket list head, other items exist
+                hmap->table[h] = next;
+            else {              // found in bucket list head, was the only item
+                hmap->table[h] = NULL;
+                hmap->n_used--;
+            }
+
+            hmap->n_items--;
+            
+            free(li->item);
+            li->item = NULL;
+
+            free(li);
+            li = NULL;
+
+            return;
         }
-
-        hmi   = li->data;
-        next  = li->next;
-
-        if (prev == NULL) {
-            hmap->table[h] = NULL;
-            hmap->n_bucket_used--;
-        } else {
-            prev->next  = next;
-        }     
-        
-        hmap->n_elems--; 
-        free(li);
-        li = NULL;
-        return hmi;
-    }
-    return NULL; 
+    } 
+    return;
 }
 
 
 // Hashmap compare_keys: compare the key members of data1 and data2. Key member
 //                        of the unknown struct that the void pointers point to
-//                        is dereferenced/extracted using the get_key_field
+//                        is dereferenced/extracted using the get_key
 //                        fn provided by the user to the Hashmap during init
 int compare_keys(Hashmap *hmap, void *data1, void *data2)
 {
-    int i;
-    char *key1, *key2;
+    int   i;
+    char  *key1, *key2;
 
-    key1 = (char *) hmap->get_key_field(data1);
-    key2 = (char *) hmap->get_key_field(data2);
+    key1 = (char *) hmap->get_key(data1);
+    key2 = (char *) hmap->get_key(data2);
 
     if (hmap->is_key_string)
-        return (hmap->key_size ? strcmp(key1, key2) 
-                              : memcmp(key1, key2, hmap->key_size));
+        return (hmap->keysize == 0 ? strcmp(key1, key2) 
+                              : memcmp(key1, key2, hmap->keysize));
 
-    for (i = 0; i < hmap->key_size; i++, key1++, key2++)
+    for (i = 0; i < hmap->keysize; i++, key1++, key2++)
         if (*key1 > *key2)
           return 1;
         else if (*key1 < *key2)
@@ -149,7 +157,7 @@ int compare_keys(Hashmap *hmap, void *data1, void *data2)
 
 // Hashmap hash: create a hash based on a key member of an unknown structure
 //                based on the keysize (bytes) provided by the user, and the 
-//                get_key_field fn provided by the user, so effectively,
+//                get_key fn provided by the user, so effectively,
 //                we hash everything as if they are chars. If the key is a str,
 //                we hash assuming the dereferenced key will be a str.
 //                is this approach stupid? 
@@ -158,9 +166,9 @@ unsigned int hash(Hashmap *hmap, void *data)
     char *key;
     unsigned int h, i, iteration_limit;
 
-    // keys are treated as char arrays of size key_size...
-    key = (char *) hmap->get_key_field(data);
-    iteration_limit = hmap->key_size;
+    // keys are treated as char arrays of size keysize...
+    key = (char *) hmap->get_key(data);
+    iteration_limit = hmap->keysize;
 
     // ..unless the key itself is a string, 
     //in which case we can assume \0 termination
@@ -183,13 +191,13 @@ void resize(Hashmap *hmap)
 {
     int           n_bucket_old, i;
     unsigned int  h;
-    HashmapItem   *hmi;
+    Item   *item;
     ListItem      *li, *new_next_li, **tbl_new, **tbl_old;
 
     // store old hmap n_bucket, update hmap metadata to be a bigger empty hmap
-    n_bucket_old          = hmap->n_bucket;
-    hmap->n_bucket        = n_bucket_old * hmap->growth_factor;
-    hmap->n_bucket_used   = 0;
+    n_bucket_old    = hmap->n_bucket;
+    hmap->n_bucket  = n_bucket_old * hmap->x_growth;
+    hmap->n_used    = 0;
     
     // store old hmap table, alloc new bigger hmap table, update hmap metadata
     tbl_old     = (ListItem **) hmap->table;
@@ -204,12 +212,12 @@ void resize(Hashmap *hmap)
     for (i = 0; i < n_bucket_old; i++) {
         li = tbl_old[i];
         while (li) {  // i.e. if tbl_old bukcet i is not empty
-            hmi = (HashmapItem *) li->data;
-            h   = hash(hmap, hmi->data);
+            item = (Item *) li->data;
+            h   = hash(hmap, item->data);
             
             // if tbl_new[i] (aka i'th bucket) is empty
             if ((new_next_li = tbl_new[h]) == NULL) 
-                hmap->n_bucket_used++;
+                hmap->n_used++;
 
             // update tbl_old's i'th bucket's head li, 
             // set li to be tbl_new's h'th bucket's head with new_next_li
@@ -240,7 +248,7 @@ void destroy_hmap(Hashmap *hmap)
     */
 }
 
-void iterate_hmis(Hashmap *hmap, void (*fn)(HashmapItem *hmi, int idx, va_list args), ...)
+void iterate_map(Hashmap *hmap, void (*fn)(Item *item, int idx, va_list args), ...)
 {
     va_list args;
 
@@ -248,7 +256,7 @@ void iterate_hmis(Hashmap *hmap, void (*fn)(HashmapItem *hmi, int idx, va_list a
     int j = 0;
     for (int i = 0 ; i < hmap->n_bucket; i++)
         for (ListItem *li = hmap->table[i]; li ; li = li->next) {
-            fn((HashmapItem *) li->data, j, args);
+            fn((Item *) li->data, j, args);
             j++;
         }
     va_end(args);

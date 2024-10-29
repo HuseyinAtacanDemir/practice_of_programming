@@ -92,6 +92,11 @@ int freq_str_cmp(const void *data1, const void *data2)
     StrFreq *val1 = (StrFreq *) data1;
     StrFreq *val2 = (StrFreq *) data2;
 
+    // we use StrFreq type for both strings, and rawdata with size parameter
+    // if len's are different, StrFreq was definitely used for strings 
+    if (val1->len == val2->len)
+        return memcmp(val1->value, val2->value, val1->len);
+
     return strcmp(val1->value, val2->value); 
 }
 
@@ -113,6 +118,7 @@ void add_str_freqs(HashmapItem *hmi, int n, va_list args)
     StrFreq *str_freqs = va_arg(args, StrFreq *);
     str_freqs[n].value = (char *) hmi->data;
     str_freqs[n].count = (uintptr_t)(hmi->value);
+    str_freqs[n].len   = (uintptr_t)(hmi->value);
 }
 
 Ctx *init_freq_ctx(int flags, int rawsize)
@@ -130,7 +136,10 @@ Ctx *init_freq_ctx(int flags, int rawsize)
     if (flags & DOUBLE_OPT_MASK)
         ctx->type_maps[1] = init_hmap(get_freq_key, sizeof(double), 0, 0, 0, 0, 0);
 
-    if ((flags & STRING_OPT_MASK) || (flags & TYPE_OPTS_MASK) == 0)
+    if ((flags & RAW_OPT_MASK) && rawsize > 0)
+        ctx->type_maps[3] = init_hmap(get_freq_key, rawsize, 0, 0, 0, 0, 0);
+
+    else if ((flags & RAW_OPT_MASK) == 0 && ((flags & STRING_OPT_MASK) || (flags & TYPE_OPTS_MASK) == 0))
         ctx->type_maps[2] = init_hmap(get_freq_key, rawsize, 1, 0, 0, 0, 0);
 
     ctx->buf = NULL;
@@ -244,20 +253,74 @@ void freq(Ctx *ctx, int flags, char *delim, int rawsize)
     return;
 }
 
-void handle_raw_input(int flags, char *buf, int bufsize)
+void print_freqs(Ctx *ctx, int flags)
 {
-    //if (flags & CHAR_OPT_MASK) {
-        //for (int i = 0; i < UCHAR_MAX; i++)
-            //char_freq[i] = 0;
-        //for (int i = 0; i < bufsize; i++)
-            //char_freq[(unsigned)buf[i]]++;
-    //}
+    if ((flags & CHAR_OPT_MASK)) {
+        int freqs = ctx->freq_char;
+        int n = UCHAR_MAX;
 
-}
+        if ((flags & SORT_OPT_MASK))
+            qsort_generic(freqs, n, sizeof(int[2]), freq_char_cmp, QSORT_DESC);
 
-void handle_text_input(int flags, char *buf, int bufsize)
-{
-    return;
+        for (int i = 0; i < n; i++) {
+            if (freqs[i][0]) {
+                if (isprint((char)freqs[i][1]))
+                    printf("%d %c\n", freqs[i][0], freqs[i][1]);
+                else
+                    printf("%d \\x%.2X\n", freqs[i][0], (char)freqs[i][1]);
+            }
+        }
+    }
+
+    if (flags & INT_OPT_MASK) {
+        Hashmap *map = ctx->type_maps[0];
+        int n = map->n_elems;
+
+        IntFreq *freqs = (IntFreq *) emalloc(sizeof(IntFreq) * n);
+        iterate_hmis(map, add_int_freqs, freqs);
+
+        if ((flags & SORT_OPT_MASK))
+            qsort_generic(freqs, n, sizeof(IntFreq), freq_int_cmp, QSORT_DESC);
+        
+        for (int i = 0; i < n; i++) 
+            printf("%d %d\n", freqs[i].count, freqs[i].value);
+
+        free(freqs);
+        freqs = NULL;
+    }
+
+    if (flags & DOUBLE_OPT_MASK) {
+        Hashmap *map = ctx->type_maps[1];
+        int n = map->n_elems;
+
+        DoubleFreq *freqs = (DoubleFreq *) emalloc(sizeof(DoubleFreq) * n);
+        iterate_hmis(map, add_double_freqs, freqs);
+
+        if ((flags & SORT_OPT_MASK))
+            qsort_generic(freqs, n, sizeof(DoubleFreq), freq_double_cmp, QSORT_DESC);
+        
+        for (int i = 0; i < n; i++) 
+            printf("%d %lf\n", freqs[i].count, freqs[i].value);
+        
+        free(freqs);
+        freqs = NULL;
+    }
+
+    if ((flags & STRING_OPT_MASK) || (flags & TYPE_OPTS_MASK) == 0) {
+        Hashmap *map = ctx->type_maps[2];
+        int n  = map->n_elems;
+
+        StrFreq *freqs = (StrFreq *) emalloc(sizeof(StrFreq) * n);
+        iterate_hmis(map, add_str_freqs, freqs);
+        if ((flags & SORT_OPT_MASK))
+            qsort_generic(freqs, n, sizeof(StrFreq), freq_str_cmp, QSORT_DESC);
+        
+        for (int i = 0; i < n; i++) 
+            printf("%d '%s'\n", freqs[i].count, freqs[i].value);
+        
+        free(freqs);
+        freqs = NULL;
+    }
 }
 
 int parse_opts(int argc, char *argv[], char **delim, int *rawsize) 
@@ -321,8 +384,16 @@ int atoi_pos(char *str)
     result = strtol(str, &endptr, 10);
 
     //  See man 3 strtol
-    if (!(*str && *endptr == '\0') || result <= 0 
-      || (int) result <= 0 || result > INT_MAX)
+    if ( !(*str && *endptr == '\0') )
+        return NOT_POSITIVE_INT_ERR;
+
+    if (result <= 0)
+        return NOT_POSITIVE_INT_ERR;
+
+    if (result < INT_MIN)
+        return NOT_POSITIVE_INT_ERR;
+
+    if (result > INT_MAX)
         return NOT_POSITIVE_INT_ERR;
 
     return (int) result;
