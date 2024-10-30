@@ -121,6 +121,7 @@ void freq(Ctx *ctx, int opts, char *delim, int rawsize)
     return;
 }
 
+// TODO: refactor this to fit into the new function declarations
 void print_freqs(Ctx *ctx, int opts)
 {
     if ((opts & CHAR_OPT_MASK)) {
