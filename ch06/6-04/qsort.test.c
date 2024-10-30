@@ -13,17 +13,17 @@ struct Person {
     int   age;
 };
 
-int char_cmp          (const void*, const void*);
-int int_cmp           (const void*, const void*);
-int float_cmp         (const void*, const void*);
-int double_cmp        (const void*, const void*);
-int long_cmp          (const void*, const void*);
-int person_p_fn_cmp   (const void*, const void*);
-int person_p_ln_cmp   (const void*, const void*);
-int person_p_age_cmp  (const void*, const void*);
-int person_pp_fn_cmp  (const void*, const void*);
-int person_pp_ln_cmp  (const void*, const void*);
-int person_pp_age_cmp (const void*, const void*);
+int char_cmp          (void*, void*);
+int int_cmp           (void*, void*);
+int float_cmp         (void*, void*);
+int double_cmp        (void*, void*);
+int long_cmp          (void*, void*);
+int person_p_fn_cmp   (void*, void*);
+int person_p_ln_cmp   (void*, void*);
+int person_p_age_cmp  (void*, void*);
+int person_pp_fn_cmp  (void*, void*);
+int person_pp_ln_cmp  (void*, void*);
+int person_pp_age_cmp (void*, void*);
 
 int *intdup(int len, ...);
 double *double_dup(int len, ...);
@@ -41,7 +41,7 @@ int main(void)
                 int len;
                 char *exp_arr;
                 int exp_len;
-                int sort_order;
+                int order;
             } tests[] = {
                 {"NULL char arr", NULL, 1, NULL, 0, QSORT_ASC},
                 {"ONE elem char arr", 
@@ -65,7 +65,7 @@ int main(void)
                         char *arr = tests[i].arr;
                         int len = tests[i].len;
 
-                        qsort_generic(arr, len, sizeof(char), char_cmp, tests[i].sort_order);
+                        qsort_generic(arr, len, sizeof(char), char_cmp, tests[i].order);
 
                         char *exp_arr = tests[i].exp_arr;
                         int  exp_len = tests[i].exp_len;
@@ -91,7 +91,7 @@ int main(void)
                 int len;
                 int *exp_arr;
                 int exp_len;
-                int sort_order;
+                int order;
             } tests[] = {
                 {"NULL int arr", 
                   NULL, 1, 
@@ -126,7 +126,7 @@ int main(void)
                         int *arr = tests[i].arr;
                         int len = tests[i].len;
 
-                        qsort_generic(arr, len, sizeof(int), int_cmp, tests[i].sort_order);
+                        qsort_generic(arr, len, sizeof(int), int_cmp, tests[i].order);
 
                         int *exp_arr = tests[i].exp_arr;
                         int exp_len = tests[i].exp_len;
@@ -150,7 +150,7 @@ int main(void)
                 int len;
                 double *exp_arr;
                 int exp_len;
-                int sort_order;
+                int order;
             } tests[] = {
                 {"NULL double arr", 
                   NULL, 1, 
@@ -189,7 +189,7 @@ int main(void)
                         double *arr = tests[i].arr;
                         int len = tests[i].len;
 
-                        qsort_generic(arr, len, sizeof(double), double_cmp, tests[i].sort_order);
+                        qsort_generic(arr, len, sizeof(double), double_cmp, tests[i].order);
 
                         double *exp_arr = tests[i].exp_arr;
                         int exp_len = tests[i].exp_len;
@@ -399,7 +399,7 @@ int main(void)
             people[4]->age = 21; 
 
             FORK() {
-                qsort(people, 5, sizeof(Person *), person_pp_fn_cmp);
+                qsort_generic(people, 5, sizeof(Person *), person_pp_fn_cmp, QSORT_ASC);
                 EXPECT_EQ_STR(people[0]->first_name, "Aaron");
                 EXPECT_EQ_STR(people[1]->first_name, "Ivan");
                 EXPECT_EQ_STR(people[2]->first_name, "John");
@@ -412,7 +412,7 @@ int main(void)
             EXPECT_ERR_EQ(NULL);
 
             FORK() {
-                qsort(people, 5, sizeof(Person *), person_pp_ln_cmp);
+                qsort_generic(people, 5, sizeof(Person *), person_pp_ln_cmp, QSORT_ASC);
                 EXPECT_EQ_STR(people[0]->last_name, "Ivanovich Somethingskiyy");
                 EXPECT_EQ_STR(people[1]->last_name, "McSomething");
                 EXPECT_EQ_STR(people[2]->last_name, "Samatinura");
@@ -442,31 +442,31 @@ int main(void)
     return 0;
 }
 
-int char_cmp(const void *a, const void *b)
+int char_cmp(void *a, void *b)
 {
     return *((char *)a) - *((char *)b);
 }
 
-int int_cmp(const void *a, const void *b)
+int int_cmp(void *a, void *b)
 {
     return *((int *)a) - *((int *)b);
 }
-int double_cmp(const void *a, const void *b)
+int double_cmp(void *a, void *b)
 {
     return *((double *)a) - *((double *)b);
 }
 
-int float_cmp(const void *a, const void *b)
+int float_cmp(void *a, void *b)
 {
     return *((float *)a) - *((float *)b);
 }
 
-int long_cmp(const void *a, const void *b)
+int long_cmp(void *a, void *b)
 {
     return *((long *)a) - *((long *)b);
 }
 
-int person_p_fn_cmp(const void *a, const void *b)
+int person_p_fn_cmp(void *a, void *b)
 {
     Person *person_a = (Person *) a;
     Person *person_b = (Person *) b;
@@ -481,7 +481,7 @@ int person_p_fn_cmp(const void *a, const void *b)
         return 0;
 }
 
-int person_pp_fn_cmp(const void *a, const void *b)
+int person_pp_fn_cmp(void *a, void *b)
 {
     Person **person_a = (Person **) a;
     Person **person_b = (Person **) b;
@@ -496,7 +496,7 @@ int person_pp_fn_cmp(const void *a, const void *b)
         return 0;
 }
 
-int person_p_ln_cmp(const void *a, const void *b)
+int person_p_ln_cmp(void *a, void *b)
 {
     Person *person_a = (Person *) a;
     Person *person_b = (Person *) b;
@@ -511,7 +511,7 @@ int person_p_ln_cmp(const void *a, const void *b)
         return 0;
 }
 
-int person_pp_ln_cmp(const void *a, const void *b)
+int person_pp_ln_cmp(void *a, void *b)
 {
     Person **person_a = (Person **) a;
     Person **person_b = (Person **) b;
@@ -526,7 +526,7 @@ int person_pp_ln_cmp(const void *a, const void *b)
         return 0;
 }
 
-int person_p_age_cmp(const void *a, const void *b)
+int person_p_age_cmp(void *a, void *b)
 {
     Person *person_a = (Person *) a;
     Person *person_b = (Person *) b;
@@ -534,7 +534,7 @@ int person_p_age_cmp(const void *a, const void *b)
     return person_a->age - person_b->age;
 }
 
-int person_pp_age_cmp(const void *a, const void *b)
+int person_pp_age_cmp(void *a, void *b)
 {
     Person **person_a = (Person **) a;
     Person **person_b = (Person **) b;

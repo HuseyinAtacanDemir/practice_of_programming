@@ -7,7 +7,7 @@
 #define QSORT_ASC   0
 #define QSORT_DESC  1
 
-void qsort_generic(void *arr, int len, int elem_size, 
-                    int (*cmp)(const void*, const void *), int order);
+void qsort_generic  (void *arr, int n, int elemsize, int (*cmp)(void*, void *), 
+                      int order);
 
 #endif

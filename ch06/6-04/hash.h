@@ -17,6 +17,7 @@
 #define PRINT_WIDTH       120
 
 enum { NOT_CREATE, CREATE };
+enum { NOT_STRING_KEY, STRING_KEY };
 
 typedef struct Hashmap Hashmap;
 struct Hashmap {
@@ -43,13 +44,14 @@ struct Item {
 };
 
 // initialize the hmap, get_key and keysize are not optional
-Hashmap *init_hmap  (void *(*get_key)(void *data), int keysize, int is_key_str, 
-                      int n_bucket, int x_load, int x_growth, int multiplier);
+Hashmap *init_hmap  (void *(*get_key)(Hashmap *hmap, void *data), int keysize, 
+                      int is_key_str, int n_bucket, int x_load, int x_growth, 
+                      int multiplier);
 
-Item *find        (Hashmap *hmap, void *data, int create, void *value);
-Item *insert      (Hashmap *hmap, void *data, void *value);
-void *del_item    (Hashmap *hmap, void *data);
-void destroy_hmap (Hashmap *hmap);
-void iterate_map  (Hashmap *hmap, void (*fn)(Item *, int idx, va_list), ...);
+Item *find          (Hashmap *hmap, void *data, int create, void *value);
+Item *insert        (Hashmap *hmap, void *data, void *value);
+void *del_hmap_item (Hashmap *hmap, void *data);
+void destroy_hmap   (Hashmap *hmap);
+void iterate_map    (Hashmap *hmap, void (*fn)(Item *, int idx, va_list), ...);
 
 #endif

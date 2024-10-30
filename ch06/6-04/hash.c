@@ -11,8 +11,9 @@ void      resize          (Hashmap *hmap);
 int       compare_keys    (Hashmap *hmap, void *data1, void *data2);
 unsigned  hash            (Hashmap *hmap, void *data);
 
-Hashmap *init_hmap(void *(*get_key)(void *data), int keysize, int is_key_str, 
-                    int n_bucket, int x_load, int x_growth, int multiplier)
+Hashmap *init_hmap(void *(*get_key)(Hashmap *hmap, void *data), int keysize, 
+                    int is_key_str, int n_bucket, int x_load, int x_growth, 
+                    int multiplier)
 {
     Hashmap *hmap;
 
@@ -93,7 +94,7 @@ Item *insert(Hashmap *hmap, void *data, void *value)
     return item;
 }
 
-void *del_item(Hashmap *hmap, void *data)
+void *del_hmap_item(Hashmap *hmap, void *data)
 {
     ListItem  *li, *prev, *next;
     unsigned  h;
@@ -139,8 +140,8 @@ int compare_keys(Hashmap *hmap, void *data1, void *data2)
     int   i;
     char  *key1, *key2;
 
-    key1 = (char *) hmap->get_key(data1);
-    key2 = (char *) hmap->get_key(data2);
+    key1 = (char *) hmap->get_key(hmap, data1);
+    key2 = (char *) hmap->get_key(hmap, data2);
 
     if (hmap->is_key_string)
         return (hmap->keysize == 0 ? strcmp(key1, key2) 
@@ -167,7 +168,7 @@ unsigned int hash(Hashmap *hmap, void *data)
     unsigned int h, i, iteration_limit;
 
     // keys are treated as char arrays of size keysize...
-    key = (char *) hmap->get_key(data);
+    key = (char *) hmap->get_key(hmap, data);
     iteration_limit = hmap->keysize;
 
     // ..unless the key itself is a string, 

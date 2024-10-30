@@ -12,25 +12,23 @@
 #include "hash.h"
 #include "qsort.h"
 
-const char *ErrOptReqsArg       = "option -%c requires an argument";
-const char *ErrOptMutex         = "Option -%c cannot be used with -%c";
-const char *ErrOptMutexDefault  = "Option -R with no arguments can only be used with an explicit type option";
-const char *ErrDupOptArg        = "Option -%c cannot be used more than one argument";
-const char *ErrMultiSizeRaw     = "Option -R cannot be used with multiple types/sizes";
+const char *ErrOptReqsArg       = "-%c requires an argument";
+const char *ErrOptMutex         = "-%c cannot be used with -%c";
+const char *ErrOptMutexDefault  = "-R needs arg unless used with a type opt";
+const char *ErrDupOptArg        = "-%c cannot be used with more than one arg";
+const char *ErrMultiSizeRaw     = "-R cannot be used with multiple types/args";
 const char *ErrInvOpt           = "invalid option %s";
-const char *ErrInvSizeArg       = "SIZE needs to be a positive integer. Given SIZE: %s";
- 
+const char *ErrInvSizeArg       = "SIZE: an integer > 0. Given SIZE: %s"; 
 const char *UsageInfoStr = 
-"Usage: freq [-acdDhiRsS] [-D DELIM] [-R[SIZE]] [--delim=DELIM] "
-                                                  "[--raw[=SIZE]] [file ...]\n"
+"Usage: freq [-acdDhiRsS] [-D DELIM] [-R[SIZE]] [--delim=DELIM] [--raw[=SIZE]]"
+                                                               "  [file ...]\n"
 "Options:\n"
 "\t-h,        --help         Display this menu and exit\n"
 "\t-a,        --aggregate    Aggregate input files into a combined output\n"
 "\t-s,        --sort         Sort the output\n"
 "\t-D DELIM,  --delim=DELIM  Set delimiter for non-raw input (regex)\n"
 "\t-R[SIZE],  --raw[=SIZE]   Interpret input as a raw byte stream. Infers SIZE"
-                                                  " from provided type option,"
-                                 " or explicit SIZE argument where SIZE > 0.\n"
+                             " from a type opt, or SIZE argument SIZE > 0\n"
 "\t-c,        --char         Interpret input as ASCII chars\n"
 "\t-i,        --int          Interpret input as integers\n"
 "\t-d,        --double       Interpret input as doubles\n"
@@ -51,174 +49,41 @@ const struct option LongOpts[] =
     {0, 0, 0, 0}
 };
 
-// HASH.H operates with the assumption that the user can insert whatever into 
-// the map, thus hash.h needs a way of knowing what section of the bytes
-// inserted corresponds to a key. To that end, when initialized, it asks for
-// the key size in bytes, and a function that returns a pointer into the bytes
-// written to a specific mapped item, so that using that ptr and the keysize,
-// hash.h can figure out what the key is. In our case, the whole item is just
-// an integer, double, or a char *, so our key_getters will be trivial
-void *get_freq_key(void *data)
+void freq(Ctx *ctx, int opts, char *delim, int rawsize)
 {
-    return data; 
-}
-
-int freq_char_cmp(const void *data1, const void *data2)
-{
-    int *val1 = (int *) data1;
-    int *val2 = (int *) data2;
-
-    return *val1 - *val2; 
-}
-
-int freq_int_cmp(const void *data1, const void *data2)
-{
-    IntFreq *int_freq1 = (IntFreq *) data1;
-    IntFreq *int_freq2 = (IntFreq *) data2;
-
-    return int_freq1->count - int_freq2->count;
-}
-
-int freq_double_cmp(const void *data1, const void *data2)
-{
-    DoubleFreq *double_freq1 = (DoubleFreq *) data1;
-    DoubleFreq *double_freq2 = (DoubleFreq *) data2;
-
-    return double_freq1->count - double_freq2->count;
-}
-
-int freq_str_cmp(const void *data1, const void *data2)
-{
-    StrFreq *val1 = (StrFreq *) data1;
-    StrFreq *val2 = (StrFreq *) data2;
-
-    // we use StrFreq type for both strings, and rawdata with size parameter
-    // if len's are different, StrFreq was definitely used for strings 
-    if (val1->len == val2->len)
-        return memcmp(val1->value, val2->value, val1->len);
-
-    return strcmp(val1->value, val2->value); 
-}
-
-void add_int_freqs(HashmapItem *hmi, int n, va_list args)
-{
-    IntFreq *int_freqs = va_arg(args, IntFreq *);
-    int_freqs[n].value = *((int *) hmi->data);
-    int_freqs[n].count = (int)(uintptr_t)(hmi->value);
-}
-
-void add_double_freqs(HashmapItem *hmi, int n, va_list args)
-{
-    DoubleFreq *double_freqs = va_arg(args, DoubleFreq *);
-    double_freqs[n].value = *((double *) hmi->data);
-    double_freqs[n].count = (uintptr_t)(hmi->value);
-}
-void add_str_freqs(HashmapItem *hmi, int n, va_list args)
-{
-    StrFreq *str_freqs = va_arg(args, StrFreq *);
-    str_freqs[n].value = (char *) hmi->data;
-    str_freqs[n].count = (uintptr_t)(hmi->value);
-    str_freqs[n].len   = (uintptr_t)(hmi->value);
-}
-
-Ctx *init_freq_ctx(int flags, int rawsize)
-{
-    Ctx *ctx = (Ctx *) emalloc(sizeof(Ctx));
-    memset(ctx->freq_char, 0, sizeof(int) * UCHAR_MAX * 2);
-    for (int i = 0; i < UCHAR_MAX; i++)
-        ctx->freq_char[i][1] = (char) i;
-
-    memset(ctx->type_maps, 0, sizeof(Hashmap *) * N_MAPPED_TYPES);
-
-    if (flags & INT_OPT_MASK)
-        ctx->type_maps[0] = init_hmap(get_freq_key, sizeof(int), 0, 0, 0, 0, 0);
-
-    if (flags & DOUBLE_OPT_MASK)
-        ctx->type_maps[1] = init_hmap(get_freq_key, sizeof(double), 0, 0, 0, 0, 0);
-
-    if ((flags & RAW_OPT_MASK) && rawsize > 0)
-        ctx->type_maps[3] = init_hmap(get_freq_key, rawsize, 0, 0, 0, 0, 0);
-
-    else if ((flags & RAW_OPT_MASK) == 0 && ((flags & STRING_OPT_MASK) || (flags & TYPE_OPTS_MASK) == 0))
-        ctx->type_maps[2] = init_hmap(get_freq_key, rawsize, 1, 0, 0, 0, 0);
-
-    ctx->buf = NULL;
-    ctx->bufsize = 0;
-    return ctx;
-}
-
-void destroy_freq_ctx(Ctx *ctx)
-{
-    free(ctx->buf);
-    ctx->buf = NULL;
-    for (int i = 0; i < N_MAPPED_TYPES; i++)
-        if (ctx->type_maps[i])
-            destroy_hmap(ctx->type_maps[i]);
-    free(ctx);
-}
-
-void freq(Ctx *ctx, int flags, char *delim, int rawsize)
-{
-    if (flags & CHAR_OPT_MASK)
+    // raw or not, ch_freqs are populated the same way
+    if (opts & CHAR_OPT_MASK) {
         for (int i = 0; i < (ctx->bufsize); i++) {
-            ctx->freq_char[ ((unsigned)ctx->buf[i]) ][0]++;
-            ctx->freq_char[ ((unsigned)ctx->buf[i]) ][1] = ctx->buf[i];
+            int ch_idx = (int) ctx->buf[i]; 
+            ctx->ch_freqs[ch_idx].count++;
+            ctx->ch_freqs[ch_idx].value = (char) ctx->buf[i];
         }
-    
-    if (flags & RAW_OPT_MASK) {
-        Hashmap     *type_map = NULL;
-        HashmapItem *hmi = NULL;
-        int         type_size = 0;
-        void        *data = NULL;
-        void        *value = NULL;
+    }
 
-        if (flags & INT_OPT_MASK) {
-            type_map = ctx->type_maps[0];
-            type_size = sizeof(int);
-            for (int i = 0; i <= (ctx->bufsize-type_size); i += type_size) {
-                int rawdata = *((int *) (ctx->buf+i));
-                data = (void *) estrndup((char *) &rawdata, type_size);
-                value = 0;
-                hmi = find(type_map, data, CREATE, value);
-                if (hmi) {
-                    hmi->value++;
-                }
-            }
-        } else if (flags & DOUBLE_OPT_MASK){
-            type_map = ctx->type_maps[1];
-            type_size = sizeof(double);
-            for (int i = 0; i <= (ctx->bufsize-type_size); i += type_size) {
-                double rawdata = *((double *) (ctx->buf+i));
-                data = (void *) estrndup((char *) &rawdata, type_size);
-                value = 0;
-                hmi = find(type_map, data, CREATE, value);
-                if (hmi) {
-                    hmi->value++;
-                }
-            }
-        } else if (rawsize){
-            type_map = ctx->type_maps[2];
-            type_size = rawsize;
-            for (int i = 0; i <= (ctx->bufsize-type_size); i += type_size) {
-                data = (char *) estrndup(ctx->buf+i, type_size);
-                value = 0;
-                hmi = find(type_map, data, CREATE, value);
-                if (hmi) {
-                    hmi->value++;
-                }
-            }
-        }
-    } else {
-        int bufseek;
-        int len;
-        char *ln;
-        for (bufseek = 0; /*  break condition below  */ ; bufseek += len) {
-            if ((len = e_getline(ctx->buf, ctx->bufsize, &ln, bufseek)) < 0)
-                break;
-            // if len >= 0, process for loop body: 
-            int printlen = ln[len-1] == '\n' ? len-1 : len;
-            printf("%.*s\n", printlen, ln);
-        }
+    //  raw input, needs to be parsed by iterating byte by byte over input
+    if ((opts & RAW_OPT_MASK) && (opts & INT_OPT_MASK)) {
+        MAP_RAW(IntFreq, INT_MAP, sizeof(int), GET_INT_VAL, MAP_INT_VAL);
+        return;
+    } else if ((opts & RAW_OPT_MASK) && (opts & DOUBLE_OPT_MASK)) {
+        MAP_RAW(DblFreq, DBL_MAP, sizeof(double), GET_DBL_VAL, MAP_DBL_VAL);
+        return;
+    } else if ((opts & RAW_OPT_MASK) && rawsize) {
+        MAP_RAW(StrFreq, STR_MAP, rawsize, GET_STR_VAL, MAP_STR_VAL);
+        return;
+    } else if ((OPTS & RAW_OPT_MASK)) {
+        eprintf("impossible! how did you end up here?!"); // EXIT_FAILURE
+    }
+
+    // not raw, received text input that needs to be parsed to relevant types
+    int bufseek;
+    int len;
+    char *ln;
+    for (bufseek = 0; /*  break condition below  */ ; bufseek += len) {
+        if ((len = e_getline(ctx->buf, ctx->bufsize, &ln, bufseek)) < 0)
+            break;
+        // if len >= 0, process for loop body: 
+        int printlen = ln[len-1] == '\n' ? len-1 : len;
+        printf("%.*s\n", printlen, ln);
     }
 
     /*
@@ -253,13 +118,13 @@ void freq(Ctx *ctx, int flags, char *delim, int rawsize)
     return;
 }
 
-void print_freqs(Ctx *ctx, int flags)
+void print_freqs(Ctx *ctx, int opts)
 {
-    if ((flags & CHAR_OPT_MASK)) {
+    if ((opts & CHAR_OPT_MASK)) {
         int freqs = ctx->freq_char;
         int n = UCHAR_MAX;
 
-        if ((flags & SORT_OPT_MASK))
+        if ((opts & SORT_OPT_MASK))
             qsort_generic(freqs, n, sizeof(int[2]), freq_char_cmp, QSORT_DESC);
 
         for (int i = 0; i < n; i++) {
@@ -272,14 +137,14 @@ void print_freqs(Ctx *ctx, int flags)
         }
     }
 
-    if (flags & INT_OPT_MASK) {
+    if (opts & INT_OPT_MASK) {
         Hashmap *map = ctx->type_maps[0];
         int n = map->n_elems;
 
         IntFreq *freqs = (IntFreq *) emalloc(sizeof(IntFreq) * n);
         iterate_hmis(map, add_int_freqs, freqs);
 
-        if ((flags & SORT_OPT_MASK))
+        if ((opts & SORT_OPT_MASK))
             qsort_generic(freqs, n, sizeof(IntFreq), freq_int_cmp, QSORT_DESC);
         
         for (int i = 0; i < n; i++) 
@@ -289,14 +154,14 @@ void print_freqs(Ctx *ctx, int flags)
         freqs = NULL;
     }
 
-    if (flags & DOUBLE_OPT_MASK) {
+    if (opts & DOUBLE_OPT_MASK) {
         Hashmap *map = ctx->type_maps[1];
         int n = map->n_elems;
 
         DoubleFreq *freqs = (DoubleFreq *) emalloc(sizeof(DoubleFreq) * n);
         iterate_hmis(map, add_double_freqs, freqs);
 
-        if ((flags & SORT_OPT_MASK))
+        if ((opts & SORT_OPT_MASK))
             qsort_generic(freqs, n, sizeof(DoubleFreq), freq_double_cmp, QSORT_DESC);
         
         for (int i = 0; i < n; i++) 
@@ -306,13 +171,13 @@ void print_freqs(Ctx *ctx, int flags)
         freqs = NULL;
     }
 
-    if ((flags & STRING_OPT_MASK) || (flags & TYPE_OPTS_MASK) == 0) {
+    if ((opts & STRING_OPT_MASK) || (opts & TYPE_OPTS_MASK) == 0) {
         Hashmap *map = ctx->type_maps[2];
         int n  = map->n_elems;
 
         StrFreq *freqs = (StrFreq *) emalloc(sizeof(StrFreq) * n);
         iterate_hmis(map, add_str_freqs, freqs);
-        if ((flags & SORT_OPT_MASK))
+        if ((opts & SORT_OPT_MASK))
             qsort_generic(freqs, n, sizeof(StrFreq), freq_str_cmp, QSORT_DESC);
         
         for (int i = 0; i < n; i++) 
@@ -325,9 +190,9 @@ void print_freqs(Ctx *ctx, int flags)
 
 int parse_opts(int argc, char *argv[], char **delim, int *rawsize) 
 {
-    int opt, flags, n_rawsize_given, n_delim_given;
+    int opt, opts, n_rawsize_given, n_delim_given;
 
-    flags     = 0;
+    opts     = 0;
     *delim    = DEFAULT_DELIM;
     *rawsize  = DEFAULT_SIZE;
 
@@ -356,22 +221,22 @@ int parse_opts(int argc, char *argv[], char **delim, int *rawsize)
             default: eprintf("Unexpected option: %c:", opt);
         }
         // valid option, set the relevant flag bit
-		    flags = set_opt_flag(flags, opt);
+		    opts = set_opt_flag(opts, opt);
     }
-    e_validate_flags(flags, n_rawsize_given, n_delim_given); 
-    return flags;
+    e_validate(opts, n_rawsize_given, n_delim_given); 
+    return opts;
 }
 
-/* set_opt_flag: set the relevant bit of flags to 1 based on opt
+/* set_opt_flag: set the relevant bit of opts to 1 based on opt
                   and the LongOpts option registry arr.
-                  In case of invalid options, return the original flags */
-int set_opt_flag(int flags, int opt)
+                  In case of invalid options, return the original opts */
+int set_opt_flag(int opts, int opt)
 {
     int i;
 		for (i = 0; i < N_SUPPORTED_OPTS; i++)
 				if (LongOpts[i].val == opt)
-				    return ( flags | (1 << i) );
-     return flags;
+				    return ( opts | (1 << i) );
+     return opts;
 }
 
 /* atoi_pos: convert a string to +integer, report if error */
@@ -435,14 +300,14 @@ void e_invalid_opt(char **argv)
     eprintf(ErrInvOpt, inv_opt_str_tmp);  // EXIT_FAILURE
 }
 
-/* validate_flags: validates the flags set by options given, 
+/* validate: validates the opts set by options given, 
                   if wrong usage, prints the specific err and exits */
-void e_validate_flags(int flags, int n_raw, int n_delim)
+void e_validate(int opts, int n_raw, int n_delim)
 {
-    int type_opts = flags & TYPE_OPTS_MASK;
+    int type_opts = opts & TYPE_OPTS_MASK;
     // more than one type opts with a raw option
     // binary algebraic expr results non-zero if more than 1 bit is set 
-    if ((type_opts & (type_opts - 1)) && (flags & RAW_OPT_MASK))
+    if ((type_opts & (type_opts - 1)) && (opts & RAW_OPT_MASK))
         eprintf(ErrMultiSizeRaw);
     
     // type opt was provided alongisde an explicit raw size
@@ -450,7 +315,7 @@ void e_validate_flags(int flags, int n_raw, int n_delim)
         eprintf(ErrMultiSizeRaw);
     
     // -R was used without optional size argument, but with no type option
-    if (!type_opts && (flags & RAW_OPT_MASK) && !n_raw)
+    if (!type_opts && (opts & RAW_OPT_MASK) && !n_raw)
         eprintf(ErrOptMutexDefault);
     
     // -R was used multiple times with size information
@@ -462,12 +327,114 @@ void e_validate_flags(int flags, int n_raw, int n_delim)
         eprintf(ErrDupOptArg, 'D');
     
     // cannot have delims on raw binary input
-    if ((flags & RAW_OPT_MASK) && (flags & DELIM_OPT_MASK))
+    if ((opts & RAW_OPT_MASK) && (opts & DELIM_OPT_MASK))
         eprintf(ErrOptMutex, 'D', 'R');
     
     // cannot have "raw" string, we handle ascii files, it's already raw
-    if ((flags & RAW_OPT_MASK) && (flags & STRING_OPT_MASK))
+    if ((opts & RAW_OPT_MASK) && (opts & STRING_OPT_MASK))
         eprintf(ErrOptMutex, 'S', 'R');
 
     return;
+}
+
+void *get_int_freq_key(Hashmap *hmap, void *data)
+{
+    return (void *) &(((IntFreq *)data)->value); 
+}
+
+void *get_double_freq_key(Hashmap *hmap, void *data)
+{
+    return (void *) &(((DoubleFreq *)data)->value);
+}
+
+void *get_str_freq_key(Hashmap *hmap, void *data)
+{
+    return (void *) &(((StrFreq *)data)->value);
+}
+
+int char_freq_cmp(const void *data1, const void *data2)
+{
+    return ((CharFreq *)data1)->count - ((CharFreq *)data2)->count;
+}
+
+int int_freq_cmp(const void *data1, const void *data2)
+{
+    return ((IntFreq *)data1)->count - ((IntFreq *)data2)->count;
+}
+
+int double_freq_cmp(const void *data1, const void *data2)
+{
+    return ((DoubleFreq *)data1)->count - ((DoubleFreq *)data2)->count;
+}
+
+int str_freq_cmp(const void *data1, const void *data2)
+{
+    return ((StrFreq *)data1)->count - ((StrFreq *)data2)->count;
+}
+
+Ctx *init_freq_ctx(int opts, int rawsize)
+{
+    Ctx *ctx = (Ctx *) emalloc(sizeof(Ctx));
+    
+    // set everything to NULL initially
+    memset(*ctx, 0, sizeof(Ctx));
+
+    // initialize the freq arrays of corresponding types
+    // since the char set is finite, we can pre allocate    
+    ctx->char_freqs = (CharFreq *)emalloc(sizeof(CharFreq) * UCHAR_MAX);
+    memset(ctx->char_freqs, 0, sizeof(CharFreq) * UCHAR_MAX);
+
+    // initialize the hashmaps for mapped types only if that type is selected
+    if (opts & INT_OPT_MASK)
+        ctx->type_maps[0] = init_hmap(get_int_freq_key, sizeof(int), 
+                                                        0, 0, 0, 0, 0);
+
+    if (opts & DOUBLE_OPT_MASK)
+        ctx->type_maps[1] = init_hmap(get_double_freq_key, sizeof(double), 
+                                                              0, 0, 0, 0, 0);
+
+    // mutex options, if RAW and given rawsize, 
+    // else not raw AND explicit -S or implicit -S, i.e. no type_opts present
+    if ((opts & RAW_OPT_MASK) && rawsize > 0)
+        ctx->type_maps[3] = init_hmap(get_str_freq_key, rawsize, 
+                                                    0, 0, 0, 0, 0);
+    else if ((opts & RAW_OPT_MASK) == 0 
+              && ((opts & STRING_OPT_MASK) || (opts & TYPE_OPTS_MASK) == 0))
+        ctx->type_maps[2] = init_hmap(get_str_freq_key, rawsize, 
+                                            STRING_KEY, 0, 0, 0, 0);
+
+    return ctx;
+}
+
+void destroy_freq_ctx(Ctx *ctx)
+{
+    if(ctx->buf)
+        free(ctx->buf);
+    ctx->buf = NULL;
+    
+    if (ctx->char_freqs)
+        free(ctx->char_freqs);
+    ctx->char_freqs = NULL;
+
+    if (ctx->int_freqs)
+        free(ctx->int_freqs);
+    ctx->int_freqs = NULL;
+
+    if (ctx->double_freqs)
+        free(ctx->double_freqs);
+    ctx->double_freqs = NULL;
+
+    if (ctx->str_freqs)
+        free(ctx->str_freqs);
+    ctx->str_freqs = NULL;
+
+    if (ctx->rawsize_freqs)
+        free(ctx->rawsize_freqs);
+    ctx->rawsize_freqs = NULL;
+
+    for (int i = 0; i < N_MAPPED_TYPES; i++)
+        if (ctx->type_maps[i])
+            destroy_hmap(ctx->type_maps[i]);
+
+    free(ctx);
 }
