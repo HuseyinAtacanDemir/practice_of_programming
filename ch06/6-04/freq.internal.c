@@ -79,46 +79,47 @@ void freq(Ctx *ctx, int opts, char *delim, int rawsize)
     }
 
     // not raw, received text input that needs to be parsed to relevant types
-    int bufseek;
-    int len;
     char *ln;
+    int bufseek, len;
+
     for (bufseek = 0; /*  break condition below  */ ; bufseek += len) {
         if ((len = e_getline(ctx->buf, ctx->bufsize, &ln, bufseek)) < 0)
             break;
+
+      //
+      //char *token = get_token(regex, str, &start, &token_len);
+
+        char  *token, *endptr;
+        int   i, token_len;
+
+        token = endptr = NULL;
+        i = token_len = 0;
+        while ( (token = get_token(delim, ln, &i, &token_len)) != NULL) {
+            if (opts & INT_OPT_MASK) {
+                int data = strntoi(token, &endptr, token_len);
+                if ((endptr - token + 1) == token_len) {
+
+                    continue;
+                }
+            }
+            if (opts & DOUBLE_OPT_MASK) {
+                double data = strntod(token, &endptr, token_len);
+                if ((endptr - token + 1) == token_len) {
+
+                    continue;
+                }
+            }
+            if (opts & STRING_OPT_MASK || !(opts & TYPE_OPTS_MASK)) {
+                
+            }
+            
+        }
+
         // if len >= 0, process for loop body: 
         int printlen = ln[len-1] == '\n' ? len-1 : len;
         printf("%.*s\n", printlen, ln);
     }
 
-    /*
-    pseudocode:
-    create an dynamic array of structs with possible hmaps
-    if not raw {
-        for each line read {
-            if -c
-                iterate over line, increment relevant to char bucket
-            if other type options exist alongside -c, or no options were given from the getgo {
-                tokenize based on delim or whitespace
-                for each token {
-                    given -i && check if strtoi, check i first cause strtod will match
-                        create hmap_int if not alreadyadd to hmap_int
-                    else given -d, check if strtod(str, end) end-str == strlen
-                        add to hmap_double
-                    if none given, or explicit -S given:
-                        add the whole token to hmap_str
-                }
-            }
-        }
-    } else {
-        get size from a type option --if exists, or the size provided to raw as an arg
-        read into a buffer until EOF, making sure buffer is multiple of size {
-            create custom hmap with key size info
-            populate hmap by iterating over bytes with a buffer
-        }
-    }
-
-
-    */
     return;
 }
 
