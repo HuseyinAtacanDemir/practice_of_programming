@@ -85,8 +85,6 @@ void freq(Ctx *ctx, int opts, char *delim, int rawsize)
     for (bufseek = 0; /*  break condition below  */ ; bufseek += len) {
         if ((len = e_getline(ctx->buf, ctx->bufsize, &ln, bufseek)) < 0)
             break;
-
-      //
       //char *token = get_token(regex, str, &start, &token_len);
 
         char  *token, *endptr;
