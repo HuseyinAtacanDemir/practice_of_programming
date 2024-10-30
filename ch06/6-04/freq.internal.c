@@ -49,6 +49,10 @@ const struct option LongOpts[] =
     {0, 0, 0, 0}
 };
 
+void *get_int_freq_key(Hashmap *hmap, void *data);
+void *get_dbl_freq_key(Hashmap *hmap, void *data);
+void *get_str_freq_key(Hashmap *hmap, void *data);
+
 void freq(Ctx *ctx, int opts, char *delim, int rawsize)
 {
     // raw or not, ch_freqs are populated the same way
@@ -342,7 +346,7 @@ void *get_int_freq_key(Hashmap *hmap, void *data)
     return (void *) &(((IntFreq *)data)->value); 
 }
 
-void *get_double_freq_key(Hashmap *hmap, void *data)
+void *get_dbl_freq_key(Hashmap *hmap, void *data)
 {
     return (void *) &(((DoubleFreq *)data)->value);
 }
@@ -386,21 +390,21 @@ Ctx *init_freq_ctx(int opts, int rawsize)
 
     // initialize the hashmaps for mapped types only if that type is selected
     if (opts & INT_OPT_MASK)
-        ctx->type_maps[0] = init_hmap(get_int_freq_key, sizeof(int), 
+        ctx->type_maps[INT_MAP] = init_hmap(get_int_freq_key, sizeof(int), 
                                                         0, 0, 0, 0, 0);
 
     if (opts & DOUBLE_OPT_MASK)
-        ctx->type_maps[1] = init_hmap(get_double_freq_key, sizeof(double), 
+        ctx->type_maps[DBL_MAP] = init_hmap(get_dbl_freq_key, sizeof(double), 
                                                               0, 0, 0, 0, 0);
 
-    // mutex options, if RAW and given rawsize, 
-    // else not raw AND explicit -S or implicit -S, i.e. no type_opts present
-    if ((opts & RAW_OPT_MASK) && rawsize > 0)
-        ctx->type_maps[3] = init_hmap(get_str_freq_key, rawsize, 
-                                                    0, 0, 0, 0, 0);
-    else if ((opts & RAW_OPT_MASK) == 0 
-              && ((opts & STRING_OPT_MASK) || (opts & TYPE_OPTS_MASK) == 0))
-        ctx->type_maps[2] = init_hmap(get_str_freq_key, rawsize, 
+    // mutex options, if: RAW and rawsize given, 
+    // else: not raw AND explicit -S or implicit -S, i.e. no type_opts present
+    if ((opts & RAW_OPT_MASK) && rawsize)
+        ctx->type_maps[STR_MAP] = init_hmap(get_str_freq_key, rawsize, 
+                                                          0, 0, 0, 0, 0);
+    else if (!(opts & RAW_OPT_MASK) 
+              && (!(opts & (TYPE_OPTS_MASK)) || (opts & STRING_OPT_MASK)))
+        ctx->type_maps[STR_MAP] = init_hmap(get_str_freq_key, 0, 
                                             STRING_KEY, 0, 0, 0, 0);
 
     return ctx;
@@ -412,25 +416,25 @@ void destroy_freq_ctx(Ctx *ctx)
         free(ctx->buf);
     ctx->buf = NULL;
     
-    if (ctx->char_freqs)
-        free(ctx->char_freqs);
-    ctx->char_freqs = NULL;
+    if (ctx->ch_freqs)
+        free(ctx->ch_freqs);
+    ctx->ch_freqs = NULL;
 
     if (ctx->int_freqs)
         free(ctx->int_freqs);
     ctx->int_freqs = NULL;
 
-    if (ctx->double_freqs)
-        free(ctx->double_freqs);
-    ctx->double_freqs = NULL;
+    if (ctx->dbl_freqs)
+        free(ctx->dbl_freqs);
+    ctx->dbl_freqs = NULL;
 
     if (ctx->str_freqs)
         free(ctx->str_freqs);
     ctx->str_freqs = NULL;
 
-    if (ctx->rawsize_freqs)
-        free(ctx->rawsize_freqs);
-    ctx->rawsize_freqs = NULL;
+    if (ctx->raw_freqs)
+        free(ctx->raw_freqs);
+    ctx->raw_freqs = NULL;
 
     for (int i = 0; i < N_MAPPED_TYPES; i++)
         if (ctx->type_maps[i])
