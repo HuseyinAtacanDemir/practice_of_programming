@@ -32,9 +32,9 @@ struct Hashmap {
 
     // return a void * to the "key" field of the mapped data structure, 
     // this will be the value that will be hashed 
-    void  *(*get_key)(void *data);  
+    void  *(*get_key)(Hashmap *hmap, void *data);  
     int   keysize; // size, in bytes, of key returned by get_key
-    int   is_key_string;  // true if "key" is a null term str 
+    int   is_key_str;  // true if "key" is a null term str 
 };
 
 typedef struct Item Item;
@@ -50,7 +50,7 @@ Hashmap *init_hmap  (void *(*get_key)(Hashmap *hmap, void *data), int keysize,
 
 Item *find          (Hashmap *hmap, void *data, int create, void *value);
 Item *insert        (Hashmap *hmap, void *data, void *value);
-void *del_hmap_item (Hashmap *hmap, void *data);
+void del_hmap_item  (Hashmap *hmap, void *data);
 void destroy_hmap   (Hashmap *hmap);
 void iterate_map    (Hashmap *hmap, void (*fn)(Item *, int idx, va_list), ...);
 

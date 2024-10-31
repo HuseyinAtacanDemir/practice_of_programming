@@ -30,7 +30,7 @@ Hashmap *init_hmap(void *(*get_key)(Hashmap *hmap, void *data), int keysize,
 
     hmap->get_key     = get_key;
     hmap->keysize     = keysize > 0 ? keysize : 0; 
-    hmap->is_key_str  = is_key_string;
+    hmap->is_key_str  = is_key_str;
 
     return hmap;
 }
@@ -94,7 +94,7 @@ Item *insert(Hashmap *hmap, void *data, void *value)
     return item;
 }
 
-void *del_hmap_item(Hashmap *hmap, void *data)
+void del_hmap_item(Hashmap *hmap, void *data)
 {
     ListItem  *li, *prev, *next;
     unsigned  h;
@@ -107,9 +107,9 @@ void *del_hmap_item(Hashmap *hmap, void *data)
             next = li->next;
             li->next = NULL;
 
-            if (prev) {         // found somewhere other than bucket list head
+            if (prev)           // found somewhere other than bucket list head
                 prev->next = next;
-            else if(next)       // found in bucket list head, other items exist
+            else if (next)      // found in bucket list head, other items exist
                 hmap->table[h] = next;
             else {              // found in bucket list head, was the only item
                 hmap->table[h] = NULL;
@@ -118,8 +118,8 @@ void *del_hmap_item(Hashmap *hmap, void *data)
 
             hmap->n_items--;
             
-            free(li->item);
-            li->item = NULL;
+            free(li->data);
+            li->data = NULL;
 
             free(li);
             li = NULL;
@@ -143,7 +143,7 @@ int compare_keys(Hashmap *hmap, void *data1, void *data2)
     key1 = (char *) hmap->get_key(hmap, data1);
     key2 = (char *) hmap->get_key(hmap, data2);
 
-    if (hmap->is_key_string)
+    if (hmap->is_key_str)
         return (hmap->keysize == 0 ? strcmp(key1, key2) 
                               : memcmp(key1, key2, hmap->keysize));
 
@@ -173,7 +173,7 @@ unsigned int hash(Hashmap *hmap, void *data)
 
     // ..unless the key itself is a string, 
     //in which case we can assume \0 termination
-    if (hmap->is_key_string > 0)
+    if (hmap->is_key_str > 0)
         iteration_limit = strlen(key);
    
     // hashing as if we are hasing a string, regardless of underlying key type 
@@ -249,7 +249,7 @@ void destroy_hmap(Hashmap *hmap)
     */
 }
 
-void iterate_map(Hashmap *hmap, void (*fn)(Item *item, int idx, va_list args), ...)
+void iterate_map(Hashmap *hmap, void (*fn)(Item*, int, va_list), ...)
 {
     va_list args;
 
