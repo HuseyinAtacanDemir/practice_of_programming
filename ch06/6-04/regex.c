@@ -5,21 +5,11 @@
 
 STATE next_state(STATE state, EVENT event)
 {
-    switch (state) {
-        case LOCKED:
-            switch (event) {
-                case PUSH:
-                    return LOCKED;
-                case COIN:
-                    return UNLOCKED;
-            }
-        case UNLOCKED:
-            switch (event) {
-                case PUSH:
-                    return LOCKED;
-                case COIN:
-                    return UNLOCKED;
-            }
+    switch (event) {
+        case PUSH:
+            return LOCKED;
+        case COIN:
+            return UNLOCKED;
         default:
             return LOCKED;
     }
@@ -39,8 +29,10 @@ int main(int argc, char **argv)
             e = COIN;
         else if (strcmp(buffer, "PUSH\n") == 0)
             e = PUSH;
-        else
+        else {
             printf("Unkown event\n");
+            continue;
+        }
 
         s = next_state(s, e);
         printf("%s\n", ((s == LOCKED) ? "LOCKED" : "UNLOCKED"));        
