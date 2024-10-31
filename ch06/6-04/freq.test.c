@@ -43,11 +43,11 @@ int main(void)
         }
       }
 
-      TEST_SUITE("SUITE: set_opt_flag") {
+      TEST_SUITE("SUITE: set_opts") {
         TEST("test valid opts 0x0 initial flags") {
             for (int i = 0; i < N_SUPPORTED_OPTS; i++) {
                 char opt = LongOpts[i].val; 
-                EXPECT_EQ(set_opt_flag(0x0, opt), (1<<i));
+                EXPECT_EQ(set_opts(0x0, opt), (1<<i));
             }
         }
         TEST("test valid opts non-zero initial flags") {
@@ -55,7 +55,7 @@ int main(void)
             int old_flag = flag;
             for (int i = 0; i < N_SUPPORTED_OPTS; i++) {
                 char opt = LongOpts[i].val;
-                flag = set_opt_flag(flag, opt);
+                flag = set_opts(flag, opt);
                 EXPECT_EQ(flag, (old_flag | (1<<i)) );
                 old_flag = flag;
             }
@@ -63,7 +63,7 @@ int main(void)
         TEST("test invalid opts 0x0 initial flags") {
             int inv_opts[] = {'@', 'z', '1'};
             for (int i = 0; i < (sizeof(inv_opts)/sizeof(int)); i++) {
-                EXPECT_EQ(set_opt_flag(0x0, inv_opts[i]), 0x0);
+                EXPECT_EQ(set_opts(0x0, inv_opts[i]), 0x0);
             }
         }
         TEST("test invalid opts non-zero initial flags") {
@@ -71,7 +71,7 @@ int main(void)
             int flag = (1 << N_SUPPORTED_OPTS);
             int old_flag = flag;
             for (int i = 0; i < (sizeof(inv_opts)/sizeof(int)); i++) {
-                flag = set_opt_flag(flag, inv_opts[i]);
+                flag = set_opts(flag, inv_opts[i]);
                 EXPECT_EQ(flag, old_flag);
                 // old_flag = flag; no need, we EXPECT it not to change
             }
@@ -79,7 +79,7 @@ int main(void)
         TEST("test boundaries INT_MAX INT_MIN UCHAR_MAX+1 CHAR_MIN-1") {
             int tests[] = { INT_MAX, INT_MIN, UCHAR_MAX+1, CHAR_MIN-1, 0 };
             for (int i = 0; tests[i] != 0; i++)
-                EXPECT_EQ(0x0, set_opt_flag(0x0, tests[i]));
+                EXPECT_EQ(0x0, set_opts(0x0, tests[i]));
         }
       }
 
