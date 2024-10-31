@@ -1,3 +1,9 @@
+/*
+Yeah.. I think I am a little bit too early into my proper CS journey to tackle
+writing a regex parser right now.. so I will use the 
+
+*/
+
 #ifndef REGEX_H
 #define REGEX_H
 

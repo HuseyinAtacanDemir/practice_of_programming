@@ -36,7 +36,7 @@ int main(int argc, char **argv)
         if (fd != STDIN_FILENO && close(fd))
             eprintf("cannot close file: %s:", *argv);
         
-        if (argc == 0 || (flags & AGGR_OPT_MASK) == 0) {
+        if (argc == 0 || !(flags & AGGR_OPT_MASK)) {
             print_freqs(ctx, flags);
             destroy_freq_ctx(ctx);
             ctx = NULL;

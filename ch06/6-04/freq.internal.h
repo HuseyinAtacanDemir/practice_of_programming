@@ -3,6 +3,7 @@
 
 #include <getopt.h>
 #include <stdarg.h>
+#include <limits.h>
 
 #include "hash.h"
 
@@ -28,7 +29,7 @@ enum { HELP, AGGR, SORT, DELIM, RAW, CHAR, INT, DOUBLE, STRING };
 // atoi_pos err values
 #define NOT_POSITIVE_INT_ERR  -1
 
-#define N_MAPPED_TYPES    3
+#define N_MAPPED_TYPES  3
 enum { INT_MAP, DBL_MAP, STR_MAP };
 
 //  helper macros for parsing raw binary data
@@ -76,36 +77,31 @@ enum { INT_MAP, DBL_MAP, STR_MAP };
         } \
     } while (0) \
 
-typedef struct ChFreq ChFreq;
-struct ChFreq { int count; char value; };
+typedef struct { int count; char value; } ChFreq;
 
-typedef struct IntFreq IntFreq;
-struct IntFreq { int count; int value; };
+typedef struct { int count; int value; } IntFreq; 
 
-typedef struct DblFreq DblFreq;
-struct DblFreq { int count; double value; };
+typedef struct { int count; double value; } DblFreq;
 
-typedef struct StrFreq StrFreq;
-struct StrFreq{ int count; char *value; int len; };
+typedef struct { int count; char *value; int len; } StrFreq;
 
-typedef struct Ctx Ctx;
-struct Ctx {
-    Hashmap   *type_maps[N_MAPPED_TYPES];
-    ChFreq    *ch_freqs;
+typedef struct {
+    Hashmap *type_maps[N_MAPPED_TYPES];
+    ChFreq  ch_freqs[CHAR_MAX];
  
-    char      *buf;
-    int       bufsize;
-};
+    char  *buf;
+    int   bufsize;
+} Ctx;
 
 // err messsage strings
-extern const char           *ErrOptReqsArg;
-extern const char           *ErrOptMutex;
-extern const char           *ErrOptMutexDefault;
-extern const char           *ErrDupOptArg;
-extern const char           *ErrMultiSizeRaw;
-extern const char           *ErrInvOpt;
-extern const char           *ErrInvSizeArg;
-extern const char           *UsageInfoStr; // usage message string
+extern const char   *ErrOptReqsArg;
+extern const char   *ErrOptMutex;
+extern const char   *ErrOptMutexDefault;
+extern const char   *ErrDupOptArg;
+extern const char   *ErrMultiSizeRaw;
+extern const char   *ErrInvOpt;
+extern const char   *ErrInvSizeArg;
+extern const char   *UsageInfoStr; // usage message string
 
 // getopt.h struct opton, option and argument listing, "man 3 getopt_long"
 extern const struct option  LongOpts[];
@@ -114,22 +110,11 @@ extern const struct option  LongOpts[];
 extern Ctx  *init_freq_ctx    (int opts, int rawsize);
 extern void destroy_freq_ctx  (Ctx *ctx);
 
-extern int  cmp_ch_freq   (void *, void *);
-extern int  cmp_int_freq  (void *, void *);
-extern int  cmp_dbl_freq  (void *, void *);
-extern int  cmp_str_freq  (void *, void *);
-
 extern void freq          (Ctx *ctx, int opts, char *delim, int rawsize);
 extern void print_freqs   (Ctx *ctx, int opts);
 
 extern int  parse_opts    (int argc, char **argv, char **delim, int *rawsize);
 extern int  set_opts      (int opts, int opt);
 extern int  atoi_pos      (char *str);
-
-extern void e_usage       (void);
-extern void e_set_delim   (char **delim, int *n_delim);
-extern void e_set_rawsize (int *rawsize, int *n_raw);
-extern void e_invalid_opt (char **argv);
-extern void e_validate    (int opts, int n_raw, int n_delim);
 
 #endif
