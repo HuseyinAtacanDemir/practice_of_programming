@@ -3,11 +3,6 @@
 #include <stdio.h>
 #include <string.h>
 
-int next_state(int state, int event)
-{
-    return FSM[state][event];
-}
-
 int main(int argc, char **argv)
 {
     int     state, event;
@@ -31,7 +26,19 @@ int main(int argc, char **argv)
         }
 
         state = next_state(state, event);
-        printf("%s\n", ((state == LOCKED) ? "LOCKED" : "UNLOCKED"));        
+        printf("%s\n", state_to_str(state));        
     }
     return 0;
+}
+
+int next_state(int state, int event)
+{
+    return FSM[state][event];
+}
+
+char *state_to_str(int state)
+{
+    if (state == LOCKED)
+        return "LOCKED";
+    return "UNLOCKED";
 }

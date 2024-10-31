@@ -14,6 +14,7 @@ const int FSM[N_STATES][N_EVENTS] = {
     [UNLOCKED]  = { LOCKED, UNLOCKED }
 };
 
-extern int next_state(int state, int event);
+extern int  next_state    (int state, int event);
+extern char *state_to_str (int state);
 
 #endif
